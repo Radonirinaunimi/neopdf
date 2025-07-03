@@ -5,6 +5,7 @@ use std::path::Path;
 
 pub mod interpolation;
 pub mod parser;
+pub mod utils;
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
