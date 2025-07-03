@@ -47,9 +47,9 @@ impl KnotArray {
         let xs = Array1::from_vec(xs);
         let q2s = Array1::from_vec(q2s);
         let flavors = Array1::from_vec(flavors);
-        let grid = Array3::from_shape_vec((nx, nflav, nq2), grid_data)
+        let grid = Array3::from_shape_vec((nx, nq2, nflav), grid_data)
             .expect("Failed to create grid from data")
-            .permuted_axes([1, 0, 2]) // Permute (x, flav, q2) -> (flav, x, q2)
+            .permuted_axes([2, 0, 1]) // Permute (x, q2, flav) -> (flav, x, q2)
             .as_standard_layout()
             .to_owned();
 
