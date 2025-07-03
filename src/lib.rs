@@ -1,10 +1,10 @@
 use ndarray::{s, Array1, Array3};
-use ninterp::interpolator::Extrapolate;
 use ninterp::prelude::*;
 use ninterp::strategy::Linear;
 use serde::Deserialize;
 use std::path::Path;
 
+pub mod interpolation;
 pub mod parser;
 
 #[derive(Debug, Deserialize)]
@@ -79,14 +79,11 @@ impl GridPDF {
         for i in 0..knot_array.flavors.len() {
             let grid_slice = knot_array.grid.slice(s![i, .., ..]);
 
-            let interp = Interp2D::new(
+            let interp = interpolation::interpolate(
                 knot_array.xs.to_owned(),
                 knot_array.q2s.to_owned(),
                 grid_slice.to_owned(),
-                strategy::Linear,
-                Extrapolate::Clamp,
-            )
-            .unwrap();
+            );
             interpolators.push(interp);
         }
         Self {
