@@ -11,7 +11,6 @@ pub mod utils;
 /// Represents the information block of a PDF set, typically found in an `.info` file.
 /// This struct is deserialized from a YAML-like format.
 #[derive(Clone, Debug, Deserialize)]
-#[allow(dead_code)]
 pub struct Info {
     /// Description of the PDF set.
     #[serde(rename = "SetDesc")]
