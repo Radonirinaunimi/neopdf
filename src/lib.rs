@@ -46,7 +46,7 @@ pub struct Info {
 
 /// Provides the default interpolator type, "LogBilinear", for `Info`.
 fn default_interpolator_type() -> String {
-    "LogBilinear".to_string()
+    "LogBicubic".to_string()
 }
 
 /// Stores the PDF grid data, including x-values, Q2-values, flavors, and the 3D grid itself.
@@ -164,6 +164,16 @@ impl GridPDF {
                         knot_array.q2s.to_owned(),
                         grid_slice.to_owned(),
                         interpolation::Bilinear,
+                        Extrapolate::Error,
+                    )
+                    .unwrap(),
+                ),
+                "LogBicubic" => Box::new(
+                    Interp2D::new(
+                        knot_array.xs.to_owned(),
+                        knot_array.q2s.to_owned(),
+                        grid_slice.to_owned(),
+                        interpolation::LogBicubic,
                         Extrapolate::Error,
                     )
                     .unwrap(),

@@ -170,6 +170,113 @@ where
     }
 }
 
+/// LogBicubic interpolation strategy for PDF-like data
+///
+/// This strategy implements bicubic interpolation with logarithmic coordinate scaling:
+/// - x-coordinates are logarithmically spaced (e.g., 1e-9 to 1)
+/// - y-coordinates are logarithmically spaced (e.g., Q² values)
+/// - z-values (PDF values) are interpolated using bicubic splines
+///
+/// Bicubic interpolation uses a 4x4 grid of points around the interpolation point
+/// and provides C1 continuity (continuous first derivatives).
+#[derive(Debug, Clone)]
+pub struct LogBicubic;
+
+impl<D> Strategy2D<D> for LogBicubic
+where
+    D: Data<Elem = f64> + RawDataClone + Clone,
+{
+    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ninterp::error::ValidateError> {
+        // Get the coordinate arrays and data values
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+
+        if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
+            return Err(ninterp::error::ValidateError::Other(
+                "The input values must be positive for logarithmic scaling".to_string(),
+            ));
+        }
+
+        // Check that we have at least 4x4 grid for bicubic interpolation
+        if x_coords.len() < 4 || y_coords.len() < 4 {
+            return Err(ninterp::error::ValidateError::Other(
+                "Need at least 4x4 grid for bicubic interpolation".to_string(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    fn interpolate(
+        &self,
+        data: &InterpData2D<D>,
+        point: &[f64; 2],
+    ) -> Result<f64, ninterp::error::InterpolateError> {
+        let [x, y] = *point;
+
+        // Get the coordinate arrays and data values
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+        let values = &data.values;
+
+        // Transform coordinates to log space
+        let log_x = x.ln();
+        let log_y = y.ln();
+
+        // Transform grid coordinates to log space
+        let log_x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
+        let log_y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
+
+        // Find the grid cell containing the point
+        let i = utils::find_bicubic_interval(&log_x_grid, log_x)?;
+        let j = utils::find_bicubic_interval(&log_y_grid, log_y)?;
+
+        // Extract 4x4 grid of values around the interpolation point
+        let mut grid_values = [[0.0f64; 4]; 4];
+        for di in 0..4 {
+            for dj in 0..4 {
+                grid_values[di][dj] = values[[i - 1 + di, j - 1 + dj]];
+            }
+        }
+
+        // Get the grid coordinates for the 4x4 region
+        let x_grid = [
+            log_x_grid[i - 1],
+            log_x_grid[i],
+            log_x_grid[i + 1],
+            log_x_grid[i + 2],
+        ];
+        let y_grid = [
+            log_y_grid[j - 1],
+            log_y_grid[j],
+            log_y_grid[j + 1],
+            log_y_grid[j + 2],
+        ];
+
+        // Normalize coordinates to [0,1] within the central cell
+        let dx = x_grid[2] - x_grid[1];
+        let dy = y_grid[2] - y_grid[1];
+
+        if dx == 0.0 || dy == 0.0 {
+            return Err(ninterp::error::InterpolateError::Other(
+                "Grid spacing is zero".to_string(),
+            ));
+        }
+
+        let u = (log_x - x_grid[1]) / dx;
+        let v = (log_y - y_grid[1]) / dy;
+
+        // Perform bicubic interpolation
+        let result = utils::bicubic_interpolate(&grid_values, u, v);
+
+        Ok(result)
+    }
+
+    fn allow_extrapolate(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

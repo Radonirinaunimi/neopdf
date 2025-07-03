@@ -67,6 +67,67 @@ pub fn linear_interpolate(x1: f64, x2: f64, y1: f64, y2: f64, x: f64) -> f64 {
     y1 + (y2 - y1) * (x - x1) / (x2 - x1)
 }
 
+/// Perform bicubic interpolation on a 4x4 grid
+/// u, v are normalized coordinates in [0,1] within the central cell
+pub fn bicubic_interpolate(grid: &[[f64; 4]; 4], u: f64, v: f64) -> f64 {
+    // Cubic interpolation in x-direction for each row
+    let mut y_values = [0.0f64; 4];
+    (0..4).for_each(|j| {
+        y_values[j] = cubic_interpolate(&[grid[0][j], grid[1][j], grid[2][j], grid[3][j]], u + 1.0);
+    });
+
+    // Cubic interpolation in y-direction
+    cubic_interpolate(&y_values, v + 1.0)
+}
+
+/// Cubic interpolation using Catmull-Rom spline
+/// t should be in [1, 2] for interpolation between points[1] and points[2]
+pub fn cubic_interpolate(points: &[f64; 4], t: f64) -> f64 {
+    let t2 = t * t;
+    let t3 = t2 * t;
+
+    // Catmull-Rom spline coefficients
+    let c0 = -0.5 * t3 + t2 - 0.5 * t;
+    let c1 = 1.5 * t3 - 2.5 * t2 + 1.0;
+    let c2 = -1.5 * t3 + 2.0 * t2 + 0.5 * t;
+    let c3 = 0.5 * t3 - 0.5 * t2;
+
+    c0 * points[0] + c1 * points[1] + c2 * points[2] + c3 * points[3]
+}
+
+/// Find the interval for bicubic interpolation
+/// Returns the index i such that we can use points [i-1, i, i+1, i+2] for interpolation
+pub fn find_bicubic_interval(
+    coords: &[f64],
+    x: f64,
+) -> Result<usize, ninterp::error::InterpolateError> {
+    // For bicubic, we need to ensure we can access [i-1, i, i+1, i+2]
+    // So i must be in range [1, len-2]
+    if x < coords[1] || x > coords[coords.len() - 2] {
+        return Err(ninterp::error::InterpolateError::Other(format!(
+            "Point {} is outside the bicubic interpolation bounds [{}, {}]",
+            x,
+            coords[1],
+            coords[coords.len() - 2]
+        )));
+    }
+
+    // Binary search for the interval, but constrained to [1, len-2]
+    let mut left = 1;
+    let mut right = coords.len() - 2;
+
+    while right - left > 1 {
+        let mid = (left + right) / 2;
+        if coords[mid] <= x {
+            left = mid;
+        } else {
+            right = mid;
+        }
+    }
+
+    Ok(left)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
