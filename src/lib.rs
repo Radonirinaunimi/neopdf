@@ -107,7 +107,7 @@ impl KnotArray {
 }
 
 /// A trait for dynamic interpolation, allowing different interpolation strategies to be used interchangeably.
-pub trait DynInterpolator {
+pub trait DynInterpolator: Send + Sync {
     /// Interpolates a point given its coordinates.
     ///
     /// # Arguments
@@ -118,7 +118,11 @@ pub trait DynInterpolator {
 
 impl<S> DynInterpolator for Interp2DOwned<f64, S>
 where
-    S: ninterp::strategy::traits::Strategy2D<ndarray::OwnedRepr<f64>> + 'static + Clone,
+    S: ninterp::strategy::traits::Strategy2D<ndarray::OwnedRepr<f64>>
+        + 'static
+        + Clone
+        + Send
+        + Sync,
 {
     fn interpolate_point(&self, point: &[f64; 2]) -> Result<f64, ninterp::error::InterpolateError> {
         self.interpolate(point)
@@ -247,6 +251,42 @@ pub fn load(path: &Path) -> GridPDF {
     let knot_array = KnotArray::new(xs, q2s, flavors, grid_data);
 
     GridPDF::new(info, knot_array)
+}
+
+/// Loads all PDF sets from the specified path in parallel.
+///
+/// This function reads the `.info` file and all `.dat` member files
+/// to construct a `Vec<GridPDF>` object.
+///
+/// # Arguments
+///
+/// * `path` - The path to the directory containing the PDF set files.
+///
+/// # Returns
+///
+/// A `Vec<GridPDF>` instance representing all loaded PDF sets.
+pub fn load_pdfs(path: &Path) -> Vec<GridPDF> {
+    use rayon::prelude::*;
+
+    let info_path = path.join(format!(
+        "{}.info",
+        path.file_name().unwrap().to_str().unwrap()
+    ));
+    let info: Info = parser::read_info(&info_path).unwrap();
+
+    (0..info.num_members)
+        .into_par_iter()
+        .map(|i| {
+            let data_path = path.join(format!(
+                "{}_{:04}.dat",
+                path.file_name().unwrap().to_str().unwrap(),
+                i
+            ));
+            let (xs, q2s, flavors, grid_data) = parser::read_data(&data_path);
+            let knot_array = KnotArray::new(xs, q2s, flavors, grid_data);
+            GridPDF::new(info.clone(), knot_array)
+        })
+        .collect()
 }
 
 #[cfg(test)]
