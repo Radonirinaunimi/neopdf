@@ -32,6 +32,8 @@ pub fn read_data(path: &Path, knot_array: &mut KnotArray) {
         .split_whitespace()
         .filter_map(|s| s.parse().ok())
         .collect();
+    // TODO: double-check this as a function of the Info file
+    knot_array.q2s = knot_array.q2s.iter().map(|&q2| q2 * q2).collect();
     knot_array.logq2s = knot_array.q2s.iter().map(|&q2| q2.ln()).collect();
 
     // Read the flavors

@@ -34,5 +34,6 @@ fn test_xfxq2() {
     let q2 = 4.0;
     let gluon_pdf = pdf.xfxq2(21, x, q2);
 
+    dbg!(gluon_pdf);
     assert!((gluon_pdf - 3.316316680794655).abs() < 1e-8);
 }
