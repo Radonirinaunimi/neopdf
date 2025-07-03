@@ -10,3 +10,4 @@ ndarray = "0.15.6"
 ninterp = "0.7.3"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
+tempfile = "3.10.1"

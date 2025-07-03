@@ -10,42 +10,69 @@ pub mod utils;
 
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
+/// Represents the information block of a PDF set, typically found in an `.info` file.
+/// This struct is deserialized from a YAML-like format.
 pub struct Info {
+    /// Description of the PDF set.
     #[serde(rename = "SetDesc")]
     pub set_desc: String,
+    /// Index of the PDF set.
     #[serde(rename = "SetIndex")]
     pub set_index: u32,
+    /// Number of members in the PDF set (e.g., for error analysis).
     #[serde(rename = "NumMembers")]
     pub num_members: u32,
+    /// Minimum x-value for which the PDF is valid.
     #[serde(rename = "XMin")]
     pub x_min: f64,
+    /// Maximum x-value for which the PDF is valid.
     #[serde(rename = "XMax")]
     pub x_max: f64,
+    /// Minimum Q-value (energy scale) for which the PDF is valid.
     #[serde(rename = "QMin")]
     pub q_min: f64,
+    /// Maximum Q-value (energy scale) for which the PDF is valid.
     #[serde(rename = "QMax")]
     pub q_max: f64,
+    /// List of particle data group (PDG) IDs for the flavors included in the PDF.
     #[serde(rename = "Flavors")]
     pub flavors: Vec<i32>,
+    /// Format of the PDF data.
     #[serde(rename = "Format")]
     pub format: String,
+    /// Type of interpolator used for the PDF (e.g., "LogBilinear").
     #[serde(rename = "InterpolatorType", default = "default_interpolator_type")]
     pub interpolator_type: String,
 }
 
+/// Provides the default interpolator type, "LogBilinear", for `Info`.
 fn default_interpolator_type() -> String {
     "LogBilinear".to_string()
 }
 
+/// Stores the PDF grid data, including x-values, Q2-values, flavors, and the 3D grid itself.
 #[derive(Debug)]
 pub struct KnotArray {
+    /// Array of x-values (momentum fraction).
     pub xs: Array1<f64>,
+    /// Array of Q2-values (energy scale squared).
     pub q2s: Array1<f64>,
+    /// Array of flavor IDs.
     pub flavors: Array1<i32>,
+    /// 3D grid of PDF values, indexed as `[flavor_index, x_index, q2_index]`.
     pub grid: Array3<f64>,
 }
 
 impl KnotArray {
+    /// Creates a new `KnotArray` from raw data.
+    ///
+    /// # Arguments
+    ///
+    /// * `xs` - A vector of x-values.
+    /// * `q2s` - A vector of Q2-values.
+    /// * `flavors` - A vector of flavor IDs.
+    /// * `grid_data` - A flat vector of PDF values, ordered such that it can be reshaped
+    ///                 into a 3D array of dimensions `(nx, nq2, nflav)`.
     pub fn new(xs: Vec<f64>, q2s: Vec<f64>, flavors: Vec<i32>, grid_data: Vec<f64>) -> Self {
         let nx = xs.len();
         let nq2 = q2s.len();
@@ -68,13 +95,26 @@ impl KnotArray {
         }
     }
 
+    /// Retrieves the PDF value (xf) at a specific knot point.
+    ///
+    /// # Arguments
+    ///
+    /// * `ix` - The index of the x-value.
+    /// * `iq2` - The index of the Q2-value.
+    /// * `id` - The flavor ID.
     pub fn xf(&self, ix: usize, iq2: usize, id: i32) -> f64 {
         let pid_index = self.flavors.iter().position(|&p| p == id).unwrap();
         self.grid[[pid_index, ix, iq2]]
     }
 }
 
+/// A trait for dynamic interpolation, allowing different interpolation strategies to be used interchangeably.
 pub trait DynInterpolator {
+    /// Interpolates a point given its coordinates.
+    ///
+    /// # Arguments
+    ///
+    /// * `point` - A 2-element array `[x, y]` representing the coordinates to interpolate at.
     fn interpolate_point(&self, point: &[f64; 2]) -> Result<f64, ninterp::error::InterpolateError>;
 }
 
@@ -87,13 +127,23 @@ where
     }
 }
 
+/// Represents a Parton Distribution Function (PDF) grid, containing the PDF info, knot array, and interpolators.
 pub struct GridPDF {
     info: Info,
+    /// The underlying knot array containing the PDF grid data.
     pub knot_array: KnotArray,
     interpolators: Vec<Box<dyn DynInterpolator>>,
 }
 
 impl GridPDF {
+    /// Creates a new `GridPDF` instance.
+    ///
+    /// Initializes interpolators for each flavor based on the `info.interpolator_type`.
+    ///
+    /// # Arguments
+    ///
+    /// * `info` - The `Info` struct containing metadata about the PDF set.
+    /// * `knot_array` - The `KnotArray` containing the PDF grid data.
     pub fn new(info: Info, knot_array: KnotArray) -> Self {
         let mut interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
         for i in 0..knot_array.flavors.len() {
@@ -131,6 +181,17 @@ impl GridPDF {
         }
     }
 
+    /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - The flavor ID.
+    /// * `x` - The x-value (momentum fraction).
+    /// * `q2` - The Q2-value (energy scale squared).
+    ///
+    /// # Returns
+    ///
+    /// The interpolated PDF value. Returns 0.0 if extrapolation is attempted and not allowed.
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
         let pid_index = self
             .knot_array
@@ -144,6 +205,18 @@ impl GridPDF {
     }
 }
 
+/// Loads a PDF set from the specified path.
+///
+/// This function reads the `.info` file and the first `.dat` member file
+/// to construct a `GridPDF` object.
+///
+/// # Arguments
+///
+/// * `path` - The path to the directory containing the PDF set files.
+///
+/// # Returns
+///
+/// A `GridPDF` instance representing the loaded PDF set.
 pub fn load(path: &Path) -> GridPDF {
     let info_path = path.join(format!(
         "{}.info",
