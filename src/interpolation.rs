@@ -617,12 +617,12 @@ mod tests {
 
     #[test]
     fn test_alphas_cubic_interpolation() {
-        let q_values = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let q_values = [1.0, 2.0, 3.0, 4.0, 5.0];
         let alphas_vals = vec![0.1, 0.11, 0.12, 0.13, 0.14];
         let q2_values: Vec<f64> = q_values.iter().map(|&q| q * q).collect();
 
         let data = InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap();
-        let alphas_cubic = AlphaSCubicStrategy::default();
+        let alphas_cubic = AlphaSCubicStrategy;
 
         // Test within the interpolation range
         let q2_interp = 2.25; // Q=1.5
