@@ -168,17 +168,28 @@ impl AlphaSInterpolator {
     fn iq2below(&self, q2: f64) -> usize {
         // Test that Q2 is in the grid range
         if q2 < *self.q2s.first().unwrap() {
-            panic!("Q2 value {} is lower than lowest-Q2 grid point at {}", q2, self.q2s.first().unwrap());
+            panic!(
+                "Q2 value {} is lower than lowest-Q2 grid point at {}",
+                q2,
+                self.q2s.first().unwrap()
+            );
         }
         if q2 > *self.q2s.last().unwrap() {
-            panic!("Q2 value {} is higher than highest-Q2 grid point at {}", q2, self.q2s.last().unwrap());
+            panic!(
+                "Q2 value {} is higher than highest-Q2 grid point at {}",
+                q2,
+                self.q2s.last().unwrap()
+            );
         }
+
         // Find the closest knot below the requested value
-        let i = match self.q2s.binary_search_by(|q2_val| q2_val.partial_cmp(&q2).unwrap()) {
+        match self
+            .q2s
+            .binary_search_by(|q2_val| q2_val.partial_cmp(&q2).unwrap())
+        {
             Ok(idx) => idx,
             Err(idx) => idx - 1,
-        };
-        i
+        }
     }
 
     /// Forward derivative w.r.t. logQ2
@@ -214,18 +225,22 @@ impl AlphaSInterpolator {
 
         // Using base 10 for logs to get constant gradient extrapolation in
         // a log 10 - log 10 plot
-        if q2 < self.q2s.first().unwrap().clone() {
+        if q2 < *self.q2s.first().unwrap() {
             // Remember to take situations where the first knot also is a
             // flavor threshold into account
             let mut next_point = 1;
-            while self.q2s[0] == self.q2s[next_point] { next_point += 1; }
+            while self.q2s[0] == self.q2s[next_point] {
+                next_point += 1;
+            }
             let dlogq2 = (self.q2s[next_point] / self.q2s[0]).log10();
             let dlogas = (self.alphas[next_point] / self.alphas[0]).log10();
             let loggrad = dlogas / dlogq2;
             return self.alphas[0] * (q2 / self.q2s[0]).powf(loggrad);
         }
 
-        if q2 > self.q2s.last().unwrap().clone() { return self.alphas.last().unwrap().clone(); }
+        if q2 > *self.q2s.last().unwrap() {
+            return *self.alphas.last().unwrap();
+        }
 
         // Get the Q/alpha_s index on this array which is *below* this Q point
         let i = self.iq2below(q2);
@@ -306,7 +321,8 @@ impl GridPDF {
             };
             interpolators.push(interp);
         }
-        let alphas_interpolator = AlphaSInterpolator::new(info.alphas_q_values.clone(), info.alphas_vals.clone());
+        let alphas_interpolator =
+            AlphaSInterpolator::new(info.alphas_q_values.clone(), info.alphas_vals.clone());
         Self {
             info,
             knot_array,
