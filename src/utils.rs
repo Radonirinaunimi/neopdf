@@ -164,31 +164,9 @@ pub fn find_bicubic_interval(
     coords: &[f64],
     x: f64,
 ) -> Result<usize, ninterp::error::InterpolateError> {
-    // For bicubic, we need to ensure we can access [i-1, i, i+1, i+2]
-    // So i must be in range [1, len-2]
-    if x < coords[1] || x > coords[coords.len() - 2] {
-        return Err(ninterp::error::InterpolateError::Other(format!(
-            "Point {} is outside the bicubic interpolation bounds [{}, {}]",
-            x,
-            coords[1],
-            coords[coords.len() - 2]
-        )));
-    }
-
-    // Binary search for the interval, but constrained to [1, len-2]
-    let mut left = 1;
-    let mut right = coords.len() - 2;
-
-    while right - left > 1 {
-        let mid = (left + right) / 2;
-        if coords[mid] <= x {
-            left = mid;
-        } else {
-            right = mid;
-        }
-    }
-
-    Ok(left)
+    // Find the interval [i, i+1] such that coords[i] <= x < coords[i+1]
+    let i = find_interval_index(coords, x)?;
+    Ok(i)
 }
 
 #[cfg(test)]

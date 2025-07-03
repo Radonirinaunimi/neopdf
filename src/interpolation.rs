@@ -336,8 +336,8 @@ impl LogBicubic {
         // Derivatives in Q2 (y-interpolation)
         let log_q2_grid: Vec<f64> = data.grid[1].as_slice().unwrap().iter().map(|&qi| qi.ln()).collect();
 
-        let q2_lower = iq2 == 0 || log_q2_grid[iq2] == log_q2_grid[iq2 - 1];
-        let q2_upper = iq2 + 1 == nq2knots - 1 || log_q2_grid[iq2 + 1] == log_q2_grid[iq2 + 2];
+        let q2_lower = iq2 == 0;
+        let q2_upper = iq2 == nq2knots - 1;
 
         let dlogq_1 = log_q2_grid[iq2 + 1] - log_q2_grid[iq2];
 
@@ -351,8 +351,8 @@ impl LogBicubic {
             let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
             let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4].try_into().unwrap();
             let vhh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
-            let dlogq_2 = log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1];
-            vdh = (vdl + (vhh - vh) * dlogq_1 / dlogq_2) * 0.5;
+            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
+            vdh = (vdl + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
         } else if q2_upper {
             // Backward difference for higher q
             vdh = vh - vl;
@@ -360,22 +360,22 @@ impl LogBicubic {
             let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
             let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4].try_into().unwrap();
             let vll = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
-            let dlogq_0 = log_q2_grid[iq2] - log_q2_grid[iq2 - 1];
-            vdl = (vdh + (vl - vll) * dlogq_1 / dlogq_0) * 0.5;
+            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
+            vdl = (vdh + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
         } else {
             // Central difference for both q
             let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
             let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4].try_into().unwrap();
             let vll = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
-            let dlogq_0 = log_q2_grid[iq2] - log_q2_grid[iq2 - 1];
+            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
 
             let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
             let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4].try_into().unwrap();
             let vhh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
-            let dlogq_2 = log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1];
+            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
 
-            vdl = ((vh - vl) + (vl - vll) * dlogq_1 / dlogq_0) * 0.5;
-            vdh = ((vh - vl) + (vhh - vh) * dlogq_1 / dlogq_2) * 0.5;
+            vdl = ((vh - vl) + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
+            vdh = ((vh - vl) + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
         }
 
         utils::hermite_cubic_interpolate(v, vl, vdl, vh, vdh)
