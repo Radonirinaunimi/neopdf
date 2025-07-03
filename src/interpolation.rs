@@ -91,7 +91,7 @@ where
 
         if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
             return Err(ninterp::error::ValidateError::Other(
-                "All x-coordinates must be positive for logarithmic scaling".to_string(),
+                "The input values must be positive for logarithmic scaling".to_string(),
             ));
         }
 
@@ -243,7 +243,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
-            "All x-coordinates must be positive for logarithmic scaling"
+            "The input values must be positive for logarithmic scaling"
         );
     }
 }

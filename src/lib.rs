@@ -8,10 +8,10 @@ pub mod interpolation;
 pub mod parser;
 pub mod utils;
 
-#[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 /// Represents the information block of a PDF set, typically found in an `.info` file.
 /// This struct is deserialized from a YAML-like format.
+#[derive(Clone, Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct Info {
     /// Description of the PDF set.
     #[serde(rename = "SetDesc")]
@@ -71,8 +71,7 @@ impl KnotArray {
     /// * `xs` - A vector of x-values.
     /// * `q2s` - A vector of Q2-values.
     /// * `flavors` - A vector of flavor IDs.
-    /// * `grid_data` - A flat vector of PDF values, ordered such that it can be reshaped
-    ///                 into a 3D array of dimensions `(nx, nq2, nflav)`.
+    /// * `grid_data` - A flat vector of PDF values.
     pub fn new(xs: Vec<f64>, q2s: Vec<f64>, flavors: Vec<i32>, grid_data: Vec<f64>) -> Self {
         let nx = xs.len();
         let nq2 = q2s.len();
@@ -202,6 +201,11 @@ impl GridPDF {
         self.interpolators[pid_index]
             .interpolate_point(&[x, q2])
             .unwrap_or(0.0)
+    }
+
+    /// Returns the metadata info of the PDF.
+    pub fn info(&self) -> Info {
+        self.info.clone()
     }
 }
 

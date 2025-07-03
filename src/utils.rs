@@ -70,7 +70,6 @@ pub fn linear_interpolate(x1: f64, x2: f64, y1: f64, y2: f64, x: f64) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ninterp::error::InterpolateError;
 
     #[test]
     fn test_find_interval_index() {
