@@ -1,4 +1,7 @@
-use ndarray::{Array1, Array3};
+use ndarray::{s, Array1, Array3};
+use ninterp::interpolator::Extrapolate;
+use ninterp::prelude::*;
+use ninterp::strategy::Linear;
 use serde::Deserialize;
 use std::path::Path;
 
@@ -41,8 +44,6 @@ impl KnotArray {
         let nq2 = q2s.len();
         let nflav = flavors.len();
 
-        dbg!(nx, nq2, nflav, grid_data.len());
-
         let xs = Array1::from_vec(xs);
         let q2s = Array1::from_vec(q2s);
         let flavors = Array1::from_vec(flavors);
@@ -64,73 +65,47 @@ impl KnotArray {
         let pid_index = self.flavors.iter().position(|&p| p == id).unwrap();
         self.grid[[pid_index, ix, iq2]]
     }
-
-    pub fn ixbelow(&self, x: f64) -> usize {
-        let idx = self
-            .xs
-            .iter()
-            .position(|&v| v >= x)
-            .unwrap_or(self.xs.len() - 1);
-        if idx == 0 {
-            0
-        } else if self.xs[idx] == x {
-            if idx == self.xs.len() - 1 {
-                idx - 1
-            } else {
-                idx
-            }
-        } else {
-            idx - 1
-        }
-    }
-
-    pub fn iq2below(&self, q2: f64) -> usize {
-        let idx = self
-            .q2s
-            .iter()
-            .position(|&v| v >= q2)
-            .unwrap_or(self.q2s.len() - 1);
-        if idx == 0 {
-            0
-        } else if self.q2s[idx] == q2 {
-            if idx == self.q2s.len() - 1 {
-                idx - 1
-            } else {
-                idx
-            }
-        } else {
-            idx - 1
-        }
-    }
-}
-
-pub trait Interpolator {
-    fn interpolate_xq2<T>(
-        &self,
-        grid: &KnotArray,
-        x: f64,
-        ix: usize,
-        q2: f64,
-        iq2: usize,
-        id: i32,
-    ) -> T;
 }
 
 pub struct GridPDF {
     info: Info,
     pub knot_array: KnotArray,
+    interpolators: Vec<Interp2DOwned<f64, Linear>>,
 }
 
 impl GridPDF {
     pub fn new(info: Info, knot_array: KnotArray) -> Self {
-        Self { info, knot_array }
+        let mut interpolators = Vec::new();
+        for i in 0..knot_array.flavors.len() {
+            let grid_slice = knot_array.grid.slice(s![i, .., ..]);
+
+            let interp = Interp2D::new(
+                knot_array.xs.to_owned(),
+                knot_array.q2s.to_owned(),
+                grid_slice.to_owned(),
+                strategy::Linear,
+                Extrapolate::Clamp,
+            )
+            .unwrap();
+            interpolators.push(interp);
+        }
+        Self {
+            info,
+            knot_array,
+            interpolators,
+        }
     }
 
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
-        let ix = self.knot_array.ixbelow(x);
-        let iq2 = self.knot_array.iq2below(q2);
-        // This is a placeholder for the actual interpolation
-        self.knot_array.xf(ix, iq2, id)
+        let pid_index = self
+            .knot_array
+            .flavors
+            .iter()
+            .position(|&p| p == id)
+            .unwrap();
+        self.interpolators[pid_index]
+            .interpolate(&[x, q2])
+            .unwrap_or(0.0)
     }
 }
 
@@ -156,45 +131,16 @@ pub fn load(path: &Path) -> GridPDF {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::array;
 
     #[test]
-    fn test_ixbelow() {
-        let knot_array = KnotArray::new(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![], vec![], vec![]);
-
-        // Test values within the range
-        assert_eq!(knot_array.ixbelow(1.0), 0);
-        assert_eq!(knot_array.ixbelow(1.5), 0);
-        assert_eq!(knot_array.ixbelow(2.0), 1);
-        assert_eq!(knot_array.ixbelow(2.5), 1);
-        assert_eq!(knot_array.ixbelow(3.0), 2);
-        assert_eq!(knot_array.ixbelow(3.5), 2);
-
-        // Test values at the boundaries
-        assert_eq!(knot_array.ixbelow(0.5), 0); // Below min
-        assert_eq!(knot_array.ixbelow(4.0), 3); // At max
-        assert_eq!(knot_array.ixbelow(4.5), 3); // Above max
-        assert_eq!(knot_array.ixbelow(5.0), 3); // At last knot
-        assert_eq!(knot_array.ixbelow(5.5), 3); // Above last knot
-    }
-
-    #[test]
-    fn test_iq2below() {
-        let knot_array = KnotArray::new(vec![], vec![10.0, 20.0, 30.0, 40.0, 50.0], vec![], vec![]);
-
-        // Test values within the range
-        assert_eq!(knot_array.iq2below(10.0), 0);
-        assert_eq!(knot_array.iq2below(15.0), 0);
-        assert_eq!(knot_array.iq2below(20.0), 1);
-        assert_eq!(knot_array.iq2below(25.0), 1);
-        assert_eq!(knot_array.iq2below(30.0), 2);
-        assert_eq!(knot_array.iq2below(35.0), 2);
-
-        // Test values at the boundaries
-        assert_eq!(knot_array.iq2below(5.0), 0); // Below min
-        assert_eq!(knot_array.iq2below(40.0), 3); // At max
-        assert_eq!(knot_array.iq2below(45.0), 3); // Above max
-        assert_eq!(knot_array.iq2below(50.0), 3); // At last knot
-        assert_eq!(knot_array.iq2below(55.0), 3); // Above last knot
+    fn test_knot_array_new() {
+        let xs = vec![1.0, 2.0, 3.0];
+        let q2s = vec![4.0, 5.0];
+        let flavors = vec![21, 22];
+        let grid_data = vec![
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+        ];
+        let knot_array = KnotArray::new(xs, q2s, flavors, grid_data);
+        assert_eq!(knot_array.grid.shape(), &[2, 3, 2]);
     }
 }

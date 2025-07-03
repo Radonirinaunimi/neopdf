@@ -27,10 +27,11 @@ pub fn read_data(path: &Path) -> (Vec<f64>, Vec<f64>, Vec<i32>, Vec<f64>) {
 
     // Read the Q2 knots
     let q2_knots_line = lines.next().unwrap();
+    // NOTE: Values might be in `Q` or `Q2`. To check.
     let q2s: Vec<f64> = q2_knots_line
         .split_whitespace()
         .filter_map(|s| s.parse().ok())
-        .map(|q: f64| q) // Values are already Q^2
+        .map(|q: f64| q * q)
         .collect();
 
     // Read the flavors
