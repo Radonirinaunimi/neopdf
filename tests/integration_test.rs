@@ -53,3 +53,13 @@ fn test_xfxq2() {
 
     assert!((pdf.xfxq2(21, 1e-3, 4.0) - 3.316316680794655).abs() < 1e-8);
 }
+
+#[test]
+fn test_alphas_q2() {
+    let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
+    let pdf = load(pdf_set_path);
+
+    assert!((pdf.alphas_q2(1.65) - 0.3754297714824437).abs() < 1e-8);
+    assert!((pdf.alphas_q2(4.0) - 0.30095312523656437).abs() < 1e-8);
+    assert!((pdf.alphas_q2(100.0) - 0.17812270669689784).abs() < 1e-8);
+}
