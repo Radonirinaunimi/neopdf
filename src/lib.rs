@@ -62,7 +62,10 @@ impl KnotArray {
     }
 
     pub fn ixbelow(&self, x: f64) -> usize {
-        let idx = self.xs.binary_search_by(|val| val.partial_cmp(&x).unwrap()).unwrap_or_else(|e| e);
+        let idx = self
+            .xs
+            .binary_search_by(|val| val.partial_cmp(&x).unwrap())
+            .unwrap_or_else(|e| e);
         if idx == 0 {
             0
         } else if idx == self.xs.len() {
@@ -79,7 +82,10 @@ impl KnotArray {
     }
 
     pub fn iq2below(&self, q2: f64) -> usize {
-        let idx = self.q2s.binary_search_by(|val| val.partial_cmp(&q2).unwrap()).unwrap_or_else(|e| e);
+        let idx = self
+            .q2s
+            .binary_search_by(|val| val.partial_cmp(&q2).unwrap())
+            .unwrap_or_else(|e| e);
         if idx == 0 {
             0
         } else if idx == self.q2s.len() {
@@ -96,7 +102,10 @@ impl KnotArray {
     }
 
     pub fn ilogxbelow(&self, logx: f64) -> usize {
-        let idx = self.logxs.binary_search_by(|val| val.partial_cmp(&logx).unwrap()).unwrap_or_else(|e| e);
+        let idx = self
+            .logxs
+            .binary_search_by(|val| val.partial_cmp(&logx).unwrap())
+            .unwrap_or_else(|e| e);
         if idx == 0 {
             0
         } else if idx == self.logxs.len() {
@@ -113,7 +122,10 @@ impl KnotArray {
     }
 
     pub fn ilogq2below(&self, logq2: f64) -> usize {
-        let idx = self.logq2s.binary_search_by(|val| val.partial_cmp(&logq2).unwrap()).unwrap_or_else(|e| e);
+        let idx = self
+            .logq2s
+            .binary_search_by(|val| val.partial_cmp(&logq2).unwrap())
+            .unwrap_or_else(|e| e);
         if idx == 0 {
             0
         } else if idx == self.logq2s.len() {
@@ -180,9 +192,6 @@ pub fn load(path: &Path) -> GridPDF {
     ));
     let mut knot_array = KnotArray::new();
     parser::read_data(&data_path, &mut knot_array);
-
-    println!("Rust flavors: {:?}", knot_array.flavors);
-    println!("Rust grid (first 20 elements): {:?}", &knot_array.grid[0..20]);
 
     let interpolator: Box<dyn Interpolator> = match info.interpolator_type.as_str() {
         "Bilinear" => Box::new(BilinearInterpolator {}),
@@ -252,7 +261,10 @@ impl Interpolator for LogBilinearInterpolator {
         let t = (logx - logx1) / (logx2 - logx1);
         let u = (logq2 - logq21) / (logq22 - logq21);
 
-        let result_log = (1.0 - t) * (1.0 - u) * (f11 + 1e-10).ln() + t * (1.0 - u) * (f21 + 1e-10).ln() + (1.0 - t) * u * (f12 + 1e-10).ln() + t * u * (f22 + 1e-10).ln();
+        let result_log = (1.0 - t) * (1.0 - u) * (f11 + 1e-10).ln()
+            + t * (1.0 - u) * (f21 + 1e-10).ln()
+            + (1.0 - t) * u * (f12 + 1e-10).ln()
+            + t * u * (f22 + 1e-10).ln();
         result_log.exp()
     }
 }

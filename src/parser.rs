@@ -12,7 +12,7 @@ pub fn read_data(path: &Path, knot_array: &mut KnotArray) {
     let mut lines = content.lines();
 
     // Skip lines until "---" is encountered
-    while let Some(line) = lines.next() {
+    for line in lines.by_ref() {
         if line.trim() == "---" {
             break;
         }
