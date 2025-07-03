@@ -1,4 +1,5 @@
 use ndarray::{s, Array1, Array3};
+use ninterp::interpolator::{Extrapolate, Interp2D};
 use ninterp::prelude::*;
 use serde::Deserialize;
 use std::path::Path;
@@ -28,6 +29,12 @@ pub struct Info {
     pub flavors: Vec<i32>,
     #[serde(rename = "Format")]
     pub format: String,
+    #[serde(rename = "InterpolatorType", default = "default_interpolator_type")]
+    pub interpolator_type: String,
+}
+
+fn default_interpolator_type() -> String {
+    "LogBilinear".to_string()
 }
 
 #[derive(Debug)]
@@ -67,23 +74,54 @@ impl KnotArray {
     }
 }
 
+pub trait DynInterpolator {
+    fn interpolate_point(&self, point: &[f64; 2]) -> Result<f64, ninterp::error::InterpolateError>;
+}
+
+impl<S> DynInterpolator for Interp2DOwned<f64, S>
+where
+    S: ninterp::strategy::traits::Strategy2D<ndarray::OwnedRepr<f64>> + 'static + Clone,
+{
+    fn interpolate_point(&self, point: &[f64; 2]) -> Result<f64, ninterp::error::InterpolateError> {
+        self.interpolate(point)
+    }
+}
+
 pub struct GridPDF {
     info: Info,
     pub knot_array: KnotArray,
-    interpolators: Vec<Interp2DOwned<f64, interpolation::LogBilinearStrategy>>,
+    interpolators: Vec<Box<dyn DynInterpolator>>,
 }
 
 impl GridPDF {
     pub fn new(info: Info, knot_array: KnotArray) -> Self {
-        let mut interpolators = Vec::new();
+        let mut interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
         for i in 0..knot_array.flavors.len() {
             let grid_slice = knot_array.grid.slice(s![i, .., ..]);
 
-            let interp = interpolation::interpolate(
-                knot_array.xs.to_owned(),
-                knot_array.q2s.to_owned(),
-                grid_slice.to_owned(),
-            );
+            let interp: Box<dyn DynInterpolator> = match info.interpolator_type.as_str() {
+                "LogBilinear" => Box::new(
+                    Interp2D::new(
+                        knot_array.xs.to_owned(),
+                        knot_array.q2s.to_owned(),
+                        grid_slice.to_owned(),
+                        interpolation::LogBilinearStrategy,
+                        Extrapolate::Error,
+                    )
+                    .unwrap(),
+                ),
+                "Bilinear" => Box::new(
+                    Interp2D::new(
+                        knot_array.xs.to_owned(),
+                        knot_array.q2s.to_owned(),
+                        grid_slice.to_owned(),
+                        interpolation::Bilinear,
+                        Extrapolate::Error,
+                    )
+                    .unwrap(),
+                ),
+                _ => panic!("Unknown interpolator type: {}", info.interpolator_type),
+            };
             interpolators.push(interp);
         }
         Self {
@@ -101,7 +139,7 @@ impl GridPDF {
             .position(|&p| p == id)
             .unwrap();
         self.interpolators[pid_index]
-            .interpolate(&[x, q2])
+            .interpolate_point(&[x, q2])
             .unwrap_or(0.0)
     }
 }
