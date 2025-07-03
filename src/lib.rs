@@ -141,135 +141,7 @@ pub struct GridPDF {
     /// The underlying knot array containing the PDF grid data.
     pub knot_array: KnotArray,
     interpolators: Vec<Box<dyn DynInterpolator>>,
-    alphas_interpolator: AlphaSInterpolator,
-}
-
-/// Internal storage class for alpha_s interpolation grids
-pub struct AlphaSInterpolator {
-    q2s: Vec<f64>,
-    logq2s: Vec<f64>,
-    alphas: Vec<f64>,
-}
-
-impl AlphaSInterpolator {
-    pub fn new(q_values: Vec<f64>, alphas_vals: Vec<f64>) -> Self {
-        let q2s: Vec<f64> = q_values.iter().map(|&q| q * q).collect();
-        let logq2s: Vec<f64> = q2s.iter().map(|&q2| q2.ln()).collect();
-        Self {
-            q2s,
-            logq2s,
-            alphas: alphas_vals,
-        }
-    }
-
-    /// Get the index of the closest Q2 knot row <= q2
-    ///
-    /// If the value is >= q2_max, return i_max-1 (for polynomial spine construction)
-    fn iq2below(&self, q2: f64) -> usize {
-        // Test that Q2 is in the grid range
-        if q2 < *self.q2s.first().unwrap() {
-            panic!(
-                "Q2 value {} is lower than lowest-Q2 grid point at {}",
-                q2,
-                self.q2s.first().unwrap()
-            );
-        }
-        if q2 > *self.q2s.last().unwrap() {
-            panic!(
-                "Q2 value {} is higher than highest-Q2 grid point at {}",
-                q2,
-                self.q2s.last().unwrap()
-            );
-        }
-
-        // Find the closest knot below the requested value
-        match self
-            .q2s
-            .binary_search_by(|q2_val| q2_val.partial_cmp(&q2).unwrap())
-        {
-            Ok(idx) => idx,
-            Err(idx) => idx - 1,
-        }
-    }
-
-    /// Forward derivative w.r.t. logQ2
-    fn ddlogq_forward(&self, i: usize) -> f64 {
-        (self.alphas[i + 1] - self.alphas[i]) / (self.logq2s[i + 1] - self.logq2s[i])
-    }
-
-    /// Backward derivative w.r.t. logQ2
-    fn ddlogq_backward(&self, i: usize) -> f64 {
-        (self.alphas[i] - self.alphas[i - 1]) / (self.logq2s[i] - self.logq2s[i - 1])
-    }
-
-    /// Central (avg of forward and backward) derivative w.r.t. logQ2
-    fn ddlogq_central(&self, i: usize) -> f64 {
-        0.5 * (self.ddlogq_forward(i) + self.ddlogq_backward(i))
-    }
-
-    /// One-dimensional cubic interpolation
-    fn _interpolate_cubic(&self, t: f64, vl: f64, vdl: f64, vh: f64, vdh: f64) -> f64 {
-        let t2 = t * t;
-        let t3 = t2 * t;
-
-        let p0 = (2.0 * t3 - 3.0 * t2 + 1.0) * vl;
-        let m0 = (t3 - 2.0 * t2 + t) * vdl;
-        let p1 = (-2.0 * t3 + 3.0 * t2) * vh;
-        let m1 = (t3 - t2) * vdh;
-
-        p0 + m0 + p1 + m1
-    }
-
-    pub fn alphas_q2(&self, q2: f64) -> f64 {
-        assert!(q2 >= 0.0);
-
-        // Using base 10 for logs to get constant gradient extrapolation in
-        // a log 10 - log 10 plot
-        if q2 < *self.q2s.first().unwrap() {
-            // Remember to take situations where the first knot also is a
-            // flavor threshold into account
-            let mut next_point = 1;
-            while self.q2s[0] == self.q2s[next_point] {
-                next_point += 1;
-            }
-            let dlogq2 = (self.q2s[next_point] / self.q2s[0]).log10();
-            let dlogas = (self.alphas[next_point] / self.alphas[0]).log10();
-            let loggrad = dlogas / dlogq2;
-            return self.alphas[0] * (q2 / self.q2s[0]).powf(loggrad);
-        }
-
-        if q2 > *self.q2s.last().unwrap() {
-            return *self.alphas.last().unwrap();
-        }
-
-        // Get the Q/alpha_s index on this array which is *below* this Q point
-        let i = self.iq2below(q2);
-
-        // Calculate derivatives
-        let didlogq2: f64;
-        let di1dlogq2: f64;
-        if i == 0 {
-            didlogq2 = self.ddlogq_forward(i);
-            di1dlogq2 = self.ddlogq_central(i + 1);
-        } else if i == self.logq2s.len() - 2 {
-            didlogq2 = self.ddlogq_central(i);
-            di1dlogq2 = self.ddlogq_backward(i + 1);
-        } else {
-            didlogq2 = self.ddlogq_central(i);
-            di1dlogq2 = self.ddlogq_central(i + 1);
-        }
-
-        // Calculate alpha_s
-        let dlogq2 = self.logq2s[i + 1] - self.logq2s[i];
-        let tlogq2 = (q2.ln() - self.logq2s[i]) / dlogq2;
-        self._interpolate_cubic(
-            tlogq2,
-            self.alphas[i],
-            didlogq2 * dlogq2,
-            self.alphas[i + 1],
-            di1dlogq2 * dlogq2,
-        )
-    }
+    alphas_interpolator: Interp1DOwned<f64, interpolation::AlphaSCubicStrategy>,
 }
 
 impl GridPDF {
@@ -303,6 +175,7 @@ impl GridPDF {
                         knot_array.q2s.to_owned(),
                         grid_slice.to_owned(),
                         interpolation::Bilinear,
+                        // TODO: Implement extrapolation
                         Extrapolate::Error,
                     )
                     .unwrap(),
@@ -313,6 +186,7 @@ impl GridPDF {
                         knot_array.q2s.to_owned(),
                         grid_slice.to_owned(),
                         interpolation::LogBicubic::default(),
+                        // TODO: Implement extrapolation
                         Extrapolate::Error,
                     )
                     .unwrap(),
@@ -321,8 +195,16 @@ impl GridPDF {
             };
             interpolators.push(interp);
         }
-        let alphas_interpolator =
-            AlphaSInterpolator::new(info.alphas_q_values.clone(), info.alphas_vals.clone());
+
+        let alphas_q2s: Vec<f64> = info.alphas_q_values.iter().map(|&q| q * q).collect();
+        let alphas_interpolator = Interp1D::new(
+            alphas_q2s.into(),
+            info.alphas_vals.clone().into(),
+            interpolation::AlphaSCubicStrategy,
+            Extrapolate::Error,
+        )
+        .unwrap();
+
         Self {
             info,
             knot_array,
@@ -364,7 +246,7 @@ impl GridPDF {
     ///
     /// The interpolated alpha_s value.
     pub fn alphas_q2(&self, q2: f64) -> f64 {
-        self.alphas_interpolator.alphas_q2(q2)
+        self.alphas_interpolator.interpolate(&[q2]).unwrap_or(0.0)
     }
 
     /// Returns the metadata info of the PDF.
