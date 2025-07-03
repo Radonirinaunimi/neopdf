@@ -173,7 +173,7 @@ impl GridPDF {
                         knot_array.xs.to_owned(),
                         knot_array.q2s.to_owned(),
                         grid_slice.to_owned(),
-                        interpolation::LogBicubic,
+                        interpolation::LogBicubic::default(),
                         Extrapolate::Error,
                     )
                     .unwrap(),

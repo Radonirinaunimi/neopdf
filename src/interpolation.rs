@@ -180,7 +180,17 @@ where
 /// Bicubic interpolation uses a 4x4 grid of points around the interpolation point
 /// and provides C1 continuity (continuous first derivatives).
 #[derive(Debug, Clone)]
-pub struct LogBicubic;
+pub struct LogBicubic {
+    coeffs: Vec<f64>,
+}
+
+impl Default for LogBicubic {
+    fn default() -> Self {
+        Self {
+            coeffs: Vec::new(),
+        }
+    }
+}
 
 impl<D> Strategy2D<D> for LogBicubic
 where
@@ -204,6 +214,7 @@ where
             ));
         }
 
+        self.coeffs = Self::_compute_polynomial_coefficients(data, true);
         Ok(())
     }
 
@@ -217,7 +228,6 @@ where
         // Get the coordinate arrays and data values
         let x_coords = data.grid[0].as_slice().unwrap();
         let y_coords = data.grid[1].as_slice().unwrap();
-        let values = &data.values;
 
         // Transform coordinates to log space
         let log_x = x.ln();
@@ -231,31 +241,9 @@ where
         let i = utils::find_bicubic_interval(&log_x_grid, log_x)?;
         let j = utils::find_bicubic_interval(&log_y_grid, log_y)?;
 
-        // Extract 4x4 grid of values around the interpolation point
-        let mut grid_values = [[0.0f64; 4]; 4];
-        for di in 0..4 {
-            for dj in 0..4 {
-                grid_values[di][dj] = values[[i - 1 + di, j - 1 + dj]];
-            }
-        }
-
-        // Get the grid coordinates for the 4x4 region
-        let x_grid = [
-            log_x_grid[i - 1],
-            log_x_grid[i],
-            log_x_grid[i + 1],
-            log_x_grid[i + 2],
-        ];
-        let y_grid = [
-            log_y_grid[j - 1],
-            log_y_grid[j],
-            log_y_grid[j + 1],
-            log_y_grid[j + 2],
-        ];
-
         // Normalize coordinates to [0,1] within the central cell
-        let dx = x_grid[2] - x_grid[1];
-        let dy = y_grid[2] - y_grid[1];
+        let dx = log_x_grid[i + 1] - log_x_grid[i];
+        let dy = log_y_grid[j + 1] - log_y_grid[j];
 
         if dx == 0.0 || dy == 0.0 {
             return Err(ninterp::error::InterpolateError::Other(
@@ -263,11 +251,11 @@ where
             ));
         }
 
-        let u = (log_x - x_grid[1]) / dx;
-        let v = (log_y - y_grid[1]) / dy;
+        let u = (log_x - log_x_grid[i]) / dx;
+        let v = (log_y - log_y_grid[j]) / dy;
 
-        // Perform bicubic interpolation
-        let result = utils::bicubic_interpolate(&grid_values, u, v);
+        // Perform bicubic interpolation using pre-computed coefficients
+        let result = self.interpolate_with_coeffs(data, i, j, u, v);
 
         Ok(result)
     }
@@ -276,6 +264,124 @@ where
         false
     }
 }
+
+impl LogBicubic {
+    /// Computes the polynomial coefficients for bicubic interpolation, mirroring LHAPDF's C++ implementation.
+    fn _compute_polynomial_coefficients<D>(data: &InterpData2D<D>, logspace: bool) -> Vec<f64>
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let nxknots = data.grid[0].len();
+        let nq2knots = data.grid[1].len();
+        let values = &data.values;
+
+        // The shape of the coefficients array: (nxknots-1) * nq2knots * 4 (for a,b,c,d)
+        let mut coeffs: Vec<f64> =
+            vec![0.0; (nxknots - 1) * nq2knots * 4];
+
+        for ix in 0..nxknots - 1 {
+            for iq2 in 0..nq2knots {
+                let dlogx = if logspace {
+                    data.grid[0].as_slice().unwrap()[ix + 1].ln()
+                        - data.grid[0].as_slice().unwrap()[ix].ln()
+                } else {
+                    data.grid[0].as_slice().unwrap()[ix + 1]
+                        - data.grid[0].as_slice().unwrap()[ix]
+                };
+
+                let vl = values[[ix, iq2]];
+                let vh = values[[ix + 1, iq2]];
+                let vdl = utils::calculate_ddx(data, ix, iq2, logspace) * dlogx;
+                let vdh = utils::calculate_ddx(data, ix + 1, iq2, logspace) * dlogx;
+
+                // polynomial coefficients
+                let a = vdh + vdl - 2.0 * vh + 2.0 * vl;
+                let b = 3.0 * vh - 3.0 * vl - 2.0 * vdl - vdh;
+                let c = vdl;
+                let d = vl;
+
+                let base_idx = (ix * nq2knots + iq2) * 4;
+                coeffs[base_idx + 0] = a;
+                coeffs[base_idx + 1] = b;
+                coeffs[base_idx + 2] = c;
+                coeffs[base_idx + 3] = d;
+            }
+        }
+        coeffs
+    }
+
+    /// Performs bicubic interpolation using pre-computed coefficients.
+    fn interpolate_with_coeffs<D>(
+        &self,
+        data: &InterpData2D<D>,
+        ix: usize,
+        iq2: usize,
+        u: f64,
+        v: f64,
+    ) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let nq2knots = data.grid[1].len();
+
+        // Get the coefficients for the current cell (x-interpolation)
+        let base_idx_vl = (ix * nq2knots + iq2) * 4;
+        let coeffs_vl: [f64; 4] = self.coeffs[base_idx_vl..base_idx_vl + 4].try_into().unwrap();
+        let vl = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vl);
+
+        let base_idx_vh = (ix * nq2knots + iq2 + 1) * 4;
+        let coeffs_vh: [f64; 4] = self.coeffs[base_idx_vh..base_idx_vh + 4].try_into().unwrap();
+        let vh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vh);
+
+        // Derivatives in Q2 (y-interpolation)
+        let log_q2_grid: Vec<f64> = data.grid[1].as_slice().unwrap().iter().map(|&qi| qi.ln()).collect();
+
+        let q2_lower = iq2 == 0 || log_q2_grid[iq2] == log_q2_grid[iq2 - 1];
+        let q2_upper = iq2 + 1 == nq2knots - 1 || log_q2_grid[iq2 + 1] == log_q2_grid[iq2 + 2];
+
+        let dlogq_1 = log_q2_grid[iq2 + 1] - log_q2_grid[iq2];
+
+        let vdl: f64;
+        let vdh: f64;
+
+        if q2_lower {
+            // Forward difference for lower q
+            vdl = vh - vl;
+            // Central difference for higher q
+            let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
+            let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4].try_into().unwrap();
+            let vhh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
+            let dlogq_2 = log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1];
+            vdh = (vdl + (vhh - vh) * dlogq_1 / dlogq_2) * 0.5;
+        } else if q2_upper {
+            // Backward difference for higher q
+            vdh = vh - vl;
+            // Central difference for lower q
+            let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
+            let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4].try_into().unwrap();
+            let vll = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
+            let dlogq_0 = log_q2_grid[iq2] - log_q2_grid[iq2 - 1];
+            vdl = (vdh + (vl - vll) * dlogq_1 / dlogq_0) * 0.5;
+        } else {
+            // Central difference for both q
+            let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
+            let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4].try_into().unwrap();
+            let vll = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
+            let dlogq_0 = log_q2_grid[iq2] - log_q2_grid[iq2 - 1];
+
+            let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
+            let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4].try_into().unwrap();
+            let vhh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
+            let dlogq_2 = log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1];
+
+            vdl = ((vh - vl) + (vl - vll) * dlogq_1 / dlogq_0) * 0.5;
+            vdh = ((vh - vl) + (vhh - vh) * dlogq_1 / dlogq_2) * 0.5;
+        }
+
+        utils::hermite_cubic_interpolate(v, vl, vdl, vh, vdh)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

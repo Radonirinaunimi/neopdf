@@ -29,9 +29,9 @@ fn test_xfxq2_at_knots() {
 
     // test for x=1e-9 and Q=1.65
     let q2 = 1.65 * 1.65;
-    assert!((pdf.xfxq2(21, 1e-9, q2) - 0.14844111).abs() < 1e-8);
-    assert!((pdf.xfxq2(1, 1e-9, q2) - 1.4254154).abs() < 1e-8);
-    assert!((pdf.xfxq2(2, 1e-9, q2) - 1.4257712).abs() < 1e-8);
+    assert!((dbg!(pdf.xfxq2(21, 1e-9, q2)) - 0.14844111).abs() < 1e-8);
+    assert!((dbg!(pdf.xfxq2(1, 1e-9, q2)) - 1.4254154).abs() < 1e-8);
+    assert!((dbg!(pdf.xfxq2(2, 1e-9, q2)) - 1.4257712).abs() < 1e-8);
 
     // test for x=1.2970848e-9 and Q=1.65
     let q2 = 1.65 * 1.65;

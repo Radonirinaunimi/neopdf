@@ -67,22 +67,14 @@ pub fn linear_interpolate(x1: f64, x2: f64, y1: f64, y2: f64, x: f64) -> f64 {
     y1 + (y2 - y1) * (x - x1) / (x2 - x1)
 }
 
-/// Perform bicubic interpolation on a 4x4 grid
-/// u, v are normalized coordinates in [0,1] within the central cell
-pub fn bicubic_interpolate(grid: &[[f64; 4]; 4], u: f64, v: f64) -> f64 {
-    // Cubic interpolation in x-direction for each row
-    let mut y_values = [0.0f64; 4];
-    (0..4).for_each(|j| {
-        y_values[j] = cubic_interpolate(&[grid[0][j], grid[1][j], grid[2][j], grid[3][j]], u + 1.0);
-    });
+use ninterp::data::InterpData2D;
+use ndarray::{Data, RawDataClone};
 
-    // Cubic interpolation in y-direction
-    cubic_interpolate(&y_values, v + 1.0)
-}
+
 
 /// Cubic interpolation using Catmull-Rom spline
 /// t should be in [1, 2] for interpolation between points[1] and points[2]
-pub fn cubic_interpolate(points: &[f64; 4], t: f64) -> f64 {
+pub fn catmull_rom_cubic_interpolate(points: &[f64; 4], t: f64) -> f64 {
     let t2 = t * t;
     let t3 = t2 * t;
 
@@ -94,6 +86,77 @@ pub fn cubic_interpolate(points: &[f64; 4], t: f64) -> f64 {
 
     c0 * points[0] + c1 * points[1] + c2 * points[2] + c3 * points[3]
 }
+
+/// One-dimensional cubic interpolation using Hermite basis functions.
+///
+/// @arg t is the fractional distance of the evaluation x into the dx
+/// interval.  @arg vl and @arg vh are the function values at the low and
+/// high edges of the interval. @arg vdl and @arg vdh are linearly
+/// extrapolated value changes from the product of dx and the discrete low-
+/// and high-edge derivative estimates.
+pub fn hermite_cubic_interpolate(t: f64, vl: f64, vdl: f64, vh: f64, vdh: f64) -> f64 {
+    let t2 = t * t;
+    let t3 = t2 * t;
+
+    let p0 = (2.0 * t3 - 3.0 * t2 + 1.0) * vl;
+    let m0 = (t3 - 2.0 * t2 + t) * vdl;
+    let p1 = (-2.0 * t3 + 3.0 * t2) * vh;
+    let m1 = (t3 - t2) * vdh;
+
+    p0 + m0 + p1 + m1
+}
+
+/// Cubic interpolation using a passed array of coefficients (a*x^3 + b*x^2 + c*x + d)
+pub fn hermite_cubic_interpolate_from_coeffs(t: f64, coeffs: &[f64; 4]) -> f64 {
+    let x = t;
+    let x2 = x * x;
+    let x3 = x2 * x;
+    coeffs[0] * x3 + coeffs[1] * x2 + coeffs[2] * x + coeffs[3]
+}
+
+/// Calculates the derivative with respect to x (or log(x)) at a given knot.
+/// This mirrors the _ddx function in LHAPDF's C++ implementation.
+pub fn calculate_ddx<D>(
+    data: &InterpData2D<D>,
+    ix: usize,
+    iq2: usize,
+    logspace: bool,
+) -> f64
+where
+    D: Data<Elem = f64> + RawDataClone + Clone,
+{
+    let nxknots = data.grid[0].len();
+    let x_coords = data.grid[0].as_slice().unwrap();
+    let log_x_coords: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
+    let values = &data.values;
+
+    let (del1, del2) = if logspace {
+        let d1 = if ix == 0 { 0.0 } else { log_x_coords[ix] - log_x_coords[ix - 1] };
+        let d2 = if ix == nxknots - 1 { 0.0 } else { log_x_coords[ix + 1] - log_x_coords[ix] };
+        (d1, d2)
+    } else {
+        let d1 = if ix == 0 { 0.0 } else { x_coords[ix] - x_coords[ix - 1] };
+        let d2 = if ix == nxknots - 1 { 0.0 } else { x_coords[ix + 1] - x_coords[ix] };
+        (d1, d2)
+    };
+
+    if ix != 0 && ix != nxknots - 1 {
+        // Central difference
+        let lddx = (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1;
+        let rddx = (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2;
+        (lddx + rddx) / 2.0
+    } else if ix == 0 {
+        // Forward difference
+        (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2
+    } else if ix == nxknots - 1 {
+        // Backward difference
+        (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1
+    } else {
+        // This case should ideally not be reached given the checks above
+        panic!("Should not reach here: Invalid index for derivative calculation.");
+    }
+}
+
 
 /// Find the interval for bicubic interpolation
 /// Returns the index i such that we can use points [i-1, i, i+1, i+2] for interpolation
