@@ -7,9 +7,9 @@ use crate::utils;
 
 /// Implements bilinear interpolation for 2D data.
 #[derive(Debug, Clone)]
-pub struct Bilinear;
+pub struct BilinearInterpolation;
 
-impl<D> Strategy2D<D> for Bilinear
+impl<D> Strategy2D<D> for BilinearInterpolation
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
 {
@@ -70,9 +70,9 @@ where
 /// before performing bilinear interpolation, which is suitable for data
 /// that is linear in log-log space.
 #[derive(Debug, Clone)]
-pub struct LogBilinearStrategy;
+pub struct LogBilinearInterpolation;
 
-impl<D> Strategy2D<D> for LogBilinearStrategy
+impl<D> Strategy2D<D> for LogBilinearInterpolation
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
 {
@@ -180,11 +180,11 @@ where
 /// Bicubic interpolation uses a 4x4 grid of points around the interpolation point
 /// and provides C1 continuity (continuous first derivatives).
 #[derive(Debug, Clone, Default)]
-pub struct LogBicubic {
+pub struct LogBicubicInterpolation {
     coeffs: Vec<f64>,
 }
 
-impl<D> Strategy2D<D> for LogBicubic
+impl<D> Strategy2D<D> for LogBicubicInterpolation
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
 {
@@ -257,7 +257,7 @@ where
     }
 }
 
-impl LogBicubic {
+impl LogBicubicInterpolation {
     /// Computes the polynomial coefficients for bicubic interpolation, mirroring LHAPDF's C++ implementation.
     fn _compute_polynomial_coefficients<D>(data: &InterpData2D<D>, logspace: bool) -> Vec<f64>
     where
@@ -394,9 +394,9 @@ impl LogBicubic {
 /// This strategy handles the specific extrapolation and interpolation rules
 /// for alpha_s as defined in LHAPDF.
 #[derive(Debug, Clone, Default)]
-pub struct AlphaSCubicStrategy;
+pub struct AlphaSCubicInterpolation;
 
-impl AlphaSCubicStrategy {
+impl AlphaSCubicInterpolation {
     /// Get the index of the closest Q2 knot row <= q2
     ///
     /// If the value is >= q2_max, return i_max-1 (for polynomial spine construction)
@@ -467,7 +467,7 @@ impl AlphaSCubicStrategy {
     }
 }
 
-impl<D> Strategy1D<D> for AlphaSCubicStrategy
+impl<D> Strategy1D<D> for AlphaSCubicInterpolation
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
 {
@@ -553,7 +553,7 @@ mod tests {
                 .unwrap();
 
         let data = InterpData2D::new(x_coords.into(), y_coords.into(), values).unwrap();
-        let bilinear = Bilinear;
+        let bilinear = BilinearInterpolation;
 
         // Test at a known point within a cell
         let point = [0.5, 0.5];
@@ -580,7 +580,7 @@ mod tests {
                 .unwrap();
 
         let data = InterpData2D::new(x_coords.into(), y_coords.into(), values).unwrap();
-        let mut log_bilinear = LogBilinearStrategy;
+        let mut log_bilinear = LogBilinearInterpolation;
         log_bilinear.init(&data).unwrap();
 
         // Test at a known point within a cell (log(x)=0.5, log(y)=0.5)
@@ -606,7 +606,7 @@ mod tests {
         let values = Array2::from_elem((3, 3), 0.0);
 
         let data = InterpData2D::new(x_coords.into(), y_coords.into(), values).unwrap();
-        let mut log_bilinear = LogBilinearStrategy;
+        let mut log_bilinear = LogBilinearInterpolation;
         let result = log_bilinear.init(&data);
         assert!(result.is_err());
         assert_eq!(
@@ -622,7 +622,7 @@ mod tests {
         let q2_values: Vec<f64> = q_values.iter().map(|&q| q * q).collect();
 
         let data = InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap();
-        let alphas_cubic = AlphaSCubicStrategy;
+        let alphas_cubic = AlphaSCubicInterpolation;
 
         // Test within the interpolation range
         let q2_interp = 2.25; // Q=1.5

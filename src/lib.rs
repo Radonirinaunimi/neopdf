@@ -141,7 +141,7 @@ pub struct GridPDF {
     /// The underlying knot array containing the PDF grid data.
     pub knot_array: KnotArray,
     interpolators: Vec<Box<dyn DynInterpolator>>,
-    alphas_interpolator: Interp1DOwned<f64, interpolation::AlphaSCubicStrategy>,
+    alphas_interpolator: Interp1DOwned<f64, interpolation::AlphaSCubicInterpolation>,
 }
 
 impl GridPDF {
@@ -164,7 +164,7 @@ impl GridPDF {
                         knot_array.xs.to_owned(),
                         knot_array.q2s.to_owned(),
                         grid_slice.to_owned(),
-                        interpolation::LogBilinearStrategy,
+                        interpolation::LogBilinearInterpolation,
                         Extrapolate::Error,
                     )
                     .unwrap(),
@@ -174,7 +174,7 @@ impl GridPDF {
                         knot_array.xs.to_owned(),
                         knot_array.q2s.to_owned(),
                         grid_slice.to_owned(),
-                        interpolation::Bilinear,
+                        interpolation::BilinearInterpolation,
                         // TODO: Implement extrapolation
                         Extrapolate::Error,
                     )
@@ -185,7 +185,7 @@ impl GridPDF {
                         knot_array.xs.to_owned(),
                         knot_array.q2s.to_owned(),
                         grid_slice.to_owned(),
-                        interpolation::LogBicubic::default(),
+                        interpolation::LogBicubicInterpolation::default(),
                         // TODO: Implement extrapolation
                         Extrapolate::Error,
                     )
@@ -200,7 +200,7 @@ impl GridPDF {
         let alphas_interpolator = Interp1D::new(
             alphas_q2s.into(),
             info.alphas_vals.clone().into(),
-            interpolation::AlphaSCubicStrategy,
+            interpolation::AlphaSCubicInterpolation,
             Extrapolate::Error,
         )
         .unwrap();
