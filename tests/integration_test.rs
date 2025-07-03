@@ -23,7 +23,7 @@ fn test_xf_at_knot() {
     assert!((pdf.knot_array.xf(1, 2, 2) - 1.9239212).abs() < 1e-8);
 }
 
-#[ignore = "Issues with interpolation?"]
+// #[ignore = "Issues with interpolation?"]
 #[test]
 fn test_xfxq2() {
     // TODO: Replace with the actual path to the PDF sets

@@ -27,7 +27,7 @@ pub struct Info {
 }
 
 fn default_interpolator_type() -> String {
-    "Bilinear".to_string()
+    "LogBicubic".to_string()
 }
 
 #[derive(Debug)]
@@ -182,7 +182,8 @@ pub fn load(path: &Path) -> GridPDF {
         "{}.info",
         path.file_name().unwrap().to_str().unwrap()
     ));
-    let info = parser::read_info(&info_path).unwrap();
+    let info: Info = parser::read_info(&info_path).unwrap();
+    dbg!(&info);
 
     // For now, only load the first member
     let data_path = path.join(format!(
