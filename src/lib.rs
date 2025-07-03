@@ -1,6 +1,5 @@
 use ndarray::{s, Array1, Array3};
 use ninterp::prelude::*;
-use ninterp::strategy::Linear;
 use serde::Deserialize;
 use std::path::Path;
 
@@ -70,7 +69,7 @@ impl KnotArray {
 pub struct GridPDF {
     info: Info,
     pub knot_array: KnotArray,
-    interpolators: Vec<Interp2DOwned<f64, Linear>>,
+    interpolators: Vec<Interp2DOwned<f64, interpolation::LogBilinearStrategy>>,
 }
 
 impl GridPDF {
