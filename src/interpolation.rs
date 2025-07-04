@@ -1,6 +1,6 @@
 use ndarray::{Data, RawDataClone};
 use ninterp::data::{InterpData1D, InterpData2D};
-use ninterp::error::InterpolateError;
+use ninterp::error::{InterpolateError, ValidateError};
 use ninterp::strategy::traits::{Strategy1D, Strategy2D};
 
 use crate::utils;
@@ -109,13 +109,13 @@ where
     /// # Arguments
     ///
     /// * `data` - The interpolation data to validate.
-    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ninterp::error::ValidateError> {
+    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
         // Get the coordinate arrays and data values
         let x_coords = data.grid[0].as_slice().unwrap();
         let y_coords = data.grid[1].as_slice().unwrap();
 
         if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
-            return Err(ninterp::error::ValidateError::Other(
+            return Err(ValidateError::Other(
                 "The input values must be positive for logarithmic scaling".to_string(),
             ));
         }
@@ -136,7 +136,7 @@ where
         &self,
         data: &InterpData2D<D>,
         point: &[f64; 2],
-    ) -> Result<f64, ninterp::error::InterpolateError> {
+    ) -> Result<f64, InterpolateError> {
         let [x, y] = *point;
 
         // Get the coordinate arrays and data values
@@ -212,10 +212,7 @@ pub struct LogBicubicInterpolation {
 impl LogBicubicInterpolation {
     /// Find the interval for bicubic interpolation
     /// Returns the index i such that we can use points [i-1, i, i+1, i+2] for interpolation
-    fn find_bicubic_interval(
-        coords: &[f64],
-        x: f64,
-    ) -> Result<usize, ninterp::error::InterpolateError> {
+    fn find_bicubic_interval(coords: &[f64], x: f64) -> Result<usize, InterpolateError> {
         // Find the interval [i, i+1] such that coords[i] <= x < coords[i+1]
         let i = utils::find_interval_index(coords, x)?;
         Ok(i)
@@ -415,20 +412,20 @@ impl<D> Strategy2D<D> for LogBicubicInterpolation
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
 {
-    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ninterp::error::ValidateError> {
+    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
         // Get the coordinate arrays and data values
         let x_coords = data.grid[0].as_slice().unwrap();
         let y_coords = data.grid[1].as_slice().unwrap();
 
         if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
-            return Err(ninterp::error::ValidateError::Other(
+            return Err(ValidateError::Other(
                 "The input values must be positive for logarithmic scaling".to_string(),
             ));
         }
 
         // Check that we have at least 4x4 grid for bicubic interpolation
         if x_coords.len() < 4 || y_coords.len() < 4 {
-            return Err(ninterp::error::ValidateError::Other(
+            return Err(ValidateError::Other(
                 "Need at least 4x4 grid for bicubic interpolation".to_string(),
             ));
         }
@@ -441,7 +438,7 @@ where
         &self,
         data: &InterpData2D<D>,
         point: &[f64; 2],
-    ) -> Result<f64, ninterp::error::InterpolateError> {
+    ) -> Result<f64, InterpolateError> {
         let [x, y] = *point;
 
         // Get the coordinate arrays and data values
@@ -465,9 +462,7 @@ where
         let dy = log_y_grid[j + 1] - log_y_grid[j];
 
         if dx == 0.0 || dy == 0.0 {
-            return Err(ninterp::error::InterpolateError::Other(
-                "Grid spacing is zero".to_string(),
-            ));
+            return Err(InterpolateError::Other("Grid spacing is zero".to_string()));
         }
 
         let u = (log_x - log_x_grid[i]) / dx;
