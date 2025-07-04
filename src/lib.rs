@@ -1,6 +1,7 @@
 use ndarray::{s, Array1, Array3};
 use ninterp::interpolator::{Extrapolate, Interp2D};
 use ninterp::prelude::*;
+use rayon::prelude::*;
 use serde::Deserialize;
 use std::path::Path;
 
@@ -291,6 +292,27 @@ impl GridPDF {
         }
     }
 
+    /// Interpolates the PDF value (xf) for some lists of flavors, xs, and Q2s.
+    pub fn xfxq2s(&self, ids: Vec<i32>, xs: Vec<f64>, q2s: Vec<f64>) -> Array3<f64> {
+        let shape = [ids.len(), xs.len(), q2s.len()];
+        let flatten_len = shape.iter().product();
+
+        // Generate all indices and compute in parallel
+        let data: Vec<f64> = (0..flatten_len)
+            .into_par_iter()
+            .map(|linear_idx| {
+                // Convert linear index to 3D indices
+                let k = linear_idx % shape[2];
+                let j = (linear_idx / shape[2]) % shape[1];
+                let i = linear_idx / (shape[1] * shape[2]);
+
+                self.xfxq2(ids[i], xs[j], q2s[k])
+            })
+            .collect();
+
+        Array3::from_shape_vec(shape, data).unwrap()
+    }
+
     /// Interpolates the alpha_s value for a given Q2.
     ///
     /// # Arguments
@@ -354,8 +376,6 @@ pub fn load(path: &Path) -> GridPDF {
 ///
 /// A `Vec<GridPDF>` instance representing all loaded PDF sets.
 pub fn load_pdfs(path: &Path) -> Vec<GridPDF> {
-    use rayon::prelude::*;
-
     let info_path = path.join(format!(
         "{}.info",
         path.file_name().unwrap().to_str().unwrap()
