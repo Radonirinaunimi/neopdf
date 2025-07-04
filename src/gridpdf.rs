@@ -257,6 +257,7 @@ impl GridPDF {
 
     /// Finds the index of the subgrid that contains the given (x, q2) point.
     fn find_subgrid_index(&self, x: f64, q2: f64) -> Option<usize> {
+        // TODO: This does not allow for any extrapolation
         self.knot_array
             .subgrids
             .iter()
@@ -275,21 +276,16 @@ impl GridPDF {
     ///
     /// The interpolated PDF value. Returns 0.0 if extrapolation is attempted and not allowed.
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
-        if let Some(subgrid_index) = self.find_subgrid_index(x, q2) {
-            let pid_index = self
-                .knot_array
-                .flavors
-                .iter()
-                .position(|&p| p == id)
-                .unwrap();
-            self.interpolators[subgrid_index][pid_index]
-                .interpolate_point(&[x, q2])
-                .unwrap_or(0.0)
-        } else {
-            // Handle the case where the point is out of all subgrid bounds
-            // For now, we return 0.0, but a more sophisticated error handling might be needed.
-            0.0
-        }
+        let subgrid_index = self.find_subgrid_index(x, q2).unwrap();
+        let pid_index = self
+            .knot_array
+            .flavors
+            .iter()
+            .position(|&p| p == id)
+            .unwrap();
+        self.interpolators[subgrid_index][pid_index]
+            .interpolate_point(&[x, q2])
+            .unwrap()
     }
 
     /// Interpolates the PDF value (xf) for some lists of flavors, xs, and Q2s.
@@ -329,5 +325,24 @@ impl GridPDF {
     /// Returns the metadata info of the PDF.
     pub fn info(&self) -> Info {
         self.info.clone()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_knot_array_new() {
+        let subgrid_data = vec![SubgridData {
+            xs: vec![1.0, 2.0, 3.0],
+            q2s: vec![4.0, 5.0],
+            grid_data: vec![
+                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+            ],
+        }];
+        let flavors = vec![21, 22];
+        let knot_array = KnotArray::new(subgrid_data, flavors);
+        assert_eq!(knot_array.subgrids[0].grid.shape(), &[2, 3, 2]);
     }
 }

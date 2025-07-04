@@ -520,6 +520,7 @@ impl AlphaSCubicInterpolation {
                     idx
                 }
             }
+            // TODO: is the following assumption a safe procedure?
             Err(idx) => idx - 1,
         }
     }

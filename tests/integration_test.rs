@@ -80,6 +80,15 @@ fn test_xfxq2_interpolations() {
 }
 
 #[test]
+#[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+fn test_xfxq2_extrapolations() {
+    let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
+    let pdf = PDF::load(pdf_set_path);
+
+    assert!((pdf.xfxq2(2, 1.0, 1e20 * 1e20) - 1e10).abs() < PRECISION);
+}
+
+#[test]
 fn test_alphas_q2_interpolations() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
     let pdf = PDF::load(pdf_set_path);

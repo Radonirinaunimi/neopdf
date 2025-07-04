@@ -125,22 +125,3 @@ impl PDF {
         self.grid_pdf.knot_array.xf(ix, iq2, id, subgrid_id)
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_knot_array_new() {
-        let subgrid_data = vec![parser::SubgridData {
-            xs: vec![1.0, 2.0, 3.0],
-            q2s: vec![4.0, 5.0],
-            grid_data: vec![
-                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
-            ],
-        }];
-        let flavors = vec![21, 22];
-        let knot_array = KnotArray::new(subgrid_data, flavors);
-        assert_eq!(knot_array.subgrids[0].grid.shape(), &[2, 3, 2]);
-    }
-}
