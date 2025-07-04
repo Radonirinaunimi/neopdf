@@ -9,6 +9,31 @@ use crate::utils;
 #[derive(Debug, Clone)]
 pub struct BilinearInterpolation;
 
+impl BilinearInterpolation {
+    /// Performs linear interpolation between two points.
+    ///
+    /// Given two points `(x1, y1)` and `(x2, y2)`, this function calculates the
+    /// y-value corresponding to a given `x` using linear interpolation.
+    ///
+    /// # Arguments
+    ///
+    /// * `x1` - The x-coordinate of the first point.
+    /// * `x2` - The x-coordinate of the second point.
+    /// * `y1` - The y-coordinate of the first point.
+    /// * `y2` - The y-coordinate of the second point.
+    /// * `x` - The x-coordinate at which to interpolate.
+    ///
+    /// # Returns
+    ///
+    /// The interpolated y-value.
+    fn linear_interpolate(x1: f64, x2: f64, y1: f64, y2: f64, x: f64) -> f64 {
+        if x1 == x2 {
+            return y1; // Avoid division by zero
+        }
+        y1 + (y2 - y1) * (x - x1) / (x2 - x1)
+    }
+}
+
 impl<D> Strategy2D<D> for BilinearInterpolation
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
@@ -49,11 +74,11 @@ where
 
         // Perform bilinear interpolation
         // First, interpolate in x-direction
-        let r1 = utils::linear_interpolate(x1, x2, q11, q21, x);
-        let r2 = utils::linear_interpolate(x1, x2, q12, q22, x);
+        let r1 = Self::linear_interpolate(x1, x2, q11, q21, x);
+        let r2 = Self::linear_interpolate(x1, x2, q12, q22, x);
 
         // Then interpolate in y-direction
-        let result = utils::linear_interpolate(y1, y2, r1, r2, y);
+        let result = Self::linear_interpolate(y1, y2, r1, r2, y);
 
         Ok(result)
     }
@@ -184,6 +209,208 @@ pub struct LogBicubicInterpolation {
     coeffs: Vec<f64>,
 }
 
+impl LogBicubicInterpolation {
+    /// Find the interval for bicubic interpolation
+    /// Returns the index i such that we can use points [i-1, i, i+1, i+2] for interpolation
+    fn find_bicubic_interval(
+        coords: &[f64],
+        x: f64,
+    ) -> Result<usize, ninterp::error::InterpolateError> {
+        // Find the interval [i, i+1] such that coords[i] <= x < coords[i+1]
+        let i = utils::find_interval_index(coords, x)?;
+        Ok(i)
+    }
+
+    /// Cubic interpolation using a passed array of coefficients (a*x^3 + b*x^2 + c*x + d)
+    pub fn hermite_cubic_interpolate_from_coeffs(t: f64, coeffs: &[f64; 4]) -> f64 {
+        let x = t;
+        let x2 = x * x;
+        let x3 = x2 * x;
+        coeffs[0] * x3 + coeffs[1] * x2 + coeffs[2] * x + coeffs[3]
+    }
+
+    /// Calculates the derivative with respect to x (or log(x)) at a given knot.
+    /// This mirrors the _ddx function in LHAPDF's C++ implementation.
+    pub fn calculate_ddx<D>(data: &InterpData2D<D>, ix: usize, iq2: usize, logspace: bool) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let nxknots = data.grid[0].len();
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let log_x_coords: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
+        let values = &data.values;
+
+        let (del1, del2) = if logspace {
+            let d1 = if ix == 0 {
+                0.0
+            } else {
+                log_x_coords[ix] - log_x_coords[ix - 1]
+            };
+            let d2 = if ix == nxknots - 1 {
+                0.0
+            } else {
+                log_x_coords[ix + 1] - log_x_coords[ix]
+            };
+            (d1, d2)
+        } else {
+            let d1 = if ix == 0 {
+                0.0
+            } else {
+                x_coords[ix] - x_coords[ix - 1]
+            };
+            let d2 = if ix == nxknots - 1 {
+                0.0
+            } else {
+                x_coords[ix + 1] - x_coords[ix]
+            };
+            (d1, d2)
+        };
+
+        if ix != 0 && ix != nxknots - 1 {
+            // Central difference
+            let lddx = (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1;
+            let rddx = (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2;
+            (lddx + rddx) / 2.0
+        } else if ix == 0 {
+            // Forward difference
+            (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2
+        } else if ix == nxknots - 1 {
+            // Backward difference
+            (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1
+        } else {
+            // This case should ideally not be reached given the checks above
+            panic!("Should not reach here: Invalid index for derivative calculation.");
+        }
+    }
+
+    /// Computes the polynomial coefficients for bicubic interpolation, mirroring LHAPDF's C++ implementation.
+    fn _compute_polynomial_coefficients<D>(data: &InterpData2D<D>, logspace: bool) -> Vec<f64>
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let nxknots = data.grid[0].len();
+        let nq2knots = data.grid[1].len();
+        let values = &data.values;
+
+        // The shape of the coefficients array: (nxknots-1) * nq2knots * 4 (for a,b,c,d)
+        let mut coeffs: Vec<f64> = vec![0.0; (nxknots - 1) * nq2knots * 4];
+
+        for ix in 0..nxknots - 1 {
+            for iq2 in 0..nq2knots {
+                let dlogx = if logspace {
+                    data.grid[0].as_slice().unwrap()[ix + 1].ln()
+                        - data.grid[0].as_slice().unwrap()[ix].ln()
+                } else {
+                    data.grid[0].as_slice().unwrap()[ix + 1] - data.grid[0].as_slice().unwrap()[ix]
+                };
+
+                let vl = values[[ix, iq2]];
+                let vh = values[[ix + 1, iq2]];
+                let vdl = Self::calculate_ddx(data, ix, iq2, logspace) * dlogx;
+                let vdh = Self::calculate_ddx(data, ix + 1, iq2, logspace) * dlogx;
+
+                // polynomial coefficients
+                let a = vdh + vdl - 2.0 * vh + 2.0 * vl;
+                let b = 3.0 * vh - 3.0 * vl - 2.0 * vdl - vdh;
+                let c = vdl;
+                let d = vl;
+
+                let base_idx = (ix * nq2knots + iq2) * 4;
+                coeffs[base_idx] = a;
+                coeffs[base_idx + 1] = b;
+                coeffs[base_idx + 2] = c;
+                coeffs[base_idx + 3] = d;
+            }
+        }
+        coeffs
+    }
+
+    /// Performs bicubic interpolation using pre-computed coefficients.
+    fn interpolate_with_coeffs<D>(
+        &self,
+        data: &InterpData2D<D>,
+        ix: usize,
+        iq2: usize,
+        u: f64,
+        v: f64,
+    ) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let nq2knots = data.grid[1].len();
+
+        // Get the coefficients for the current cell (x-interpolation)
+        let base_idx_vl = (ix * nq2knots + iq2) * 4;
+        let coeffs_vl: [f64; 4] = self.coeffs[base_idx_vl..base_idx_vl + 4]
+            .try_into()
+            .unwrap();
+        let vl = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vl);
+
+        let base_idx_vh = (ix * nq2knots + iq2 + 1) * 4;
+        let coeffs_vh: [f64; 4] = self.coeffs[base_idx_vh..base_idx_vh + 4]
+            .try_into()
+            .unwrap();
+        let vh = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vh);
+
+        // Derivatives in Q2 (y-interpolation)
+        let log_q2_grid: Vec<f64> = data.grid[1]
+            .as_slice()
+            .unwrap()
+            .iter()
+            .map(|&qi| qi.ln())
+            .collect();
+
+        let dlogq_1 = log_q2_grid[iq2 + 1] - log_q2_grid[iq2];
+
+        let vdl: f64;
+        let vdh: f64;
+
+        if iq2 == 0 {
+            // Forward difference for lower q
+            vdl = vh - vl;
+            // Central difference for higher q
+            let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
+            let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4]
+                .try_into()
+                .unwrap();
+            let vhh = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
+            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
+            vdh = (vdl + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
+        } else if iq2 == nq2knots - 2 {
+            // Backward difference for higher q
+            vdh = vh - vl;
+            // Central difference for lower q
+            let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
+            let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4]
+                .try_into()
+                .unwrap();
+            let vll = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
+            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
+            vdl = (vdh + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
+        } else {
+            // Central difference for both q
+            let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
+            let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4]
+                .try_into()
+                .unwrap();
+            let vll = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
+            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
+
+            let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
+            let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4]
+                .try_into()
+                .unwrap();
+            let vhh = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
+            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
+
+            vdl = ((vh - vl) + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
+            vdh = ((vh - vl) + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
+        }
+
+        utils::hermite_cubic_interpolate(v, vl, vdl, vh, vdh)
+    }
+}
+
 impl<D> Strategy2D<D> for LogBicubicInterpolation
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
@@ -230,8 +457,8 @@ where
         let log_y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
 
         // Find the grid cell containing the point
-        let i = utils::find_bicubic_interval(&log_x_grid, log_x)?;
-        let j = utils::find_bicubic_interval(&log_y_grid, log_y)?;
+        let i = Self::find_bicubic_interval(&log_x_grid, log_x)?;
+        let j = Self::find_bicubic_interval(&log_y_grid, log_y)?;
 
         // Normalize coordinates to [0,1] within the central cell
         let dx = log_x_grid[i + 1] - log_x_grid[i];
@@ -254,135 +481,6 @@ where
 
     fn allow_extrapolate(&self) -> bool {
         false
-    }
-}
-
-impl LogBicubicInterpolation {
-    /// Computes the polynomial coefficients for bicubic interpolation, mirroring LHAPDF's C++ implementation.
-    fn _compute_polynomial_coefficients<D>(data: &InterpData2D<D>, logspace: bool) -> Vec<f64>
-    where
-        D: Data<Elem = f64> + RawDataClone + Clone,
-    {
-        let nxknots = data.grid[0].len();
-        let nq2knots = data.grid[1].len();
-        let values = &data.values;
-
-        // The shape of the coefficients array: (nxknots-1) * nq2knots * 4 (for a,b,c,d)
-        let mut coeffs: Vec<f64> = vec![0.0; (nxknots - 1) * nq2knots * 4];
-
-        for ix in 0..nxknots - 1 {
-            for iq2 in 0..nq2knots {
-                let dlogx = if logspace {
-                    data.grid[0].as_slice().unwrap()[ix + 1].ln()
-                        - data.grid[0].as_slice().unwrap()[ix].ln()
-                } else {
-                    data.grid[0].as_slice().unwrap()[ix + 1] - data.grid[0].as_slice().unwrap()[ix]
-                };
-
-                let vl = values[[ix, iq2]];
-                let vh = values[[ix + 1, iq2]];
-                let vdl = utils::calculate_ddx(data, ix, iq2, logspace) * dlogx;
-                let vdh = utils::calculate_ddx(data, ix + 1, iq2, logspace) * dlogx;
-
-                // polynomial coefficients
-                let a = vdh + vdl - 2.0 * vh + 2.0 * vl;
-                let b = 3.0 * vh - 3.0 * vl - 2.0 * vdl - vdh;
-                let c = vdl;
-                let d = vl;
-
-                let base_idx = (ix * nq2knots + iq2) * 4;
-                coeffs[base_idx] = a;
-                coeffs[base_idx + 1] = b;
-                coeffs[base_idx + 2] = c;
-                coeffs[base_idx + 3] = d;
-            }
-        }
-        coeffs
-    }
-
-    /// Performs bicubic interpolation using pre-computed coefficients.
-    fn interpolate_with_coeffs<D>(
-        &self,
-        data: &InterpData2D<D>,
-        ix: usize,
-        iq2: usize,
-        u: f64,
-        v: f64,
-    ) -> f64
-    where
-        D: Data<Elem = f64> + RawDataClone + Clone,
-    {
-        let nq2knots = data.grid[1].len();
-
-        // Get the coefficients for the current cell (x-interpolation)
-        let base_idx_vl = (ix * nq2knots + iq2) * 4;
-        let coeffs_vl: [f64; 4] = self.coeffs[base_idx_vl..base_idx_vl + 4]
-            .try_into()
-            .unwrap();
-        let vl = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vl);
-
-        let base_idx_vh = (ix * nq2knots + iq2 + 1) * 4;
-        let coeffs_vh: [f64; 4] = self.coeffs[base_idx_vh..base_idx_vh + 4]
-            .try_into()
-            .unwrap();
-        let vh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vh);
-
-        // Derivatives in Q2 (y-interpolation)
-        let log_q2_grid: Vec<f64> = data.grid[1]
-            .as_slice()
-            .unwrap()
-            .iter()
-            .map(|&qi| qi.ln())
-            .collect();
-
-        let dlogq_1 = log_q2_grid[iq2 + 1] - log_q2_grid[iq2];
-
-        let vdl: f64;
-        let vdh: f64;
-
-        if iq2 == 0 {
-            // Forward difference for lower q
-            vdl = vh - vl;
-            // Central difference for higher q
-            let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
-            let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4]
-                .try_into()
-                .unwrap();
-            let vhh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
-            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
-            vdh = (vdl + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
-        } else if iq2 == nq2knots - 2 {
-            // Backward difference for higher q
-            vdh = vh - vl;
-            // Central difference for lower q
-            let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
-            let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4]
-                .try_into()
-                .unwrap();
-            let vll = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
-            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
-            vdl = (vdh + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
-        } else {
-            // Central difference for both q
-            let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
-            let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4]
-                .try_into()
-                .unwrap();
-            let vll = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
-            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
-
-            let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
-            let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4]
-                .try_into()
-                .unwrap();
-            let vhh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
-            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
-
-            vdl = ((vh - vl) + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
-            vdh = ((vh - vl) + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
-        }
-
-        utils::hermite_cubic_interpolate(v, vl, vdl, vh, vdh)
     }
 }
 
@@ -546,6 +644,35 @@ mod tests {
     use ndarray::Array2;
     use ninterp::data::InterpData1D;
     use ninterp::data::InterpData2D;
+
+    #[test]
+    fn test_linear_interpolate() {
+        // Basic interpolation
+        assert_eq!(
+            BilinearInterpolation::linear_interpolate(0.0, 1.0, 0.0, 10.0, 0.5),
+            5.0
+        );
+        assert_eq!(
+            BilinearInterpolation::linear_interpolate(0.0, 10.0, 0.0, 100.0, 2.5),
+            25.0
+        );
+
+        // At endpoints
+        assert_eq!(
+            BilinearInterpolation::linear_interpolate(0.0, 1.0, 0.0, 10.0, 0.0),
+            0.0
+        );
+        assert_eq!(
+            BilinearInterpolation::linear_interpolate(0.0, 1.0, 0.0, 10.0, 1.0),
+            10.0
+        );
+
+        // x1 == x2 case
+        assert_eq!(
+            BilinearInterpolation::linear_interpolate(5.0, 5.0, 10.0, 20.0, 5.0),
+            10.0
+        );
+    }
 
     #[test]
     fn test_bilinear_interpolation() {
