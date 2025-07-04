@@ -66,9 +66,13 @@ pub struct Subgrid {
     pub q2s: Array1<f64>,
     /// 3D grid of PDF values, indexed as `[flavor_index, x_index, q2_index]`.
     pub grid: Array3<f64>,
+    /// Minimum value of the `x` grid
     x_min: f64,
+    /// Maximum value of the `x` grid
     x_max: f64,
+    /// Minimum value of the `Q2` grid
     q2_min: f64,
+    /// Maximum value of the `Q2` grid
     q2_max: f64,
 }
 
