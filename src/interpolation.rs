@@ -335,15 +335,12 @@ impl LogBicubicInterpolation {
             .map(|&qi| qi.ln())
             .collect();
 
-        let q2_lower = iq2 == 0;
-        let q2_upper = iq2 == nq2knots - 1;
-
         let dlogq_1 = log_q2_grid[iq2 + 1] - log_q2_grid[iq2];
 
         let vdl: f64;
         let vdh: f64;
 
-        if q2_lower {
+        if iq2 == 0 {
             // Forward difference for lower q
             vdl = vh - vl;
             // Central difference for higher q
@@ -354,7 +351,7 @@ impl LogBicubicInterpolation {
             let vhh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
             let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
             vdh = (vdl + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
-        } else if q2_upper {
+        } else if iq2 == nq2knots - 2 {
             // Backward difference for higher q
             vdh = vh - vl;
             // Central difference for lower q
