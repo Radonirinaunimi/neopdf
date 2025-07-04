@@ -2,6 +2,17 @@ use crate::Info;
 use std::fs;
 use std::path::Path;
 
+pub struct SubgridData {
+    pub xs: Vec<f64>,
+    pub q2s: Vec<f64>,
+    pub grid_data: Vec<f64>,
+}
+
+pub struct PdfData {
+    pub subgrid_data: Vec<SubgridData>,
+    pub flavors: Vec<i32>,
+}
+
 /// Reads the `.info` file for a PDF set and deserializes it into an `Info` struct.
 ///
 /// # Arguments
@@ -32,7 +43,7 @@ pub fn read_info(path: &Path) -> Result<Info, serde_yaml::Error> {
 /// * `Vec<(Vec<f64>, Vec<f64>, Vec<f64>)>`: A vector of subgrid data, where each
 ///   tuple contains x-knots, Q2-knots, and the flat grid data for a subgrid.
 /// * `Vec<i32>`: Flavor IDs, which are assumed to be the same for all subgrids.
-pub fn read_data(path: &Path) -> (Vec<(Vec<f64>, Vec<f64>, Vec<f64>)>, Vec<i32>) {
+pub fn read_data(path: &Path) -> PdfData {
     let content = fs::read_to_string(path).unwrap();
     let mut subgrid_data = Vec::new();
     let mut flavors = Vec::new();
@@ -85,10 +96,13 @@ pub fn read_data(path: &Path) -> (Vec<(Vec<f64>, Vec<f64>, Vec<f64>)>, Vec<i32>)
             grid_data.extend(values);
         }
 
-        subgrid_data.push((xs, q2s, grid_data));
+        subgrid_data.push(SubgridData { xs, q2s, grid_data });
     }
 
-    (subgrid_data, flavors)
+    PdfData {
+        subgrid_data,
+        flavors,
+    }
 }
 
 #[cfg(test)]
@@ -146,24 +160,27 @@ Format: "LHAPDF"
 "#;
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", data_content).unwrap();
-        let (subgrid_data, flavors) = read_data(temp_file.path());
+        let pdf_data = read_data(temp_file.path());
 
-        assert_eq!(flavors, vec![21, 1, 2]);
-        assert_eq!(subgrid_data.len(), 2);
+        assert_eq!(pdf_data.flavors, vec![21, 1, 2]);
+        assert_eq!(pdf_data.subgrid_data.len(), 2);
 
         // Check the first subgrid
-        assert_eq!(subgrid_data[0].0, vec![1.0e-9, 1.0e-8, 1.0e-7]);
-        assert_eq!(subgrid_data[0].1, vec![1.0, 100.0, 10000.0]); // Q values are squared
+        assert_eq!(pdf_data.subgrid_data[0].xs, vec![1.0e-9, 1.0e-8, 1.0e-7]);
+        assert_eq!(pdf_data.subgrid_data[0].q2s, vec![1.0, 100.0, 10000.0]); // Q values are squared
         assert_eq!(
-            subgrid_data[0].2,
+            pdf_data.subgrid_data[0].grid_data,
             vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
         );
 
         // Check the second subgrid
-        assert_eq!(subgrid_data[1].0, vec![1.0e-7, 1.0e-6, 1.0e-5]);
-        assert_eq!(subgrid_data[1].1, vec![10000.0, 1000000.0, 100000000.0]); // Q values are squared
+        assert_eq!(pdf_data.subgrid_data[1].xs, vec![1.0e-7, 1.0e-6, 1.0e-5]);
         assert_eq!(
-            subgrid_data[1].2,
+            pdf_data.subgrid_data[1].q2s,
+            vec![10000.0, 1000000.0, 100000000.0]
+        ); // Q values are squared
+        assert_eq!(
+            pdf_data.subgrid_data[1].grid_data,
             vec![10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0]
         );
     }

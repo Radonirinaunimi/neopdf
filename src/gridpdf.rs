@@ -4,7 +4,11 @@ use ninterp::prelude::*;
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::interpolation;
+use crate::interpolation::{
+    AlphaSCubicInterpolation, BilinearInterpolation, LogBicubicInterpolation,
+    LogBilinearInterpolation,
+};
+use crate::parser::SubgridData;
 
 /// Represents the information block of a PDF set, typically found in an `.info` file.
 /// This struct is deserialized from a YAML-like format.
@@ -120,13 +124,13 @@ impl KnotArray {
     ///
     /// * `subgrid_data` - A vector of tuples, where each tuple contains the data for a subgrid.
     /// * `flavors` - A vector of flavor IDs.
-    pub fn new(subgrid_data: Vec<(Vec<f64>, Vec<f64>, Vec<f64>)>, flavors: Vec<i32>) -> Self {
+    pub fn new(subgrid_data: Vec<SubgridData>, flavors: Vec<i32>) -> Self {
         let nflav = flavors.len();
         let flavors = Array1::from_vec(flavors);
 
         let subgrids = subgrid_data
             .into_iter()
-            .map(|(xs, q2s, grid_data)| Subgrid::new(xs, q2s, nflav, grid_data))
+            .map(|subgrid| Subgrid::new(subgrid.xs, subgrid.q2s, nflav, subgrid.grid_data))
             .collect();
 
         Self { flavors, subgrids }
@@ -175,7 +179,7 @@ pub struct GridPDF {
     /// The underlying knot array containing the PDF grid data.
     pub knot_array: KnotArray,
     interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
-    alphas_interpolator: Interp1DOwned<f64, interpolation::AlphaSCubicInterpolation>,
+    alphas_interpolator: Interp1DOwned<f64, AlphaSCubicInterpolation>,
 }
 
 impl GridPDF {
@@ -200,7 +204,7 @@ impl GridPDF {
                             subgrid.xs.to_owned(),
                             subgrid.q2s.to_owned(),
                             grid_slice.to_owned(),
-                            interpolation::LogBilinearInterpolation,
+                            LogBilinearInterpolation,
                             Extrapolate::Error,
                         )
                         .unwrap(),
@@ -210,7 +214,7 @@ impl GridPDF {
                             subgrid.xs.to_owned(),
                             subgrid.q2s.to_owned(),
                             grid_slice.to_owned(),
-                            interpolation::BilinearInterpolation,
+                            BilinearInterpolation,
                             // TODO: Implement extrapolation
                             Extrapolate::Error,
                         )
@@ -221,7 +225,7 @@ impl GridPDF {
                             subgrid.xs.to_owned(),
                             subgrid.q2s.to_owned(),
                             grid_slice.to_owned(),
-                            interpolation::LogBicubicInterpolation::default(),
+                            LogBicubicInterpolation::default(),
                             // TODO: Implement extrapolation
                             Extrapolate::Error,
                         )
@@ -238,7 +242,7 @@ impl GridPDF {
         let alphas_interpolator = Interp1D::new(
             alphas_q2s.into(),
             info.alphas_vals.clone().into(),
-            interpolation::AlphaSCubicInterpolation,
+            AlphaSCubicInterpolation,
             Extrapolate::Error,
         )
         .unwrap();

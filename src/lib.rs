@@ -38,8 +38,8 @@ impl PDF {
             path.file_name().unwrap().to_str().unwrap(),
             0
         ));
-        let (subgrid_data, flavors) = parser::read_data(&data_path);
-        let knot_array = KnotArray::new(subgrid_data, flavors);
+        let pdf_data = parser::read_data(&data_path);
+        let knot_array = KnotArray::new(pdf_data.subgrid_data, pdf_data.flavors);
 
         PDF {
             grid_pdf: GridPDF::new(info, knot_array),
@@ -73,8 +73,8 @@ impl PDF {
                     path.file_name().unwrap().to_str().unwrap(),
                     i
                 ));
-                let (subgrid_data, flavors) = parser::read_data(&data_path);
-                let knot_array = KnotArray::new(subgrid_data, flavors);
+                let pdf_data = parser::read_data(&data_path);
+                let knot_array = KnotArray::new(pdf_data.subgrid_data, pdf_data.flavors);
                 PDF {
                     grid_pdf: GridPDF::new(info.clone(), knot_array),
                 }
@@ -132,13 +132,13 @@ mod tests {
 
     #[test]
     fn test_knot_array_new() {
-        let subgrid_data = vec![(
-            vec![1.0, 2.0, 3.0],
-            vec![4.0, 5.0],
-            vec![
+        let subgrid_data = vec![parser::SubgridData {
+            xs: vec![1.0, 2.0, 3.0],
+            q2s: vec![4.0, 5.0],
+            grid_data: vec![
                 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
             ],
-        )];
+        }];
         let flavors = vec![21, 22];
         let knot_array = KnotArray::new(subgrid_data, flavors);
         assert_eq!(knot_array.subgrids[0].grid.shape(), &[2, 3, 2]);
