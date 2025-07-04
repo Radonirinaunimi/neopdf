@@ -7,7 +7,7 @@ static PRECISION: f64 = 1e-12;
 #[test]
 fn test_xf_at_knots() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     let cases = vec![
         (0, 0, 21, 0.14844111), // at the (x, Q) boundaries
@@ -23,7 +23,7 @@ fn test_xf_at_knots() {
 
     for (x_id, q_id, pid, expected) in cases {
         assert!(
-            (pdf.knot_array.xf(x_id, q_id, pid) - expected).abs() < PRECISION,
+            (pdf.xf(x_id, q_id, pid, 0) - expected).abs() < PRECISION,
             "Failed on knot (x, Q, pid)=({x_id}, {q_id}, {pid})"
         );
     }
@@ -32,7 +32,7 @@ fn test_xf_at_knots() {
 #[test]
 fn test_xfxq2_at_knots() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     let cases = vec![
         (21, 1e-9, 1.65 * 1.65, 0.14844111), // at the (x, Q2) boundaries
@@ -58,7 +58,7 @@ fn test_xfxq2_at_knots() {
 #[test]
 fn test_xfxq2_interpolations() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     let cases = vec![
         (21, 1e-3, 4.0, 3.316316680794655),
@@ -82,7 +82,7 @@ fn test_xfxq2_interpolations() {
 #[test]
 fn test_alphas_q2_interpolations() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     let cases = vec![
         (1.65 * 1.65, 0.33074891), // at the lower Q2 boundary
@@ -202,7 +202,7 @@ pub fn test_xfxq2s() {
     ];
 
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     // Define the vectors of kinematics & flavours
     let ids = (-4..=4).filter(|&x| x != 0).collect();
