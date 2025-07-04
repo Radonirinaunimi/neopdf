@@ -420,7 +420,13 @@ impl AlphaSCubicInterpolation {
 
         // Find the closest knot below the requested value
         match q2s.binary_search_by(|q2_val| q2_val.partial_cmp(&q2).unwrap()) {
-            Ok(idx) => idx,
+            Ok(idx) => {
+                if idx == q2s.len() - 1 && q2s.len() >= 2 {
+                    idx - 1
+                } else {
+                    idx
+                }
+            }
             Err(idx) => idx - 1,
         }
     }

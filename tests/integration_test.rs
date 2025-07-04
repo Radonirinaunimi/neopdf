@@ -65,7 +65,7 @@ fn test_xfxq2_interpolations() {
         (21, 1e-9, 5.5493622 * 5.5493622, 24.419091),  // 2nd subgrid
         (1, 1e-9, 5.5493622 * 5.5493622, 8.5646215),   // 2nd subgrid
         (2, 1.0, 1e4 * 1e4, 5.538128473634297e-26),    // 2nd subgrid
-        (2, 1.0, 1e5 * 1e5, 2.481541837659083e-24),    // at upper Q2 boundary
+        (2, 1.0, 1e5 * 1e5, 2.481541837659083e-24),    // at the upper Q2 boundary
     ];
 
     for (pid, x, q2, expected) in cases {
@@ -82,9 +82,11 @@ fn test_alphas_q2_interpolations() {
     let pdf = load(pdf_set_path);
 
     let cases = vec![
+        (1.65 * 1.65, 0.33074891), // at the lower Q2 boundary
         (2.75, 0.32992260049326716),
         (4.0, 0.30095312523656437),
         (100.0, 0.17812270669689784),
+        (1e5 * 1e5, 0.057798546), // at the upper Q2 boundary
     ];
 
     for (q2, expected) in cases {
