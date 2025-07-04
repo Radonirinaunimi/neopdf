@@ -19,7 +19,8 @@ pub fn read_info(path: &Path) -> Result<Info, serde_yaml::Error> {
 /// Reads a `.dat` file for a PDF set and parses its content.
 ///
 /// This function extracts x-knots, Q2-knots, flavor IDs, and the grid data
-/// from the specified data file.
+/// from the specified data file. It can handle files with multiple subgrids
+/// separated by "---".
 ///
 /// # Arguments
 ///
@@ -28,58 +29,66 @@ pub fn read_info(path: &Path) -> Result<Info, serde_yaml::Error> {
 /// # Returns
 ///
 /// A tuple containing:
-/// * `Vec<f64>`: x-knots
-/// * `Vec<f64>`: Q2-knots (squared Q values)
-/// * `Vec<i32>`: Flavor IDs
-/// * `Vec<f64>`: Flat vector of grid data
-pub fn read_data(path: &Path) -> (Vec<f64>, Vec<f64>, Vec<i32>, Vec<f64>) {
+/// * `Vec<(Vec<f64>, Vec<f64>, Vec<f64>)>`: A vector of subgrid data, where each
+///   tuple contains x-knots, Q2-knots, and the flat grid data for a subgrid.
+/// * `Vec<i32>`: Flavor IDs, which are assumed to be the same for all subgrids.
+pub fn read_data(path: &Path) -> (Vec<(Vec<f64>, Vec<f64>, Vec<f64>)>, Vec<i32>) {
     let content = fs::read_to_string(path).unwrap();
-    let mut lines = content.lines();
+    let mut subgrid_data = Vec::new();
+    let mut flavors = Vec::new();
 
-    // Skip lines until "---" is encountered
-    for line in lines.by_ref() {
-        if line.trim() == "---" {
-            break;
+    // Split the content by "---" to separate subgrids
+    let blocks: Vec<&str> = content.split("---").map(|s| s.trim()).collect();
+
+    for block in blocks.iter().skip(1) {
+        // Skip empty blocks
+        if block.is_empty() {
+            continue;
         }
-    }
 
-    // Read the x knots
-    let x_knots_line = lines.next().unwrap();
-    let xs: Vec<f64> = x_knots_line
-        .split_whitespace()
-        .filter_map(|s| s.parse().ok())
-        .collect();
+        let mut lines = block.lines();
 
-    // Read the Q2 knots
-    let q2_knots_line = lines.next().unwrap();
-    // NOTE: Values might be in `Q` or `Q2`. To check.
-    let q2s: Vec<f64> = q2_knots_line
-        .split_whitespace()
-        .filter_map(|s| s.parse().ok())
-        .map(|q: f64| q * q)
-        .collect();
-
-    // Read the flavors
-    let flavors_line = lines.next().unwrap();
-    let flavors: Vec<i32> = flavors_line
-        .split_whitespace()
-        .filter_map(|s| s.parse().ok())
-        .collect();
-
-    // Read the grid values
-    let mut grid_data = Vec::new();
-    for line in lines {
-        if line.trim() == "---" {
-            break;
-        }
-        let values: Vec<f64> = line
+        // Read the x knots
+        let x_knots_line = lines.next().unwrap();
+        let xs: Vec<f64> = x_knots_line
             .split_whitespace()
             .filter_map(|s| s.parse().ok())
             .collect();
-        grid_data.extend(values);
+
+        // Read the Q2 knots
+        let q2_knots_line = lines.next().unwrap();
+        let q2s: Vec<f64> = q2_knots_line
+            .split_whitespace()
+            .filter_map(|s| s.parse().ok())
+            .map(|q: f64| q * q)
+            .collect();
+
+        // Read the flavors (only once from the first subgrid)
+        if flavors.is_empty() {
+            let flavors_line = lines.next().unwrap();
+            flavors = flavors_line
+                .split_whitespace()
+                .filter_map(|s| s.parse().ok())
+                .collect();
+        } else {
+            // Skip the flavors line in subsequent subgrids
+            lines.next();
+        }
+
+        // Read the grid values
+        let mut grid_data = Vec::new();
+        for line in lines {
+            let values: Vec<f64> = line
+                .split_whitespace()
+                .filter_map(|s| s.parse().ok())
+                .collect();
+            grid_data.extend(values);
+        }
+
+        subgrid_data.push((xs, q2s, grid_data));
     }
 
-    (xs, q2s, flavors, grid_data)
+    (subgrid_data, flavors)
 }
 
 #[cfg(test)]
@@ -127,14 +136,35 @@ Format: "LHAPDF"
 1.0 2.0 3.0
 4.0 5.0 6.0
 7.0 8.0 9.0
+---
+1.0e-7 1.0e-6 1.0e-5
+100.0 1000.0 10000.0
+21 1 2
+10.0 11.0 12.0
+13.0 14.0 15.0
+16.0 17.0 18.0
 "#;
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", data_content).unwrap();
-        let (xs, q2s, flavors, grid_data) = read_data(temp_file.path());
+        let (subgrid_data, flavors) = read_data(temp_file.path());
 
-        assert_eq!(xs, vec![1.0e-9, 1.0e-8, 1.0e-7]);
-        assert_eq!(q2s, vec![1.0, 100.0, 10000.0]); // Q values are squared
         assert_eq!(flavors, vec![21, 1, 2]);
-        assert_eq!(grid_data, vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]);
+        assert_eq!(subgrid_data.len(), 2);
+
+        // Check the first subgrid
+        assert_eq!(subgrid_data[0].0, vec![1.0e-9, 1.0e-8, 1.0e-7]);
+        assert_eq!(subgrid_data[0].1, vec![1.0, 100.0, 10000.0]); // Q values are squared
+        assert_eq!(
+            subgrid_data[0].2,
+            vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0]
+        );
+
+        // Check the second subgrid
+        assert_eq!(subgrid_data[1].0, vec![1.0e-7, 1.0e-6, 1.0e-5]);
+        assert_eq!(subgrid_data[1].1, vec![10000.0, 1000000.0, 100000000.0]); // Q values are squared
+        assert_eq!(
+            subgrid_data[1].2,
+            vec![10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0]
+        );
     }
 }

@@ -55,36 +55,34 @@ fn default_interpolator_type() -> String {
     "LogBicubic".to_string()
 }
 
-/// Stores the PDF grid data, including x-values, Q2-values, flavors, and the 3D grid itself.
+/// Stores the PDF grid data for a single subgrid.
 #[derive(Debug)]
-pub struct KnotArray {
+pub struct Subgrid {
     /// Array of x-values (momentum fraction).
     pub xs: Array1<f64>,
     /// Array of Q2-values (energy scale squared).
     pub q2s: Array1<f64>,
-    /// Array of flavor IDs.
-    pub flavors: Array1<i32>,
     /// 3D grid of PDF values, indexed as `[flavor_index, x_index, q2_index]`.
     pub grid: Array3<f64>,
+    x_min: f64,
+    x_max: f64,
+    q2_min: f64,
+    q2_max: f64,
 }
 
-impl KnotArray {
-    /// Creates a new `KnotArray` from raw data.
-    ///
-    /// # Arguments
-    ///
-    /// * `xs` - A vector of x-values.
-    /// * `q2s` - A vector of Q2-values.
-    /// * `flavors` - A vector of flavor IDs.
-    /// * `grid_data` - A flat vector of PDF values.
-    pub fn new(xs: Vec<f64>, q2s: Vec<f64>, flavors: Vec<i32>, grid_data: Vec<f64>) -> Self {
+impl Subgrid {
+    /// Creates a new `Subgrid` from raw data.
+    pub fn new(xs: Vec<f64>, q2s: Vec<f64>, nflav: usize, grid_data: Vec<f64>) -> Self {
         let nx = xs.len();
         let nq2 = q2s.len();
-        let nflav = flavors.len();
+
+        let x_min = *xs.first().unwrap();
+        let x_max = *xs.last().unwrap();
+        let q2_min = *q2s.first().unwrap();
+        let q2_max = *q2s.last().unwrap();
 
         let xs = Array1::from_vec(xs);
         let q2s = Array1::from_vec(q2s);
-        let flavors = Array1::from_vec(flavors);
         let grid = Array3::from_shape_vec((nx, nq2, nflav), grid_data)
             .expect("Failed to create grid from data")
             .permuted_axes([2, 0, 1]) // Permute (x, q2, flav) -> (flav, x, q2)
@@ -94,9 +92,46 @@ impl KnotArray {
         Self {
             xs,
             q2s,
-            flavors,
             grid,
+            x_min,
+            x_max,
+            q2_min,
+            q2_max,
         }
+    }
+
+    /// Checks if a given (x, q2) point is within the boundaries of this subgrid.
+    pub fn in_bounds(&self, x: f64, q2: f64) -> bool {
+        x >= self.x_min && x <= self.x_max && q2 >= self.q2_min && q2 <= self.q2_max
+    }
+}
+
+/// Stores the PDF grid data, including x-values, Q2-values, flavors, and the 3D grid itself.
+#[derive(Debug)]
+pub struct KnotArray {
+    /// Array of flavor IDs.
+    pub flavors: Array1<i32>,
+    /// Vector of subgrids.
+    pub subgrids: Vec<Subgrid>,
+}
+
+impl KnotArray {
+    /// Creates a new `KnotArray` from raw data.
+    ///
+    /// # Arguments
+    ///
+    /// * `subgrid_data` - A vector of tuples, where each tuple contains the data for a subgrid.
+    /// * `flavors` - A vector of flavor IDs.
+    pub fn new(subgrid_data: Vec<(Vec<f64>, Vec<f64>, Vec<f64>)>, flavors: Vec<i32>) -> Self {
+        let nflav = flavors.len();
+        let flavors = Array1::from_vec(flavors);
+
+        let subgrids = subgrid_data
+            .into_iter()
+            .map(|(xs, q2s, grid_data)| Subgrid::new(xs, q2s, nflav, grid_data))
+            .collect();
+
+        Self { flavors, subgrids }
     }
 
     /// Retrieves the PDF value (xf) at a specific knot point.
@@ -107,8 +142,10 @@ impl KnotArray {
     /// * `iq2` - The index of the Q2-value.
     /// * `id` - The flavor ID.
     pub fn xf(&self, ix: usize, iq2: usize, id: i32) -> f64 {
+        // This method might need to be re-evaluated since it's not clear which subgrid to use.
+        // For now, we'll assume the first subgrid.
         let pid_index = self.flavors.iter().position(|&p| p == id).unwrap();
-        self.grid[[pid_index, ix, iq2]]
+        self.subgrids[0].grid[[pid_index, ix, iq2]]
     }
 }
 
@@ -140,7 +177,7 @@ pub struct GridPDF {
     info: Info,
     /// The underlying knot array containing the PDF grid data.
     pub knot_array: KnotArray,
-    interpolators: Vec<Box<dyn DynInterpolator>>,
+    interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
     alphas_interpolator: Interp1DOwned<f64, interpolation::AlphaSCubicInterpolation>,
 }
 
@@ -154,46 +191,50 @@ impl GridPDF {
     /// * `info` - The `Info` struct containing metadata about the PDF set.
     /// * `knot_array` - The `KnotArray` containing the PDF grid data.
     pub fn new(info: Info, knot_array: KnotArray) -> Self {
-        let mut interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
-        for i in 0..knot_array.flavors.len() {
-            let grid_slice = knot_array.grid.slice(s![i, .., ..]);
+        let mut interpolators: Vec<Vec<Box<dyn DynInterpolator>>> = Vec::new();
+        for subgrid in &knot_array.subgrids {
+            let mut subgrid_interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
+            for i in 0..knot_array.flavors.len() {
+                let grid_slice = subgrid.grid.slice(s![i, .., ..]);
 
-            let interp: Box<dyn DynInterpolator> = match info.interpolator_type.as_str() {
-                "LogBilinear" => Box::new(
-                    Interp2D::new(
-                        knot_array.xs.to_owned(),
-                        knot_array.q2s.to_owned(),
-                        grid_slice.to_owned(),
-                        interpolation::LogBilinearInterpolation,
-                        Extrapolate::Error,
-                    )
-                    .unwrap(),
-                ),
-                "Bilinear" => Box::new(
-                    Interp2D::new(
-                        knot_array.xs.to_owned(),
-                        knot_array.q2s.to_owned(),
-                        grid_slice.to_owned(),
-                        interpolation::BilinearInterpolation,
-                        // TODO: Implement extrapolation
-                        Extrapolate::Error,
-                    )
-                    .unwrap(),
-                ),
-                "LogBicubic" => Box::new(
-                    Interp2D::new(
-                        knot_array.xs.to_owned(),
-                        knot_array.q2s.to_owned(),
-                        grid_slice.to_owned(),
-                        interpolation::LogBicubicInterpolation::default(),
-                        // TODO: Implement extrapolation
-                        Extrapolate::Error,
-                    )
-                    .unwrap(),
-                ),
-                _ => panic!("Unknown interpolator type: {}", info.interpolator_type),
-            };
-            interpolators.push(interp);
+                let interp: Box<dyn DynInterpolator> = match info.interpolator_type.as_str() {
+                    "LogBilinear" => Box::new(
+                        Interp2D::new(
+                            subgrid.xs.to_owned(),
+                            subgrid.q2s.to_owned(),
+                            grid_slice.to_owned(),
+                            interpolation::LogBilinearInterpolation,
+                            Extrapolate::Error,
+                        )
+                        .unwrap(),
+                    ),
+                    "Bilinear" => Box::new(
+                        Interp2D::new(
+                            subgrid.xs.to_owned(),
+                            subgrid.q2s.to_owned(),
+                            grid_slice.to_owned(),
+                            interpolation::BilinearInterpolation,
+                            // TODO: Implement extrapolation
+                            Extrapolate::Error,
+                        )
+                        .unwrap(),
+                    ),
+                    "LogBicubic" => Box::new(
+                        Interp2D::new(
+                            subgrid.xs.to_owned(),
+                            subgrid.q2s.to_owned(),
+                            grid_slice.to_owned(),
+                            interpolation::LogBicubicInterpolation::default(),
+                            // TODO: Implement extrapolation
+                            Extrapolate::Error,
+                        )
+                        .unwrap(),
+                    ),
+                    _ => panic!("Unknown interpolator type: {}", info.interpolator_type),
+                };
+                subgrid_interpolators.push(interp);
+            }
+            interpolators.push(subgrid_interpolators);
         }
 
         let alphas_q2s: Vec<f64> = info.alphas_q_values.iter().map(|&q| q * q).collect();
@@ -213,6 +254,14 @@ impl GridPDF {
         }
     }
 
+    /// Finds the index of the subgrid that contains the given (x, q2) point.
+    fn find_subgrid_index(&self, x: f64, q2: f64) -> Option<usize> {
+        self.knot_array
+            .subgrids
+            .iter()
+            .position(|subgrid| subgrid.in_bounds(x, q2))
+    }
+
     /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.
     ///
     /// # Arguments
@@ -225,15 +274,21 @@ impl GridPDF {
     ///
     /// The interpolated PDF value. Returns 0.0 if extrapolation is attempted and not allowed.
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
-        let pid_index = self
-            .knot_array
-            .flavors
-            .iter()
-            .position(|&p| p == id)
-            .unwrap();
-        self.interpolators[pid_index]
-            .interpolate_point(&[x, q2])
-            .unwrap_or(0.0)
+        if let Some(subgrid_index) = self.find_subgrid_index(x, q2) {
+            let pid_index = self
+                .knot_array
+                .flavors
+                .iter()
+                .position(|&p| p == id)
+                .unwrap();
+            self.interpolators[subgrid_index][pid_index]
+                .interpolate_point(&[x, q2])
+                .unwrap_or(0.0)
+        } else {
+            // Handle the case where the point is out of all subgrid bounds
+            // For now, we return 0.0, but a more sophisticated error handling might be needed.
+            0.0
+        }
     }
 
     /// Interpolates the alpha_s value for a given Q2.
@@ -280,8 +335,8 @@ pub fn load(path: &Path) -> GridPDF {
         path.file_name().unwrap().to_str().unwrap(),
         0
     ));
-    let (xs, q2s, flavors, grid_data) = parser::read_data(&data_path);
-    let knot_array = KnotArray::new(xs, q2s, flavors, grid_data);
+    let (subgrid_data, flavors) = parser::read_data(&data_path);
+    let knot_array = KnotArray::new(subgrid_data, flavors);
 
     GridPDF::new(info, knot_array)
 }
@@ -315,8 +370,8 @@ pub fn load_pdfs(path: &Path) -> Vec<GridPDF> {
                 path.file_name().unwrap().to_str().unwrap(),
                 i
             ));
-            let (xs, q2s, flavors, grid_data) = parser::read_data(&data_path);
-            let knot_array = KnotArray::new(xs, q2s, flavors, grid_data);
+            let (subgrid_data, flavors) = parser::read_data(&data_path);
+            let knot_array = KnotArray::new(subgrid_data, flavors);
             GridPDF::new(info.clone(), knot_array)
         })
         .collect()
@@ -328,13 +383,15 @@ mod tests {
 
     #[test]
     fn test_knot_array_new() {
-        let xs = vec![1.0, 2.0, 3.0];
-        let q2s = vec![4.0, 5.0];
+        let subgrid_data = vec![(
+            vec![1.0, 2.0, 3.0],
+            vec![4.0, 5.0],
+            vec![
+                1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
+            ],
+        )];
         let flavors = vec![21, 22];
-        let grid_data = vec![
-            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0,
-        ];
-        let knot_array = KnotArray::new(xs, q2s, flavors, grid_data);
-        assert_eq!(knot_array.grid.shape(), &[2, 3, 2]);
+        let knot_array = KnotArray::new(subgrid_data, flavors);
+        assert_eq!(knot_array.subgrids[0].grid.shape(), &[2, 3, 2]);
     }
 }
