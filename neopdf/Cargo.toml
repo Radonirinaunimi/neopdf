@@ -1,0 +1,20 @@
+[package]
+name = "neopdf"
+authors = ["Tanjona R. Rabemananjara <tanjona.hepc@gmail.com>"]
+description = "A modern, fast, and reliable PDF interpolation library"
+readme = "README.md"
+
+categories.workspace = true
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+ndarray = "0.16.1"
+ninterp = "0.7.3"
+serde = { version = "1.0", features = ["derive"] }
+serde_yaml = "0.9"
+tempfile = "3.10.1"
+rayon = "1.5"
