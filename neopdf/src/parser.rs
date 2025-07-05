@@ -1,4 +1,4 @@
-use super::Info;
+use super::gridpdf::Info;
 use std::fs;
 use std::path::Path;
 

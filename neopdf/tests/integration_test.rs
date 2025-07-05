@@ -1,5 +1,5 @@
 use ndarray::Array3;
-use neopdf::PDF;
+use neopdf::pdf::PDF;
 use std::path::Path;
 
 const PRECISION: f64 = 1e-12;
