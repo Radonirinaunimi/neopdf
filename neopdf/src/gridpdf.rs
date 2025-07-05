@@ -4,11 +4,11 @@ use ninterp::prelude::*;
 use rayon::prelude::*;
 use serde::Deserialize;
 
-use crate::interpolation::{
+use super::interpolation::{
     AlphaSCubicInterpolation, BilinearInterpolation, LogBicubicInterpolation,
     LogBilinearInterpolation,
 };
-use crate::parser::SubgridData;
+use super::parser::SubgridData;
 
 /// Represents the information block of a PDF set, typically found in an `.info` file.
 /// This struct is deserialized from a YAML-like format.

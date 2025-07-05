@@ -3,7 +3,7 @@ use ninterp::data::{InterpData1D, InterpData2D};
 use ninterp::error::{InterpolateError, ValidateError};
 use ninterp::strategy::traits::{Strategy1D, Strategy2D};
 
-use crate::utils;
+use super::utils;
 
 /// Implements bilinear interpolation for 2D data.
 #[derive(Debug, Clone)]
