@@ -20,24 +20,24 @@ use super::parser::SubgridData;
 
 /// Stores the PDF grid data for a single subgrid.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct Subgrid {
+pub struct SubGrid {
     /// Array of x-values (momentum fraction).
     pub xs: Array1<f64>,
     /// Array of Q2-values (energy scale squared).
     pub q2s: Array1<f64>,
     /// 3D grid of PDF values, indexed as `[flavor_index, x_index, q2_index]`.
     pub grid: Array3<f64>,
-    /// Minimum value of the `x` grid
+    /// Minimum value of the `x` subgrid
     x_min: f64,
-    /// Maximum value of the `x` grid
+    /// Maximum value of the `x` subgrid
     x_max: f64,
-    /// Minimum value of the `Q2` grid
+    /// Minimum value of the `Q2` subgrid
     q2_min: f64,
-    /// Maximum value of the `Q2` grid
+    /// Maximum value of the `Q2` subgrid
     q2_max: f64,
 }
 
-impl Subgrid {
+impl SubGrid {
     /// Creates a new `Subgrid` from raw data.
     pub fn new(xs: Vec<f64>, q2s: Vec<f64>, nflav: usize, grid_data: Vec<f64>) -> Self {
         let nx = xs.len();
@@ -79,7 +79,7 @@ pub struct GridArray {
     /// Array of flavor IDs.
     pub pids: Array1<i32>,
     /// Vector of subgrids.
-    pub subgrids: Vec<Subgrid>,
+    pub subgrids: Vec<SubGrid>,
 }
 
 impl GridArray {
@@ -95,7 +95,7 @@ impl GridArray {
 
         let subgrids = subgrid_data
             .into_iter()
-            .map(|subgrid| Subgrid::new(subgrid.xs, subgrid.q2s, nflav, subgrid.grid_data))
+            .map(|subgrid| SubGrid::new(subgrid.xs, subgrid.q2s, nflav, subgrid.grid_data))
             .collect();
 
         Self {
@@ -289,6 +289,46 @@ impl GridPDF {
     /// Returns the metadata info of the PDF.
     pub fn info(&self) -> MetaData {
         self.info.clone()
+    }
+
+    /// Get `x_min` from the complete PDF grid.
+    pub fn x_min(&self) -> f64 {
+        self.knot_array
+            .subgrids
+            .iter()
+            .map(|subgrid| subgrid.x_min)
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
+    }
+
+    /// Get `x_max` from the complete PDF grid.
+    pub fn x_max(&self) -> f64 {
+        self.knot_array
+            .subgrids
+            .iter()
+            .map(|subgrid| subgrid.x_max)
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
+    }
+
+    /// Get `Q2_min` from the complete PDF grid.
+    pub fn q2_min(&self) -> f64 {
+        self.knot_array
+            .subgrids
+            .iter()
+            .map(|subgrid| subgrid.q2_min)
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
+    }
+
+    /// Get `Q2_max` from the complete PDF grid.
+    pub fn q2_max(&self) -> f64 {
+        self.knot_array
+            .subgrids
+            .iter()
+            .map(|subgrid| subgrid.q2_max)
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
     }
 }
 

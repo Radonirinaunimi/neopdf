@@ -220,3 +220,13 @@ pub fn test_xfxq2s() {
         assert!((*elems - expected_res[[i, j, k]]).abs() < PRECISION);
     }
 }
+
+#[test]
+pub fn test_boundary_extraction() {
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180");
+
+    assert!((pdf.x_min() - 1e-9).abs() < PRECISION);
+    assert!((pdf.x_max() - 1.00).abs() < PRECISION);
+    assert!((pdf.q2_min() - 1.65 * 1.65).abs() < PRECISION);
+    assert!((pdf.q2_max() - 1e5 * 1.0e5).abs() < PRECISION);
+}

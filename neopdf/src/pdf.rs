@@ -127,4 +127,24 @@ impl PDF {
     pub fn xf(&self, ix: usize, iq2: usize, id: i32, subgrid_id: usize) -> f64 {
         self.grid_pdf.knot_array.xf(ix, iq2, id, subgrid_id)
     }
+
+    /// Retrieves the `x_min` for this PDF set.
+    pub fn x_min(&self) -> f64 {
+        self.grid_pdf.x_min()
+    }
+
+    /// Retrieves the `x_max` for this PDF set.
+    pub fn x_max(&self) -> f64 {
+        self.grid_pdf.x_max()
+    }
+
+    /// Retrieves the `q2_min` for this PDF set.
+    pub fn q2_min(&self) -> f64 {
+        self.grid_pdf.q2_min()
+    }
+
+    /// Retrieves the `q2_max` for this PDF set.
+    pub fn q2_max(&self) -> f64 {
+        self.grid_pdf.q2_max()
+    }
 }
