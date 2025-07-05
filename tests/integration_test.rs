@@ -2,7 +2,7 @@ use lhapdf_rust::*;
 use ndarray::Array3;
 use std::path::Path;
 
-static PRECISION: f64 = 1e-12;
+const PRECISION: f64 = 1e-12;
 
 #[test]
 fn test_xf_at_knots() {
@@ -10,15 +10,15 @@ fn test_xf_at_knots() {
     let pdf = PDF::load(pdf_set_path);
 
     let cases = vec![
-        (0, 0, 21, 0.14844111), // at the (x, Q) boundaries
-        (0, 0, 1, 1.4254154),   // at the (x, Q) boundaries
-        (0, 0, 2, 1.4257712),   // at the (x, Q) boundaries
-        (1, 0, 21, 0.15395356), // at the Q boundary
-        (1, 0, 1, 1.3883271),   // at the Q boundary
-        (1, 0, 2, 1.3887002),   // at the Q boundary
-        (1, 2, 21, -3.164867),
+        (0, 0, 1, 1.4254154), // at the (x, Q) boundaries
+        (0, 0, 2, 1.4257712), // at the (x, Q) boundaries
+        (1, 0, 1, 1.3883271), // at the Q boundary
+        (1, 0, 2, 1.3887002), // at the Q boundary
         (1, 2, 1, 1.9235433),
         (1, 2, 2, 1.9239212),
+        (1, 2, 21, -3.164867),
+        (0, 0, 21, 0.14844111), // at the (x, Q) boundaries
+        (1, 0, 21, 0.15395356), // at the Q boundary
     ];
 
     for (x_id, q_id, pid, expected) in cases {
@@ -38,9 +38,9 @@ fn test_xfxq2_at_knots() {
         (21, 1e-9, 1.65 * 1.65, 0.14844111), // at the (x, Q2) boundaries
         (1, 1e-9, 1.65 * 1.65, 1.4254154),   // at the (x, Q2) boundaries
         (2, 1e-9, 1.65 * 1.65, 1.4257712),   // at the (x, Q2) boundaries
-        (21, 1.2970848e-9, 1.65 * 1.65, 0.15395356), // at the Q2 boundary
         (1, 1.2970848e-9, 1.65 * 1.65, 1.3883271), // at the Q2 boundary
         (2, 1.2970848e-9, 1.65 * 1.65, 1.3887002), // at the Q2 boundary
+        (21, 1.2970848e-9, 1.65 * 1.65, 0.15395356), // at the Q2 boundary
         (21, 1.2970848e-9, 1.9429053 * 1.9429053, -3.164867),
         (1, 1.2970848e-9, 1.9429053 * 1.9429053, 1.9235433),
         (2, 1.2970848e-9, 1.9429053 * 1.9429053, 1.9239212),
