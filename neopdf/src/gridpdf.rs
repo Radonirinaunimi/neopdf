@@ -2,6 +2,7 @@ use ndarray::{s, Array1, Array3};
 use ninterp::interpolator::{Extrapolate, Interp2D};
 use ninterp::prelude::*;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use super::interpolation::{
     AlphaSCubicInterpolation, BilinearInterpolation, LogBicubicInterpolation,
@@ -11,7 +12,7 @@ use super::metadata::MetaData;
 use super::parser::SubgridData;
 
 /// Stores the PDF grid data for a single subgrid.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Subgrid {
     /// Array of x-values (momentum fraction).
     pub xs: Array1<f64>,
@@ -66,7 +67,7 @@ impl Subgrid {
 }
 
 /// Stores the PDF grid data, including x-values, Q2-values, flavors, and the 3D grid itself.
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct KnotArray {
     /// Array of flavor IDs.
     pub flavors: Array1<i32>,

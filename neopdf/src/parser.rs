@@ -1,13 +1,16 @@
 use super::metadata::MetaData;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SubgridData {
     pub xs: Vec<f64>,
     pub q2s: Vec<f64>,
     pub grid_data: Vec<f64>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PdfData {
     pub subgrid_data: Vec<SubgridData>,
     pub flavors: Vec<i32>,
