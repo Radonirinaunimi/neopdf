@@ -3,6 +3,13 @@ use ninterp::interpolator::{Extrapolate, Interp2D};
 use ninterp::prelude::*;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("No subgrid found for x={x}, q2={q2}")]
+    SubgridNotFound { x: f64, q2: f64 },
+}
 
 use super::interpolation::{
     AlphaSCubicInterpolation, BilinearInterpolation, LogBicubicInterpolation,
@@ -217,12 +224,13 @@ impl GridPDF {
     }
 
     /// Finds the index of the subgrid that contains the given (x, q2) point.
-    fn find_subgrid_index(&self, x: f64, q2: f64) -> Option<usize> {
+    fn find_subgrid_index(&self, x: f64, q2: f64) -> Result<usize, Error> {
         // TODO: This does not allow for any extrapolation
         self.knot_array
             .subgrids
             .iter()
             .position(|subgrid| subgrid.in_bounds(x, q2))
+            .ok_or(Error::SubgridNotFound { x, q2 })
     }
 
     /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.

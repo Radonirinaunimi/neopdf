@@ -80,7 +80,9 @@ fn test_xfxq2_interpolations() {
 }
 
 #[test]
-#[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+#[should_panic(
+    expected = "called `Result::unwrap()` on an `Err` value: SubgridNotFound { x: 1.0, q2: 1e40 }"
+)]
 fn test_xfxq2_extrapolations() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
     let pdf = PDF::load(pdf_set_path);
