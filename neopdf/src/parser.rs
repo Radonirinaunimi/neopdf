@@ -25,12 +25,12 @@ pub struct PdfData {
 /// # Returns
 ///
 /// A `Result` containing the `Info` struct if successful, or a `serde_yaml::Error` otherwise.
-pub fn read_metadata(path: &Path) -> Result<MetaData, serde_yaml::Error> {
+pub fn read_lhapdf_metadata(path: &Path) -> Result<MetaData, serde_yaml::Error> {
     let content = fs::read_to_string(path).unwrap();
     serde_yaml::from_str(&content)
 }
 
-/// Reads a `.dat` file for a PDF set and parses its content.
+/// Reads an LHAPDF `.dat` file for a PDF set and parses its content.
 ///
 /// This function extracts x-knots, Q2-knots, flavor IDs, and the grid data
 /// from the specified data file. It can handle files with multiple subgrids
@@ -46,7 +46,7 @@ pub fn read_metadata(path: &Path) -> Result<MetaData, serde_yaml::Error> {
 /// * `Vec<(Vec<f64>, Vec<f64>, Vec<f64>)>`: A vector of subgrid data, where each
 ///   tuple contains x-knots, Q2-knots, and the flat grid data for a subgrid.
 /// * `Vec<i32>`: Flavor IDs, which are assumed to be the same for all subgrids.
-pub fn read_data(path: &Path) -> PdfData {
+pub fn read_lhapdf_data(path: &Path) -> PdfData {
     let content = fs::read_to_string(path).unwrap();
     let mut subgrid_data = Vec::new();
     let mut flavors = Vec::new();
@@ -129,7 +129,7 @@ mod tests {
         "#;
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", yaml_content).unwrap();
-        let info = read_metadata(temp_file.path()).unwrap();
+        let info = read_lhapdf_metadata(temp_file.path()).unwrap();
 
         assert_eq!(info.set_desc, "NNPDF40_nnlo_as_01180");
         assert_eq!(info.set_index, 4000);
@@ -163,7 +163,7 @@ mod tests {
         "#;
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", data_content).unwrap();
-        let pdf_data = read_data(temp_file.path());
+        let pdf_data = read_lhapdf_data(temp_file.path());
 
         assert_eq!(pdf_data.flavors, vec![21, 1, 2]);
         assert_eq!(pdf_data.subgrid_data.len(), 2);
