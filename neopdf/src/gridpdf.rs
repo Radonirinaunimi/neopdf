@@ -7,7 +7,7 @@ use super::interpolation::{
     AlphaSCubicInterpolation, BilinearInterpolation, LogBicubicInterpolation,
     LogBilinearInterpolation,
 };
-use super::metadata::Info;
+use super::metadata::MetaData;
 use super::parser::SubgridData;
 
 /// Stores the PDF grid data for a single subgrid.
@@ -132,7 +132,7 @@ where
 
 /// Represents a Parton Distribution Function (PDF) grid, containing the PDF info, knot array, and interpolators.
 pub struct GridPDF {
-    info: Info,
+    info: MetaData,
     /// The underlying knot array containing the PDF grid data.
     pub knot_array: KnotArray,
     interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
@@ -148,7 +148,7 @@ impl GridPDF {
     ///
     /// * `info` - The `Info` struct containing metadata about the PDF set.
     /// * `knot_array` - The `KnotArray` containing the PDF grid data.
-    pub fn new(info: Info, knot_array: KnotArray) -> Self {
+    pub fn new(info: MetaData, knot_array: KnotArray) -> Self {
         let mut interpolators: Vec<Vec<Box<dyn DynInterpolator>>> = Vec::new();
         for subgrid in &knot_array.subgrids {
             let mut subgrid_interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
@@ -280,7 +280,7 @@ impl GridPDF {
     }
 
     /// Returns the metadata info of the PDF.
-    pub fn info(&self) -> Info {
+    pub fn info(&self) -> MetaData {
         self.info.clone()
     }
 }

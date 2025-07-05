@@ -1,4 +1,4 @@
-use super::metadata::Info;
+use super::metadata::MetaData;
 use std::fs;
 use std::path::Path;
 
@@ -22,7 +22,7 @@ pub struct PdfData {
 /// # Returns
 ///
 /// A `Result` containing the `Info` struct if successful, or a `serde_yaml::Error` otherwise.
-pub fn read_info(path: &Path) -> Result<Info, serde_yaml::Error> {
+pub fn read_info(path: &Path) -> Result<MetaData, serde_yaml::Error> {
     let content = fs::read_to_string(path).unwrap();
     serde_yaml::from_str(&content)
 }
