@@ -671,6 +671,12 @@ mod tests {
         InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap()
     }
 
+    fn create_target_data(max_num: i32) -> Vec<f64> {
+        (1..=max_num)
+            .flat_map(|i| (1..=max_num).map(move |j| (i * j) as f64))
+            .collect()
+    }
+
     fn assert_close(actual: f64, expected: f64, tolerance: f64) {
         assert!(
             (actual - expected).abs() < tolerance,
@@ -829,12 +835,11 @@ mod tests {
 
     #[test]
     fn test_calculate_ddx() {
+        let target_data = create_target_data(5);
         let data = create_test_data_2d(
             vec![1.0, 2.0, 3.0, 4.0, 5.0],
             vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            (1..=5)
-                .flat_map(|i| (1..=5).map(move |j| (i * j) as f64))
-                .collect(),
+            target_data.clone(),
         );
 
         // Test different difference types
@@ -855,9 +860,7 @@ mod tests {
         let data_log = create_test_data_2d(
             vec![1.0, 10.0, 100.0, 1000.0, 10000.0],
             vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            (1..=5)
-                .flat_map(|i| (1..=5).map(move |j| (i * j) as f64))
-                .collect(),
+            target_data,
         );
 
         let expected_ddx_log = 1.0 / LN_10;
@@ -867,12 +870,11 @@ mod tests {
 
     #[test]
     fn test_compute_polynomial_coefficients() {
+        let target_data = create_target_data(4);
         let data = create_test_data_2d(
             vec![1.0, 2.0, 3.0, 4.0],
             vec![1.0, 2.0, 3.0, 4.0],
-            (1..=4)
-                .flat_map(|i| (1..=4).map(move |j| (i * j) as f64))
-                .collect(),
+            target_data.clone(),
         );
 
         let coeffs = LogBicubicInterpolation::compute_polynomial_coefficients(&data, false);
@@ -888,9 +890,7 @@ mod tests {
         let data_log = create_test_data_2d(
             vec![1.0, 10.0, 100.0, 1000.0],
             vec![1.0, 2.0, 3.0, 4.0],
-            (1..=4)
-                .flat_map(|i| (1..=4).map(move |j| (i * j) as f64))
-                .collect(),
+            target_data,
         );
 
         let coeffs_log = LogBicubicInterpolation::compute_polynomial_coefficients(&data_log, true);
@@ -947,12 +947,11 @@ mod tests {
 
     #[test]
     fn test_log_bicubic_interpolation() {
+        let target_data = create_target_data(4);
         let data = create_test_data_2d(
             vec![1.0, 10.0, 100.0, 1000.0],
             vec![1.0, 10.0, 100.0, 1000.0],
-            vec![
-                1.0, 2.0, 3.0, 4.0, 2.0, 4.0, 6.0, 8.0, 3.0, 6.0, 9.0, 12.0, 4.0, 8.0, 12.0, 16.0,
-            ],
+            target_data,
         );
 
         let mut log_bicubic = LogBicubicInterpolation::default();
