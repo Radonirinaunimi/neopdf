@@ -2,28 +2,28 @@ use lhapdf_rust::*;
 use ndarray::Array3;
 use std::path::Path;
 
-static PRECISION: f64 = 1e-12;
+const PRECISION: f64 = 1e-12;
 
 #[test]
 fn test_xf_at_knots() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     let cases = vec![
-        (0, 0, 21, 0.14844111), // at the (x, Q) boundaries
-        (0, 0, 1, 1.4254154),   // at the (x, Q) boundaries
-        (0, 0, 2, 1.4257712),   // at the (x, Q) boundaries
-        (1, 0, 21, 0.15395356), // at the Q boundary
-        (1, 0, 1, 1.3883271),   // at the Q boundary
-        (1, 0, 2, 1.3887002),   // at the Q boundary
-        (1, 2, 21, -3.164867),
+        (0, 0, 1, 1.4254154), // at the (x, Q) boundaries
+        (0, 0, 2, 1.4257712), // at the (x, Q) boundaries
+        (1, 0, 1, 1.3883271), // at the Q boundary
+        (1, 0, 2, 1.3887002), // at the Q boundary
         (1, 2, 1, 1.9235433),
         (1, 2, 2, 1.9239212),
+        (1, 2, 21, -3.164867),
+        (0, 0, 21, 0.14844111), // at the (x, Q) boundaries
+        (1, 0, 21, 0.15395356), // at the Q boundary
     ];
 
     for (x_id, q_id, pid, expected) in cases {
         assert!(
-            (pdf.knot_array.xf(x_id, q_id, pid) - expected).abs() < PRECISION,
+            (pdf.xf(x_id, q_id, pid, 0) - expected).abs() < PRECISION,
             "Failed on knot (x, Q, pid)=({x_id}, {q_id}, {pid})"
         );
     }
@@ -32,15 +32,15 @@ fn test_xf_at_knots() {
 #[test]
 fn test_xfxq2_at_knots() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     let cases = vec![
         (21, 1e-9, 1.65 * 1.65, 0.14844111), // at the (x, Q2) boundaries
         (1, 1e-9, 1.65 * 1.65, 1.4254154),   // at the (x, Q2) boundaries
         (2, 1e-9, 1.65 * 1.65, 1.4257712),   // at the (x, Q2) boundaries
-        (21, 1.2970848e-9, 1.65 * 1.65, 0.15395356), // at the Q2 boundary
         (1, 1.2970848e-9, 1.65 * 1.65, 1.3883271), // at the Q2 boundary
         (2, 1.2970848e-9, 1.65 * 1.65, 1.3887002), // at the Q2 boundary
+        (21, 1.2970848e-9, 1.65 * 1.65, 0.15395356), // at the Q2 boundary
         (21, 1.2970848e-9, 1.9429053 * 1.9429053, -3.164867),
         (1, 1.2970848e-9, 1.9429053 * 1.9429053, 1.9235433),
         (2, 1.2970848e-9, 1.9429053 * 1.9429053, 1.9239212),
@@ -58,7 +58,7 @@ fn test_xfxq2_at_knots() {
 #[test]
 fn test_xfxq2_interpolations() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     let cases = vec![
         (21, 1e-3, 4.0, 3.316316680794655),
@@ -80,9 +80,18 @@ fn test_xfxq2_interpolations() {
 }
 
 #[test]
+#[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+fn test_xfxq2_extrapolations() {
+    let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
+    let pdf = PDF::load(pdf_set_path);
+
+    assert!((pdf.xfxq2(2, 1.0, 1e20 * 1e20) - 1e10).abs() < PRECISION);
+}
+
+#[test]
 fn test_alphas_q2_interpolations() {
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     let cases = vec![
         (1.65 * 1.65, 0.33074891), // at the lower Q2 boundary
@@ -202,7 +211,7 @@ pub fn test_xfxq2s() {
     ];
 
     let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = load(pdf_set_path);
+    let pdf = PDF::load(pdf_set_path);
 
     // Define the vectors of kinematics & flavours
     let ids = (-4..=4).filter(|&x| x != 0).collect();

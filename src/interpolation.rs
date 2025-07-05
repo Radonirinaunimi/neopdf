@@ -1,6 +1,6 @@
 use ndarray::{Data, RawDataClone};
 use ninterp::data::{InterpData1D, InterpData2D};
-use ninterp::error::InterpolateError;
+use ninterp::error::{InterpolateError, ValidateError};
 use ninterp::strategy::traits::{Strategy1D, Strategy2D};
 
 use crate::utils;
@@ -8,6 +8,31 @@ use crate::utils;
 /// Implements bilinear interpolation for 2D data.
 #[derive(Debug, Clone)]
 pub struct BilinearInterpolation;
+
+impl BilinearInterpolation {
+    /// Performs linear interpolation between two points.
+    ///
+    /// Given two points `(x1, y1)` and `(x2, y2)`, this function calculates the
+    /// y-value corresponding to a given `x` using linear interpolation.
+    ///
+    /// # Arguments
+    ///
+    /// * `x1` - The x-coordinate of the first point.
+    /// * `x2` - The x-coordinate of the second point.
+    /// * `y1` - The y-coordinate of the first point.
+    /// * `y2` - The y-coordinate of the second point.
+    /// * `x` - The x-coordinate at which to interpolate.
+    ///
+    /// # Returns
+    ///
+    /// The interpolated y-value.
+    fn linear_interpolate(x1: f64, x2: f64, y1: f64, y2: f64, x: f64) -> f64 {
+        if x1 == x2 {
+            return y1; // Avoid division by zero
+        }
+        y1 + (y2 - y1) * (x - x1) / (x2 - x1)
+    }
+}
 
 impl<D> Strategy2D<D> for BilinearInterpolation
 where
@@ -49,11 +74,11 @@ where
 
         // Perform bilinear interpolation
         // First, interpolate in x-direction
-        let r1 = utils::linear_interpolate(x1, x2, q11, q21, x);
-        let r2 = utils::linear_interpolate(x1, x2, q12, q22, x);
+        let r1 = Self::linear_interpolate(x1, x2, q11, q21, x);
+        let r2 = Self::linear_interpolate(x1, x2, q12, q22, x);
 
         // Then interpolate in y-direction
-        let result = utils::linear_interpolate(y1, y2, r1, r2, y);
+        let result = Self::linear_interpolate(y1, y2, r1, r2, y);
 
         Ok(result)
     }
@@ -84,13 +109,13 @@ where
     /// # Arguments
     ///
     /// * `data` - The interpolation data to validate.
-    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ninterp::error::ValidateError> {
+    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
         // Get the coordinate arrays and data values
         let x_coords = data.grid[0].as_slice().unwrap();
         let y_coords = data.grid[1].as_slice().unwrap();
 
         if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
-            return Err(ninterp::error::ValidateError::Other(
+            return Err(ValidateError::Other(
                 "The input values must be positive for logarithmic scaling".to_string(),
             ));
         }
@@ -111,7 +136,7 @@ where
         &self,
         data: &InterpData2D<D>,
         point: &[f64; 2],
-    ) -> Result<f64, ninterp::error::InterpolateError> {
+    ) -> Result<f64, InterpolateError> {
         let [x, y] = *point;
 
         // Get the coordinate arrays and data values
@@ -184,82 +209,79 @@ pub struct LogBicubicInterpolation {
     coeffs: Vec<f64>,
 }
 
-impl<D> Strategy2D<D> for LogBicubicInterpolation
-where
-    D: Data<Elem = f64> + RawDataClone + Clone,
-{
-    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ninterp::error::ValidateError> {
-        // Get the coordinate arrays and data values
-        let x_coords = data.grid[0].as_slice().unwrap();
-        let y_coords = data.grid[1].as_slice().unwrap();
-
-        if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
-            return Err(ninterp::error::ValidateError::Other(
-                "The input values must be positive for logarithmic scaling".to_string(),
-            ));
-        }
-
-        // Check that we have at least 4x4 grid for bicubic interpolation
-        if x_coords.len() < 4 || y_coords.len() < 4 {
-            return Err(ninterp::error::ValidateError::Other(
-                "Need at least 4x4 grid for bicubic interpolation".to_string(),
-            ));
-        }
-
-        self.coeffs = Self::_compute_polynomial_coefficients(data, true);
-        Ok(())
-    }
-
-    fn interpolate(
-        &self,
-        data: &InterpData2D<D>,
-        point: &[f64; 2],
-    ) -> Result<f64, ninterp::error::InterpolateError> {
-        let [x, y] = *point;
-
-        // Get the coordinate arrays and data values
-        let x_coords = data.grid[0].as_slice().unwrap();
-        let y_coords = data.grid[1].as_slice().unwrap();
-
-        // Transform coordinates to log space
-        let log_x = x.ln();
-        let log_y = y.ln();
-
-        // Transform grid coordinates to log space
-        let log_x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
-        let log_y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
-
-        // Find the grid cell containing the point
-        let i = utils::find_bicubic_interval(&log_x_grid, log_x)?;
-        let j = utils::find_bicubic_interval(&log_y_grid, log_y)?;
-
-        // Normalize coordinates to [0,1] within the central cell
-        let dx = log_x_grid[i + 1] - log_x_grid[i];
-        let dy = log_y_grid[j + 1] - log_y_grid[j];
-
-        if dx == 0.0 || dy == 0.0 {
-            return Err(ninterp::error::InterpolateError::Other(
-                "Grid spacing is zero".to_string(),
-            ));
-        }
-
-        let u = (log_x - log_x_grid[i]) / dx;
-        let v = (log_y - log_y_grid[j]) / dy;
-
-        // Perform bicubic interpolation using pre-computed coefficients
-        let result = self.interpolate_with_coeffs(data, i, j, u, v);
-
-        Ok(result)
-    }
-
-    fn allow_extrapolate(&self) -> bool {
-        false
-    }
-}
-
 impl LogBicubicInterpolation {
+    /// Find the interval for bicubic interpolation
+    /// Returns the index i such that we can use points [i-1, i, i+1, i+2] for interpolation
+    fn find_bicubic_interval(coords: &[f64], x: f64) -> Result<usize, InterpolateError> {
+        // Find the interval [i, i+1] such that coords[i] <= x < coords[i+1]
+        let i = utils::find_interval_index(coords, x)?;
+        Ok(i)
+    }
+
+    /// Cubic interpolation using a passed array of coefficients (a*x^3 + b*x^2 + c*x + d)
+    pub fn hermite_cubic_interpolate_from_coeffs(t: f64, coeffs: &[f64; 4]) -> f64 {
+        let x = t;
+        let x2 = x * x;
+        let x3 = x2 * x;
+        coeffs[0] * x3 + coeffs[1] * x2 + coeffs[2] * x + coeffs[3]
+    }
+
+    /// Calculates the derivative with respect to x (or log(x)) at a given knot.
+    /// This mirrors the _ddx function in LHAPDF's C++ implementation.
+    pub fn calculate_ddx<D>(data: &InterpData2D<D>, ix: usize, iq2: usize, logspace: bool) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let nxknots = data.grid[0].len();
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let log_x_coords: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
+        let values = &data.values;
+
+        let (del1, del2) = if logspace {
+            let d1 = if ix == 0 {
+                0.0
+            } else {
+                log_x_coords[ix] - log_x_coords[ix - 1]
+            };
+            let d2 = if ix == nxknots - 1 {
+                0.0
+            } else {
+                log_x_coords[ix + 1] - log_x_coords[ix]
+            };
+            (d1, d2)
+        } else {
+            let d1 = if ix == 0 {
+                0.0
+            } else {
+                x_coords[ix] - x_coords[ix - 1]
+            };
+            let d2 = if ix == nxknots - 1 {
+                0.0
+            } else {
+                x_coords[ix + 1] - x_coords[ix]
+            };
+            (d1, d2)
+        };
+
+        if ix != 0 && ix != nxknots - 1 {
+            // Central difference
+            let lddx = (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1;
+            let rddx = (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2;
+            (lddx + rddx) / 2.0
+        } else if ix == 0 {
+            // Forward difference
+            (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2
+        } else if ix == nxknots - 1 {
+            // Backward difference
+            (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1
+        } else {
+            // This case should ideally not be reached given the checks above
+            panic!("Should not reach here: Invalid index for derivative calculation.");
+        }
+    }
+
     /// Computes the polynomial coefficients for bicubic interpolation, mirroring LHAPDF's C++ implementation.
-    fn _compute_polynomial_coefficients<D>(data: &InterpData2D<D>, logspace: bool) -> Vec<f64>
+    fn compute_polynomial_coefficients<D>(data: &InterpData2D<D>, logspace: bool) -> Vec<f64>
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
@@ -281,8 +303,8 @@ impl LogBicubicInterpolation {
 
                 let vl = values[[ix, iq2]];
                 let vh = values[[ix + 1, iq2]];
-                let vdl = utils::calculate_ddx(data, ix, iq2, logspace) * dlogx;
-                let vdh = utils::calculate_ddx(data, ix + 1, iq2, logspace) * dlogx;
+                let vdl = Self::calculate_ddx(data, ix, iq2, logspace) * dlogx;
+                let vdh = Self::calculate_ddx(data, ix + 1, iq2, logspace) * dlogx;
 
                 // polynomial coefficients
                 let a = vdh + vdl - 2.0 * vh + 2.0 * vl;
@@ -319,13 +341,13 @@ impl LogBicubicInterpolation {
         let coeffs_vl: [f64; 4] = self.coeffs[base_idx_vl..base_idx_vl + 4]
             .try_into()
             .unwrap();
-        let vl = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vl);
+        let vl = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vl);
 
         let base_idx_vh = (ix * nq2knots + iq2 + 1) * 4;
         let coeffs_vh: [f64; 4] = self.coeffs[base_idx_vh..base_idx_vh + 4]
             .try_into()
             .unwrap();
-        let vh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vh);
+        let vh = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vh);
 
         // Derivatives in Q2 (y-interpolation)
         let log_q2_grid: Vec<f64> = data.grid[1]
@@ -348,7 +370,7 @@ impl LogBicubicInterpolation {
             let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4]
                 .try_into()
                 .unwrap();
-            let vhh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
+            let vhh = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
             let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
             vdh = (vdl + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
         } else if iq2 == nq2knots - 2 {
@@ -359,7 +381,7 @@ impl LogBicubicInterpolation {
             let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4]
                 .try_into()
                 .unwrap();
-            let vll = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
+            let vll = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
             let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
             vdl = (vdh + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
         } else {
@@ -368,14 +390,14 @@ impl LogBicubicInterpolation {
             let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4]
                 .try_into()
                 .unwrap();
-            let vll = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
+            let vll = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
             let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
 
             let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
             let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4]
                 .try_into()
                 .unwrap();
-            let vhh = utils::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
+            let vhh = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
             let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
 
             vdl = ((vh - vl) + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
@@ -383,6 +405,77 @@ impl LogBicubicInterpolation {
         }
 
         utils::hermite_cubic_interpolate(v, vl, vdl, vh, vdh)
+    }
+}
+
+impl<D> Strategy2D<D> for LogBicubicInterpolation
+where
+    D: Data<Elem = f64> + RawDataClone + Clone,
+{
+    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
+        // Get the coordinate arrays and data values
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+
+        if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
+            return Err(ValidateError::Other(
+                "The input values must be positive for logarithmic scaling".to_string(),
+            ));
+        }
+
+        // Check that we have at least 4x4 grid for bicubic interpolation
+        if x_coords.len() < 4 || y_coords.len() < 4 {
+            return Err(ValidateError::Other(
+                "Need at least 4x4 grid for bicubic interpolation".to_string(),
+            ));
+        }
+
+        self.coeffs = Self::compute_polynomial_coefficients(data, true);
+        Ok(())
+    }
+
+    fn interpolate(
+        &self,
+        data: &InterpData2D<D>,
+        point: &[f64; 2],
+    ) -> Result<f64, InterpolateError> {
+        let [x, y] = *point;
+
+        // Get the coordinate arrays and data values
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+
+        // Transform coordinates to log space
+        let log_x = x.ln();
+        let log_y = y.ln();
+
+        // Transform grid coordinates to log space
+        let log_x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
+        let log_y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
+
+        // Find the grid cell containing the point
+        let i = Self::find_bicubic_interval(&log_x_grid, log_x)?;
+        let j = Self::find_bicubic_interval(&log_y_grid, log_y)?;
+
+        // Normalize coordinates to [0,1] within the central cell
+        let dx = log_x_grid[i + 1] - log_x_grid[i];
+        let dy = log_y_grid[j + 1] - log_y_grid[j];
+
+        if dx == 0.0 || dy == 0.0 {
+            return Err(InterpolateError::Other("Grid spacing is zero".to_string()));
+        }
+
+        let u = (log_x - log_x_grid[i]) / dx;
+        let v = (log_y - log_y_grid[j]) / dy;
+
+        // Perform bicubic interpolation using pre-computed coefficients
+        let result = self.interpolate_with_coeffs(data, i, j, u, v);
+
+        Ok(result)
+    }
+
+    fn allow_extrapolate(&self) -> bool {
+        false
     }
 }
 
@@ -419,15 +512,26 @@ impl AlphaSCubicInterpolation {
         }
 
         // Find the closest knot below the requested value
-        match q2s.binary_search_by(|q2_val| q2_val.partial_cmp(&q2).unwrap()) {
-            Ok(idx) => {
-                if idx == q2s.len() - 1 && q2s.len() >= 2 {
-                    idx - 1
-                } else {
-                    idx
-                }
+        let idx = q2s.partition_point(|&x| x < q2);
+
+        if idx == q2s.len() {
+            // q2 is greater than or equal to the last element.
+            // Since we already checked q2 > last element, it must be equal.
+            // For interpolation, we need the interval [idx-1, idx].
+            idx - 1
+        } else if (q2s[idx] - q2).abs() < 1e-9 {
+            // q2 is exactly a knot.
+            // If it's the last knot, we need the interval [idx-1, idx].
+            // Otherwise, we use the knot itself as the lower bound of the interval.
+            if idx == q2s.len() - 1 && q2s.len() >= 2 {
+                idx - 1
+            } else {
+                idx
             }
-            Err(idx) => idx - 1,
+        } else {
+            // q2 is between two knots.
+            // idx is the first element greater than q2, so idx-1 is the lower bound.
+            idx - 1
         }
     }
 
@@ -542,75 +646,109 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::Array1;
-    use ndarray::Array2;
-    use ninterp::data::InterpData1D;
-    use ninterp::data::InterpData2D;
+    use ndarray::{Array1, Array2, OwnedRepr};
+    use ninterp::data::{InterpData1D, InterpData2D};
+
+    // Helper constants for commonly used values
+    const EPSILON: f64 = 1e-9;
+    const LN_10: f64 = std::f64::consts::LN_10;
+
+    // Helper functions to reduce code duplication
+    fn create_test_data_2d(
+        x_coords: Vec<f64>,
+        y_coords: Vec<f64>,
+        values: Vec<f64>,
+    ) -> InterpData2D<OwnedRepr<f64>> {
+        let shape = (x_coords.len(), y_coords.len());
+        let values_array = Array2::from_shape_vec(shape, values).unwrap();
+        InterpData2D::new(x_coords.into(), y_coords.into(), values_array).unwrap()
+    }
+
+    fn create_test_data_1d(
+        q2_values: Vec<f64>,
+        alphas_vals: Vec<f64>,
+    ) -> InterpData1D<OwnedRepr<f64>> {
+        InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap()
+    }
+
+    fn assert_close(actual: f64, expected: f64, tolerance: f64) {
+        assert!(
+            (actual - expected).abs() < tolerance,
+            "Expected {}, got {} (diff: {})",
+            expected,
+            actual,
+            (actual - expected).abs()
+        );
+    }
+
+    #[test]
+    fn test_linear_interpolate() {
+        let test_cases = [
+            // (x1, x2, y1, y2, x, expected)
+            (0.0, 1.0, 0.0, 10.0, 0.5, 5.0),
+            (0.0, 10.0, 0.0, 100.0, 2.5, 25.0),
+            (0.0, 1.0, 0.0, 10.0, 0.0, 0.0),   // At start endpoint
+            (0.0, 1.0, 0.0, 10.0, 1.0, 10.0),  // At end endpoint
+            (5.0, 5.0, 10.0, 20.0, 5.0, 10.0), // x1 == x2 case
+        ];
+
+        for (x1, x2, y1, y2, x, expected) in test_cases {
+            let result = BilinearInterpolation::linear_interpolate(x1, x2, y1, y2, x);
+            assert_close(result, expected, EPSILON);
+        }
+    }
 
     #[test]
     fn test_bilinear_interpolation() {
-        let x_coords = vec![0.0, 1.0, 2.0];
-        let y_coords = vec![0.0, 1.0, 2.0];
-        let values =
-            Array2::from_shape_vec((3, 3), vec![0.0, 1.0, 2.0, 1.0, 2.0, 3.0, 2.0, 3.0, 4.0])
-                .unwrap();
+        let data = create_test_data_2d(
+            vec![0.0, 1.0, 2.0],
+            vec![0.0, 1.0, 2.0],
+            vec![0.0, 1.0, 2.0, 1.0, 2.0, 3.0, 2.0, 3.0, 4.0],
+        );
 
-        let data = InterpData2D::new(x_coords.into(), y_coords.into(), values).unwrap();
-        let bilinear = BilinearInterpolation;
+        let test_cases = [
+            ([0.5, 0.5], 1.0),
+            ([1.0, 1.0], 2.0), // Grid point
+            ([0.25, 0.75], 1.0),
+        ];
 
-        // Test at a known point within a cell
-        let point = [0.5, 0.5];
-        let result = bilinear.interpolate(&data, &point).unwrap();
-        assert!((result - 1.0).abs() < 1e-9);
-
-        // Test at a grid point
-        let point = [1.0, 1.0];
-        let result = bilinear.interpolate(&data, &point).unwrap();
-        assert!((result - 2.0).abs() < 1e-9);
-
-        // Test another point
-        let point = [0.25, 0.75];
-        let result = bilinear.interpolate(&data, &point).unwrap();
-        assert!((result - 1.0).abs() < 1e-9);
+        for (point, expected) in test_cases {
+            let result = BilinearInterpolation.interpolate(&data, &point).unwrap();
+            assert_close(result, expected, EPSILON);
+        }
     }
 
     #[test]
     fn test_log_bilinear_interpolation() {
-        let x_coords = vec![1.0, 10.0, 100.0];
-        let y_coords = vec![1.0, 10.0, 100.0];
-        let values =
-            Array2::from_shape_vec((3, 3), vec![0.0, 1.0, 2.0, 1.0, 2.0, 3.0, 2.0, 3.0, 4.0])
-                .unwrap();
+        let data = create_test_data_2d(
+            vec![1.0, 10.0, 100.0],
+            vec![1.0, 10.0, 100.0],
+            vec![0.0, 1.0, 2.0, 1.0, 2.0, 3.0, 2.0, 3.0, 4.0],
+        );
+        LogBilinearInterpolation.init(&data).unwrap();
 
-        let data = InterpData2D::new(x_coords.into(), y_coords.into(), values).unwrap();
-        let mut log_bilinear = LogBilinearInterpolation;
-        log_bilinear.init(&data).unwrap();
+        let test_cases = [
+            ([3.16227766, 3.16227766], 1.0), // sqrt(10)
+            ([10.0, 10.0], 2.0),             // Grid point
+            ([1.77827941, 5.62341325], 1.0), // 10^0.25, 10^0.75
+        ];
 
-        // Test at a known point within a cell (log(x)=0.5, log(y)=0.5)
-        let point = [3.16227766, 3.16227766]; // sqrt(10)
-        let result = log_bilinear.interpolate(&data, &point).unwrap();
-        assert!((result - 1.0).abs() < 1e-9);
-
-        // Test at a grid point
-        let point = [10.0, 10.0];
-        let result = log_bilinear.interpolate(&data, &point).unwrap();
-        assert!((result - 2.0).abs() < 1e-9);
-
-        // Test another point
-        let point = [1.77827941, 5.62341325]; // 10^0.25, 10^0.75
-        let result = log_bilinear.interpolate(&data, &point).unwrap();
-        assert!((result - 1.0).abs() < 1e-9);
+        for (point, expected) in test_cases {
+            let result = LogBilinearInterpolation.interpolate(&data, &point).unwrap();
+            assert_close(result, expected, EPSILON);
+        }
     }
 
     #[test]
     fn test_log_bilinear_init_validation() {
-        let x_coords = vec![0.0, 1.0, 2.0]; // Contains non-positive value
-        let y_coords = vec![1.0, 2.0, 3.0];
-        let values = Array2::from_elem((3, 3), 0.0);
+        let invalid_data = create_test_data_2d(
+            vec![0.0, 1.0, 2.0],  // Contains zero-valued
+            vec![-1.0, 2.0, 3.0], // contains negative alue
+            vec![0.0; 9],
+        );
 
-        let data = InterpData2D::new(x_coords.into(), y_coords.into(), values).unwrap();
-        let mut log_bilinear = LogBilinearInterpolation;
-        let result = log_bilinear.init(&data);
+        let result = LogBilinearInterpolation.init(&invalid_data);
+
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err().to_string(),
@@ -623,29 +761,283 @@ mod tests {
         let q_values = [1.0, 2.0, 3.0, 4.0, 5.0];
         let alphas_vals = vec![0.1, 0.11, 0.12, 0.13, 0.14];
         let q2_values: Vec<f64> = q_values.iter().map(|&q| q * q).collect();
-
-        let data = InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap();
+        let data = create_test_data_1d(q2_values, alphas_vals);
         let alphas_cubic = AlphaSCubicInterpolation;
 
-        // Test within the interpolation range
-        let q2_interp = 2.25; // Q=1.5
-        let result = alphas_cubic.interpolate(&data, &[q2_interp]).unwrap();
-        // The exact value depends on the cubic spline, but we can check if it's within bounds
+        // Test within interpolation range
+        let result = alphas_cubic.interpolate(&data, &[2.25]).unwrap(); // Q=1.5
         assert!(result > 0.1 && result < 0.14);
 
-        // Test at a grid point
-        let q2_grid = 4.0; // Q=2.0
-        let result = alphas_cubic.interpolate(&data, &[q2_grid]).unwrap();
-        assert!((result - 0.11).abs() < 1e-9);
+        // Test at grid point
+        let result = alphas_cubic.interpolate(&data, &[4.0]).unwrap(); // Q=2.0
+        assert_close(result, 0.11, EPSILON);
 
-        // Test extrapolation below the range
-        let q2_below = 0.5; // Q=sqrt(0.5)
-        let result_below = alphas_cubic.interpolate(&data, &[q2_below]).unwrap();
-        assert!(result_below < 0.1);
+        // Test extrapolation below range
+        let result = alphas_cubic.interpolate(&data, &[0.5]).unwrap(); // Q=sqrt(0.5)
+        assert!(result < 0.1);
 
-        // Test extrapolation above the range
-        let q2_above = 30.0; // Q=sqrt(30)
-        let result_above = alphas_cubic.interpolate(&data, &[q2_above]).unwrap();
-        assert!((result_above - 0.14).abs() < 1e-9);
+        // Test extrapolation above range
+        let result = alphas_cubic.interpolate(&data, &[30.0]).unwrap(); // Q=sqrt(30)
+        assert_close(result, 0.14, EPSILON);
+    }
+
+    #[test]
+    fn test_find_bicubic_interval() {
+        let coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+
+        let test_cases = [
+            (1.5, Ok(0)),
+            (3.5, Ok(2)),
+            (2.0, Ok(1)),   // At knot point
+            (1.0, Ok(0)),   // At boundary
+            (4.99, Ok(3)),  // Near boundary
+            (0.5, Err(())), // Out of bounds
+            (5.5, Err(())), // Out of bounds
+        ];
+
+        for (value, expected) in test_cases {
+            let result = LogBicubicInterpolation::find_bicubic_interval(&coords, value);
+            match expected {
+                Ok(expected_idx) => assert_eq!(result.unwrap(), expected_idx),
+                Err(_) => assert!(result.is_err()),
+            }
+        }
+    }
+
+    #[test]
+    fn test_hermite_cubic_interpolate_from_coeffs() {
+        let test_cases = [
+            // Linear function x: coeffs = [0, 0, 1, 0]
+            ([0.0, 0.0, 1.0, 0.0], 0.5, 0.5),
+            ([0.0, 0.0, 1.0, 0.0], 1.0, 1.0),
+            // Constant function 5: coeffs = [0, 0, 0, 5]
+            ([0.0, 0.0, 0.0, 5.0], 0.5, 5.0),
+            // Cubic function x^3: coeffs = [1, 0, 0, 0]
+            ([1.0, 0.0, 0.0, 0.0], 2.0, 8.0),
+            ([1.0, 0.0, 0.0, 0.0], 0.5, 0.125),
+            // Complex polynomial 2x^3 - 3x^2 + x + 4
+            ([2.0, -3.0, 1.0, 4.0], 1.0, 4.0),
+            ([2.0, -3.0, 1.0, 4.0], 0.0, 4.0),
+            ([2.0, -3.0, 1.0, 4.0], 2.0, 10.0),
+        ];
+
+        for (coeffs, x, expected) in test_cases {
+            let result = LogBicubicInterpolation::hermite_cubic_interpolate_from_coeffs(x, &coeffs);
+            assert_close(result, expected, EPSILON);
+        }
+    }
+
+    #[test]
+    fn test_calculate_ddx() {
+        let data = create_test_data_2d(
+            vec![1.0, 2.0, 3.0, 4.0, 5.0],
+            vec![1.0, 2.0, 3.0, 4.0, 5.0],
+            (1..=5)
+                .flat_map(|i| (1..=5).map(move |j| (i * j) as f64))
+                .collect(),
+        );
+
+        // Test different difference types
+        assert_eq!(
+            LogBicubicInterpolation::calculate_ddx(&data, 1, 0, false),
+            1.0
+        ); // Central
+        assert_eq!(
+            LogBicubicInterpolation::calculate_ddx(&data, 0, 0, false),
+            1.0
+        ); // Forward
+        assert_eq!(
+            LogBicubicInterpolation::calculate_ddx(&data, 4, 0, false),
+            1.0
+        ); // Backward
+
+        // Test with logarithmic spacing
+        let data_log = create_test_data_2d(
+            vec![1.0, 10.0, 100.0, 1000.0, 10000.0],
+            vec![1.0, 2.0, 3.0, 4.0, 5.0],
+            (1..=5)
+                .flat_map(|i| (1..=5).map(move |j| (i * j) as f64))
+                .collect(),
+        );
+
+        let expected_ddx_log = 1.0 / LN_10;
+        let result = LogBicubicInterpolation::calculate_ddx(&data_log, 1, 0, true);
+        assert_close(result, expected_ddx_log, EPSILON);
+    }
+
+    #[test]
+    fn test_compute_polynomial_coefficients() {
+        let data = create_test_data_2d(
+            vec![1.0, 2.0, 3.0, 4.0],
+            vec![1.0, 2.0, 3.0, 4.0],
+            (1..=4)
+                .flat_map(|i| (1..=4).map(move |j| (i * j) as f64))
+                .collect(),
+        );
+
+        let coeffs = LogBicubicInterpolation::compute_polynomial_coefficients(&data, false);
+        assert_eq!(coeffs.len(), 48); // (4-1) * 4 * 4
+
+        // Test specific coefficients for cell (0,0) -> (1,0)
+        let expected_coeffs = [0.0, 0.0, 1.0, 1.0]; // [a, b, c, d]
+        for (i, &expected) in expected_coeffs.iter().enumerate() {
+            assert_close(coeffs[i], expected, EPSILON);
+        }
+
+        // Test with logarithmic spacing
+        let data_log = create_test_data_2d(
+            vec![1.0, 10.0, 100.0, 1000.0],
+            vec![1.0, 2.0, 3.0, 4.0],
+            (1..=4)
+                .flat_map(|i| (1..=4).map(move |j| (i * j) as f64))
+                .collect(),
+        );
+
+        let coeffs_log = LogBicubicInterpolation::compute_polynomial_coefficients(&data_log, true);
+        assert_eq!(coeffs_log.len(), 48);
+
+        // Coefficients should be similar for this linear example
+        for (i, &expected) in expected_coeffs.iter().enumerate() {
+            assert_close(coeffs_log[i], expected, EPSILON);
+        }
+    }
+
+    #[test]
+    fn test_log_bicubic_init_validation() {
+        let test_cases = [
+            // Non-positive x_coords
+            (vec![-1.0, 1.0, 2.0, 3.0], vec![1.0, 2.0, 3.0, 4.0]),
+            // Non-positive y_coords
+            (vec![1.0, 2.0, 3.0, 4.0], vec![-1.0, 2.0, 3.0, 4.0]),
+        ];
+
+        for (x_coords, y_coords) in test_cases {
+            let data = create_test_data_2d(x_coords, y_coords, vec![0.0; 16]);
+            let mut log_bicubic = LogBicubicInterpolation::default();
+            let result = log_bicubic.init(&data);
+
+            assert!(result.is_err());
+            assert_eq!(
+                result.unwrap_err().to_string(),
+                "The input values must be positive for logarithmic scaling"
+            );
+        }
+
+        // Test insufficient grid size
+        let data_small =
+            create_test_data_2d(vec![1.0, 2.0, 3.0], vec![1.0, 2.0, 3.0], vec![0.0; 9]);
+        let mut log_bicubic = LogBicubicInterpolation::default();
+        let result = log_bicubic.init(&data_small);
+
+        assert!(result.is_err());
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Need at least 4x4 grid for bicubic interpolation"
+        );
+
+        // Test valid data
+        let data_valid = create_test_data_2d(
+            vec![1.0, 2.0, 3.0, 4.0],
+            vec![1.0, 2.0, 3.0, 4.0],
+            vec![0.0; 16],
+        );
+        let mut log_bicubic = LogBicubicInterpolation::default();
+        assert!(log_bicubic.init(&data_valid).is_ok());
+    }
+
+    #[test]
+    fn test_log_bicubic_interpolation() {
+        let data = create_test_data_2d(
+            vec![1.0, 10.0, 100.0, 1000.0],
+            vec![1.0, 10.0, 100.0, 1000.0],
+            vec![
+                1.0, 2.0, 3.0, 4.0, 2.0, 4.0, 6.0, 8.0, 3.0, 6.0, 9.0, 12.0, 4.0, 8.0, 12.0, 16.0,
+            ],
+        );
+
+        let mut log_bicubic = LogBicubicInterpolation::default();
+        log_bicubic.init(&data).unwrap();
+
+        let test_cases = [
+            ([10.0, 10.0], 4.0),              // Grid point
+            ([3.16227766, 3.16227766], 2.25), // sqrt(10)
+            ([31.6227766, 31.6227766], 6.25), // 10^1.5
+        ];
+
+        for (point, expected) in test_cases {
+            let result = log_bicubic.interpolate(&data, &point).unwrap();
+            assert_close(result, expected, EPSILON);
+        }
+    }
+
+    #[test]
+    fn test_ddlogq_derivatives() {
+        let data = create_test_data_1d(vec![1.0, 2.0, 3.0, 4.0], vec![0.1, 0.2, 0.3, 0.4]);
+
+        // Forward derivative
+        let expected_forward = 0.1 / 2.0f64.ln();
+        assert_close(
+            AlphaSCubicInterpolation::ddlogq_forward(&data, 0),
+            expected_forward,
+            EPSILON,
+        );
+
+        // Backward derivative
+        let expected_backward = 0.1 / 2.0f64.ln();
+        assert_close(
+            AlphaSCubicInterpolation::ddlogq_backward(&data, 1),
+            expected_backward,
+            EPSILON,
+        );
+
+        // Central derivative
+        let expected_central =
+            0.5 * (0.1 / (3.0f64.ln() - 2.0f64.ln()) + 0.1 / (2.0f64.ln() - 1.0f64.ln()));
+        assert_close(
+            AlphaSCubicInterpolation::ddlogq_central(&data, 1),
+            expected_central,
+            EPSILON,
+        );
+    }
+
+    #[test]
+    fn test_iq2below() {
+        let data =
+            create_test_data_1d(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![0.1, 0.2, 0.3, 0.4, 0.5]);
+
+        let test_cases = [
+            (1.5, 0),
+            (2.0, 1),
+            (3.9, 2), // Within range
+            (1.0, 0),
+            (5.0, 3), // At boundaries
+        ];
+
+        for (q2_val, expected_idx) in test_cases {
+            assert_eq!(
+                AlphaSCubicInterpolation::iq2below(&data, q2_val),
+                expected_idx
+            );
+        }
+
+        // Test edge cases with different data sizes
+        let data_small = create_test_data_1d(vec![1.0, 2.0], vec![0.1, 0.2]);
+        assert_eq!(AlphaSCubicInterpolation::iq2below(&data_small, 2.0), 0);
+
+        let data_with_mid = create_test_data_1d(vec![1.0, 2.0, 3.0], vec![0.1, 0.2, 0.3]);
+        assert_eq!(AlphaSCubicInterpolation::iq2below(&data_with_mid, 2.0), 1);
+
+        // Test panic conditions
+        let data_single = create_test_data_1d(vec![1.0], vec![0.1]);
+
+        let result = std::panic::catch_unwind(|| {
+            AlphaSCubicInterpolation::iq2below(&data_single, 0.5);
+        });
+        assert!(result.is_err());
+
+        let result = std::panic::catch_unwind(|| {
+            AlphaSCubicInterpolation::iq2below(&data_single, 1.5);
+        });
+        assert!(result.is_err());
     }
 }
