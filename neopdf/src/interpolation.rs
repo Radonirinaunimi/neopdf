@@ -2,11 +2,12 @@ use ndarray::{Data, RawDataClone};
 use ninterp::data::{InterpData1D, InterpData2D};
 use ninterp::error::{InterpolateError, ValidateError};
 use ninterp::strategy::traits::{Strategy1D, Strategy2D};
+use serde::{Deserialize, Serialize};
 
 use super::utils;
 
 /// Implements bilinear interpolation for 2D data.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BilinearInterpolation;
 
 impl BilinearInterpolation {
@@ -94,7 +95,7 @@ where
 /// This strategy transforms the input coordinates to their natural logarithms
 /// before performing bilinear interpolation, which is suitable for data
 /// that is linear in log-log space.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LogBilinearInterpolation;
 
 impl<D> Strategy2D<D> for LogBilinearInterpolation
@@ -204,7 +205,7 @@ where
 ///
 /// Bicubic interpolation uses a 4x4 grid of points around the interpolation point
 /// and provides C1 continuity (continuous first derivatives).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct LogBicubicInterpolation {
     coeffs: Vec<f64>,
 }
@@ -483,7 +484,7 @@ where
 ///
 /// This strategy handles the specific extrapolation and interpolation rules
 /// for alpha_s as defined in LHAPDF.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct AlphaSCubicInterpolation;
 
 impl AlphaSCubicInterpolation {
