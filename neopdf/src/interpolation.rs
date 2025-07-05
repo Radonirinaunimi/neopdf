@@ -2,11 +2,12 @@ use ndarray::{Data, RawDataClone};
 use ninterp::data::{InterpData1D, InterpData2D};
 use ninterp::error::{InterpolateError, ValidateError};
 use ninterp::strategy::traits::{Strategy1D, Strategy2D};
+use serde::{Deserialize, Serialize};
 
-use crate::utils;
+use super::utils;
 
 /// Implements bilinear interpolation for 2D data.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BilinearInterpolation;
 
 impl BilinearInterpolation {
@@ -94,7 +95,7 @@ where
 /// This strategy transforms the input coordinates to their natural logarithms
 /// before performing bilinear interpolation, which is suitable for data
 /// that is linear in log-log space.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LogBilinearInterpolation;
 
 impl<D> Strategy2D<D> for LogBilinearInterpolation
@@ -204,7 +205,7 @@ where
 ///
 /// Bicubic interpolation uses a 4x4 grid of points around the interpolation point
 /// and provides C1 continuity (continuous first derivatives).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct LogBicubicInterpolation {
     coeffs: Vec<f64>,
 }
@@ -483,7 +484,7 @@ where
 ///
 /// This strategy handles the specific extrapolation and interpolation rules
 /// for alpha_s as defined in LHAPDF.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct AlphaSCubicInterpolation;
 
 impl AlphaSCubicInterpolation {
@@ -671,6 +672,12 @@ mod tests {
         InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap()
     }
 
+    fn create_target_data(max_num: i32) -> Vec<f64> {
+        (1..=max_num)
+            .flat_map(|i| (1..=max_num).map(move |j| (i * j) as f64))
+            .collect()
+    }
+
     fn assert_close(actual: f64, expected: f64, tolerance: f64) {
         assert!(
             (actual - expected).abs() < tolerance,
@@ -829,12 +836,11 @@ mod tests {
 
     #[test]
     fn test_calculate_ddx() {
+        let target_data = create_target_data(5);
         let data = create_test_data_2d(
             vec![1.0, 2.0, 3.0, 4.0, 5.0],
             vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            (1..=5)
-                .flat_map(|i| (1..=5).map(move |j| (i * j) as f64))
-                .collect(),
+            target_data.clone(),
         );
 
         // Test different difference types
@@ -855,9 +861,7 @@ mod tests {
         let data_log = create_test_data_2d(
             vec![1.0, 10.0, 100.0, 1000.0, 10000.0],
             vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            (1..=5)
-                .flat_map(|i| (1..=5).map(move |j| (i * j) as f64))
-                .collect(),
+            target_data,
         );
 
         let expected_ddx_log = 1.0 / LN_10;
@@ -867,12 +871,11 @@ mod tests {
 
     #[test]
     fn test_compute_polynomial_coefficients() {
+        let target_data = create_target_data(4);
         let data = create_test_data_2d(
             vec![1.0, 2.0, 3.0, 4.0],
             vec![1.0, 2.0, 3.0, 4.0],
-            (1..=4)
-                .flat_map(|i| (1..=4).map(move |j| (i * j) as f64))
-                .collect(),
+            target_data.clone(),
         );
 
         let coeffs = LogBicubicInterpolation::compute_polynomial_coefficients(&data, false);
@@ -888,9 +891,7 @@ mod tests {
         let data_log = create_test_data_2d(
             vec![1.0, 10.0, 100.0, 1000.0],
             vec![1.0, 2.0, 3.0, 4.0],
-            (1..=4)
-                .flat_map(|i| (1..=4).map(move |j| (i * j) as f64))
-                .collect(),
+            target_data,
         );
 
         let coeffs_log = LogBicubicInterpolation::compute_polynomial_coefficients(&data_log, true);
@@ -947,12 +948,11 @@ mod tests {
 
     #[test]
     fn test_log_bicubic_interpolation() {
+        let target_data = create_target_data(4);
         let data = create_test_data_2d(
             vec![1.0, 10.0, 100.0, 1000.0],
             vec![1.0, 10.0, 100.0, 1000.0],
-            vec![
-                1.0, 2.0, 3.0, 4.0, 2.0, 4.0, 6.0, 8.0, 3.0, 6.0, 9.0, 12.0, 4.0, 8.0, 12.0, 16.0,
-            ],
+            target_data,
         );
 
         let mut log_bicubic = LogBicubicInterpolation::default();

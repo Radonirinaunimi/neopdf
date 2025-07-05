@@ -1,13 +1,11 @@
-use lhapdf_rust::*;
 use ndarray::Array3;
-use std::path::Path;
+use neopdf::pdf::PDF;
 
 const PRECISION: f64 = 1e-12;
 
 #[test]
 fn test_xf_at_knots() {
-    let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = PDF::load(pdf_set_path);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180");
 
     let cases = vec![
         (0, 0, 1, 1.4254154), // at the (x, Q) boundaries
@@ -31,8 +29,7 @@ fn test_xf_at_knots() {
 
 #[test]
 fn test_xfxq2_at_knots() {
-    let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = PDF::load(pdf_set_path);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180");
 
     let cases = vec![
         (21, 1e-9, 1.65 * 1.65, 0.14844111), // at the (x, Q2) boundaries
@@ -57,8 +54,7 @@ fn test_xfxq2_at_knots() {
 
 #[test]
 fn test_xfxq2_interpolations() {
-    let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = PDF::load(pdf_set_path);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180");
 
     let cases = vec![
         (21, 1e-3, 4.0, 3.316316680794655),
@@ -80,18 +76,18 @@ fn test_xfxq2_interpolations() {
 }
 
 #[test]
-#[should_panic(expected = "called `Option::unwrap()` on a `None` value")]
+#[should_panic(
+    expected = "called `Result::unwrap()` on an `Err` value: SubgridNotFound { x: 1.0, q2: 1e40 }"
+)]
 fn test_xfxq2_extrapolations() {
-    let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = PDF::load(pdf_set_path);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180");
 
     assert!((pdf.xfxq2(2, 1.0, 1e20 * 1e20) - 1e10).abs() < PRECISION);
 }
 
 #[test]
 fn test_alphas_q2_interpolations() {
-    let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = PDF::load(pdf_set_path);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180");
 
     let cases = vec![
         (1.65 * 1.65, 0.33074891), // at the lower Q2 boundary
@@ -210,8 +206,7 @@ pub fn test_xfxq2s() {
         0.00000000000000,
     ];
 
-    let pdf_set_path = Path::new("./_lhapdf/NNPDF40_nnlo_as_01180");
-    let pdf = PDF::load(pdf_set_path);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180");
 
     // Define the vectors of kinematics & flavours
     let ids = (-4..=4).filter(|&x| x != 0).collect();
@@ -224,4 +219,14 @@ pub fn test_xfxq2s() {
     for ((i, j, k), elems) in results.indexed_iter() {
         assert!((*elems - expected_res[[i, j, k]]).abs() < PRECISION);
     }
+}
+
+#[test]
+pub fn test_boundary_extraction() {
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180");
+
+    assert!((pdf.x_min() - 1e-9).abs() < PRECISION);
+    assert!((pdf.x_max() - 1.00).abs() < PRECISION);
+    assert!((pdf.q2_min() - 1.65 * 1.65).abs() < PRECISION);
+    assert!((pdf.q2_max() - 1e5 * 1.0e5).abs() < PRECISION);
 }

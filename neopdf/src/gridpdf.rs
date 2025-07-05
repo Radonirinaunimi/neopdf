@@ -2,81 +2,42 @@ use ndarray::{s, Array1, Array3};
 use ninterp::interpolator::{Extrapolate, Interp2D};
 use ninterp::prelude::*;
 use rayon::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
-use crate::interpolation::{
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("No subgrid found for x={x}, q2={q2}")]
+    SubgridNotFound { x: f64, q2: f64 },
+}
+
+use super::interpolation::{
     AlphaSCubicInterpolation, BilinearInterpolation, LogBicubicInterpolation,
     LogBilinearInterpolation,
 };
-use crate::parser::SubgridData;
-
-/// Represents the information block of a PDF set, typically found in an `.info` file.
-/// This struct is deserialized from a YAML-like format.
-#[derive(Clone, Debug, Deserialize)]
-pub struct Info {
-    /// Description of the PDF set.
-    #[serde(rename = "SetDesc")]
-    pub set_desc: String,
-    /// Index of the PDF set.
-    #[serde(rename = "SetIndex")]
-    pub set_index: u32,
-    /// Number of members in the PDF set (e.g., for error analysis).
-    #[serde(rename = "NumMembers")]
-    pub num_members: u32,
-    /// Minimum x-value for which the PDF is valid.
-    #[serde(rename = "XMin")]
-    pub x_min: f64,
-    /// Maximum x-value for which the PDF is valid.
-    #[serde(rename = "XMax")]
-    pub x_max: f64,
-    /// Minimum Q-value (energy scale) for which the PDF is valid.
-    #[serde(rename = "QMin")]
-    pub q_min: f64,
-    /// Maximum Q-value (energy scale) for which the PDF is valid.
-    #[serde(rename = "QMax")]
-    pub q_max: f64,
-    /// List of particle data group (PDG) IDs for the flavors included in the PDF.
-    #[serde(rename = "Flavors")]
-    pub flavors: Vec<i32>,
-    /// Format of the PDF data.
-    #[serde(rename = "Format")]
-    pub format: String,
-    /// Type of interpolator used for the PDF (e.g., "LogBilinear").
-    #[serde(rename = "InterpolatorType", default = "default_interpolator_type")]
-    pub interpolator_type: String,
-    /// AlphaS Q values (non-squared) for interpolation.
-    #[serde(rename = "AlphaS_Qs", default)]
-    pub alphas_q_values: Vec<f64>,
-    /// AlphaS values for interpolation.
-    #[serde(rename = "AlphaS_Vals", default)]
-    pub alphas_vals: Vec<f64>,
-}
-
-/// Provides the default interpolator type, "LogBilinear", for `Info`.
-fn default_interpolator_type() -> String {
-    "LogBicubic".to_string()
-}
+use super::metadata::MetaData;
+use super::parser::SubgridData;
 
 /// Stores the PDF grid data for a single subgrid.
-#[derive(Debug)]
-pub struct Subgrid {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SubGrid {
     /// Array of x-values (momentum fraction).
     pub xs: Array1<f64>,
     /// Array of Q2-values (energy scale squared).
     pub q2s: Array1<f64>,
     /// 3D grid of PDF values, indexed as `[flavor_index, x_index, q2_index]`.
     pub grid: Array3<f64>,
-    /// Minimum value of the `x` grid
+    /// Minimum value of the `x` subgrid
     x_min: f64,
-    /// Maximum value of the `x` grid
+    /// Maximum value of the `x` subgrid
     x_max: f64,
-    /// Minimum value of the `Q2` grid
+    /// Minimum value of the `Q2` subgrid
     q2_min: f64,
-    /// Maximum value of the `Q2` grid
+    /// Maximum value of the `Q2` subgrid
     q2_max: f64,
 }
 
-impl Subgrid {
+impl SubGrid {
     /// Creates a new `Subgrid` from raw data.
     pub fn new(xs: Vec<f64>, q2s: Vec<f64>, nflav: usize, grid_data: Vec<f64>) -> Self {
         let nx = xs.len();
@@ -113,15 +74,15 @@ impl Subgrid {
 }
 
 /// Stores the PDF grid data, including x-values, Q2-values, flavors, and the 3D grid itself.
-#[derive(Debug)]
-pub struct KnotArray {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GridArray {
     /// Array of flavor IDs.
-    pub flavors: Array1<i32>,
+    pub pids: Array1<i32>,
     /// Vector of subgrids.
-    pub subgrids: Vec<Subgrid>,
+    pub subgrids: Vec<SubGrid>,
 }
 
-impl KnotArray {
+impl GridArray {
     /// Creates a new `KnotArray` from raw data.
     ///
     /// # Arguments
@@ -134,10 +95,13 @@ impl KnotArray {
 
         let subgrids = subgrid_data
             .into_iter()
-            .map(|subgrid| Subgrid::new(subgrid.xs, subgrid.q2s, nflav, subgrid.grid_data))
+            .map(|subgrid| SubGrid::new(subgrid.xs, subgrid.q2s, nflav, subgrid.grid_data))
             .collect();
 
-        Self { flavors, subgrids }
+        Self {
+            pids: flavors,
+            subgrids,
+        }
     }
 
     /// Retrieves the PDF value (xf) at a specific knot point.
@@ -149,7 +113,7 @@ impl KnotArray {
     /// * `id` - The flavor ID.
     /// * `subgrid_id` - The subgrid to be used.
     pub fn xf(&self, ix: usize, iq2: usize, id: i32, subgrid_id: usize) -> f64 {
-        let pid_index = self.flavors.iter().position(|&p| p == id).unwrap();
+        let pid_index = self.pids.iter().position(|&p| p == id).unwrap();
         self.subgrids[subgrid_id].grid[[pid_index, ix, iq2]]
     }
 }
@@ -179,9 +143,9 @@ where
 
 /// Represents a Parton Distribution Function (PDF) grid, containing the PDF info, knot array, and interpolators.
 pub struct GridPDF {
-    info: Info,
+    info: MetaData,
     /// The underlying knot array containing the PDF grid data.
-    pub knot_array: KnotArray,
+    pub knot_array: GridArray,
     interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
     alphas_interpolator: Interp1DOwned<f64, AlphaSCubicInterpolation>,
 }
@@ -195,11 +159,11 @@ impl GridPDF {
     ///
     /// * `info` - The `Info` struct containing metadata about the PDF set.
     /// * `knot_array` - The `KnotArray` containing the PDF grid data.
-    pub fn new(info: Info, knot_array: KnotArray) -> Self {
+    pub fn new(info: MetaData, knot_array: GridArray) -> Self {
         let mut interpolators: Vec<Vec<Box<dyn DynInterpolator>>> = Vec::new();
         for subgrid in &knot_array.subgrids {
             let mut subgrid_interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
-            for i in 0..knot_array.flavors.len() {
+            for i in 0..knot_array.pids.len() {
                 let grid_slice = subgrid.grid.slice(s![i, .., ..]);
 
                 let interp: Box<dyn DynInterpolator> = match info.interpolator_type.as_str() {
@@ -260,12 +224,13 @@ impl GridPDF {
     }
 
     /// Finds the index of the subgrid that contains the given (x, q2) point.
-    fn find_subgrid_index(&self, x: f64, q2: f64) -> Option<usize> {
+    fn find_subgrid_index(&self, x: f64, q2: f64) -> Result<usize, Error> {
         // TODO: This does not allow for any extrapolation
         self.knot_array
             .subgrids
             .iter()
             .position(|subgrid| subgrid.in_bounds(x, q2))
+            .ok_or(Error::SubgridNotFound { x, q2 })
     }
 
     /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.
@@ -281,12 +246,7 @@ impl GridPDF {
     /// The interpolated PDF value. Returns 0.0 if extrapolation is attempted and not allowed.
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
         let subgrid_index = self.find_subgrid_index(x, q2).unwrap();
-        let pid_index = self
-            .knot_array
-            .flavors
-            .iter()
-            .position(|&p| p == id)
-            .unwrap();
+        let pid_index = self.knot_array.pids.iter().position(|&p| p == id).unwrap();
         self.interpolators[subgrid_index][pid_index]
             .interpolate_point(&[x, q2])
             .unwrap()
@@ -327,8 +287,48 @@ impl GridPDF {
     }
 
     /// Returns the metadata info of the PDF.
-    pub fn info(&self) -> Info {
+    pub fn info(&self) -> MetaData {
         self.info.clone()
+    }
+
+    /// Get `x_min` from the complete PDF grid.
+    pub fn x_min(&self) -> f64 {
+        self.knot_array
+            .subgrids
+            .iter()
+            .map(|subgrid| subgrid.x_min)
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
+    }
+
+    /// Get `x_max` from the complete PDF grid.
+    pub fn x_max(&self) -> f64 {
+        self.knot_array
+            .subgrids
+            .iter()
+            .map(|subgrid| subgrid.x_max)
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
+    }
+
+    /// Get `Q2_min` from the complete PDF grid.
+    pub fn q2_min(&self) -> f64 {
+        self.knot_array
+            .subgrids
+            .iter()
+            .map(|subgrid| subgrid.q2_min)
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
+    }
+
+    /// Get `Q2_max` from the complete PDF grid.
+    pub fn q2_max(&self) -> f64 {
+        self.knot_array
+            .subgrids
+            .iter()
+            .map(|subgrid| subgrid.q2_max)
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap()
     }
 }
 
@@ -346,7 +346,7 @@ mod tests {
             ],
         }];
         let flavors = vec![21, 22];
-        let knot_array = KnotArray::new(subgrid_data, flavors);
+        let knot_array = GridArray::new(subgrid_data, flavors);
         assert_eq!(knot_array.subgrids[0].grid.shape(), &[2, 3, 2]);
     }
 }
