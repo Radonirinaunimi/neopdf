@@ -25,7 +25,7 @@ pub struct PdfData {
 /// # Returns
 ///
 /// A `Result` containing the `Info` struct if successful, or a `serde_yaml::Error` otherwise.
-pub fn read_info(path: &Path) -> Result<MetaData, serde_yaml::Error> {
+pub fn read_metadata(path: &Path) -> Result<MetaData, serde_yaml::Error> {
     let content = fs::read_to_string(path).unwrap();
     serde_yaml::from_str(&content)
 }
@@ -117,19 +117,19 @@ mod tests {
     #[test]
     fn test_read_info() {
         let yaml_content = r#"
-SetDesc: "NNPDF40_nnlo_as_01180"
-SetIndex: 4000
-NumMembers: 101
-XMin: 1.0e-9
-XMax: 1.0
-QMin: 1.0
-QMax: 10000.0
-Flavors: [21, 1, 2, 3, 4, 5, -1, -2, -3, -4, -5]
-Format: "LHAPDF"
-"#;
+        SetDesc: "NNPDF40_nnlo_as_01180"
+        SetIndex: 4000
+        NumMembers: 101
+        XMin: 1.0e-9
+        XMax: 1.0
+        QMin: 1.0
+        QMax: 10000.0
+        Flavors: [21, 1, 2, 3, 4, 5, -1, -2, -3, -4, -5]
+        Format: "LHAPDF"
+        "#;
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", yaml_content).unwrap();
-        let info = read_info(temp_file.path()).unwrap();
+        let info = read_metadata(temp_file.path()).unwrap();
 
         assert_eq!(info.set_desc, "NNPDF40_nnlo_as_01180");
         assert_eq!(info.set_index, 4000);
@@ -145,22 +145,22 @@ Format: "LHAPDF"
     #[test]
     fn test_read_data() {
         let data_content = r#"
-# Some header
----
-1.0e-9 1.0e-8 1.0e-7
-1.0 10.0 100.0
-21 1 2
-1.0 2.0 3.0
-4.0 5.0 6.0
-7.0 8.0 9.0
----
-1.0e-7 1.0e-6 1.0e-5
-100.0 1000.0 10000.0
-21 1 2
-10.0 11.0 12.0
-13.0 14.0 15.0
-16.0 17.0 18.0
-"#;
+        # Some header
+        ---
+        1.0e-9 1.0e-8 1.0e-7
+        1.0 10.0 100.0
+        21 1 2
+        1.0 2.0 3.0
+        4.0 5.0 6.0
+        7.0 8.0 9.0
+        ---
+        1.0e-7 1.0e-6 1.0e-5
+        100.0 1000.0 10000.0
+        21 1 2
+        10.0 11.0 12.0
+        13.0 14.0 15.0
+        16.0 17.0 18.0
+        "#;
         let mut temp_file = NamedTempFile::new().unwrap();
         write!(temp_file, "{}", data_content).unwrap();
         let pdf_data = read_data(temp_file.path());

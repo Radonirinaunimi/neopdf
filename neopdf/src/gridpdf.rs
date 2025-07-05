@@ -68,14 +68,14 @@ impl Subgrid {
 
 /// Stores the PDF grid data, including x-values, Q2-values, flavors, and the 3D grid itself.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct KnotArray {
+pub struct GridArray {
     /// Array of flavor IDs.
-    pub flavors: Array1<i32>,
+    pub pids: Array1<i32>,
     /// Vector of subgrids.
     pub subgrids: Vec<Subgrid>,
 }
 
-impl KnotArray {
+impl GridArray {
     /// Creates a new `KnotArray` from raw data.
     ///
     /// # Arguments
@@ -91,7 +91,10 @@ impl KnotArray {
             .map(|subgrid| Subgrid::new(subgrid.xs, subgrid.q2s, nflav, subgrid.grid_data))
             .collect();
 
-        Self { flavors, subgrids }
+        Self {
+            pids: flavors,
+            subgrids,
+        }
     }
 
     /// Retrieves the PDF value (xf) at a specific knot point.
@@ -103,7 +106,7 @@ impl KnotArray {
     /// * `id` - The flavor ID.
     /// * `subgrid_id` - The subgrid to be used.
     pub fn xf(&self, ix: usize, iq2: usize, id: i32, subgrid_id: usize) -> f64 {
-        let pid_index = self.flavors.iter().position(|&p| p == id).unwrap();
+        let pid_index = self.pids.iter().position(|&p| p == id).unwrap();
         self.subgrids[subgrid_id].grid[[pid_index, ix, iq2]]
     }
 }
@@ -135,7 +138,7 @@ where
 pub struct GridPDF {
     info: MetaData,
     /// The underlying knot array containing the PDF grid data.
-    pub knot_array: KnotArray,
+    pub knot_array: GridArray,
     interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
     alphas_interpolator: Interp1DOwned<f64, AlphaSCubicInterpolation>,
 }
@@ -149,11 +152,11 @@ impl GridPDF {
     ///
     /// * `info` - The `Info` struct containing metadata about the PDF set.
     /// * `knot_array` - The `KnotArray` containing the PDF grid data.
-    pub fn new(info: MetaData, knot_array: KnotArray) -> Self {
+    pub fn new(info: MetaData, knot_array: GridArray) -> Self {
         let mut interpolators: Vec<Vec<Box<dyn DynInterpolator>>> = Vec::new();
         for subgrid in &knot_array.subgrids {
             let mut subgrid_interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
-            for i in 0..knot_array.flavors.len() {
+            for i in 0..knot_array.pids.len() {
                 let grid_slice = subgrid.grid.slice(s![i, .., ..]);
 
                 let interp: Box<dyn DynInterpolator> = match info.interpolator_type.as_str() {
@@ -235,12 +238,7 @@ impl GridPDF {
     /// The interpolated PDF value. Returns 0.0 if extrapolation is attempted and not allowed.
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
         let subgrid_index = self.find_subgrid_index(x, q2).unwrap();
-        let pid_index = self
-            .knot_array
-            .flavors
-            .iter()
-            .position(|&p| p == id)
-            .unwrap();
+        let pid_index = self.knot_array.pids.iter().position(|&p| p == id).unwrap();
         self.interpolators[subgrid_index][pid_index]
             .interpolate_point(&[x, q2])
             .unwrap()
@@ -300,7 +298,7 @@ mod tests {
             ],
         }];
         let flavors = vec![21, 22];
-        let knot_array = KnotArray::new(subgrid_data, flavors);
+        let knot_array = GridArray::new(subgrid_data, flavors);
         assert_eq!(knot_array.subgrids[0].grid.shape(), &[2, 3, 2]);
     }
 }
