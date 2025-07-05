@@ -1,7 +1,24 @@
 [package]
 name = "neopdf_pyapi"
-version = "0.1.0"
-edition = "2024"
+authors = ["Tanjona R. Rabemananjara <tanjona.hepc@gmail.com>"]
+description = "Python bindings to neopdf"
+
+categories.workspace = true
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.maturin]
+name = "neopdf"
+
+[lib]
+name = "neopdf"
+crate-type = ["cdylib"]
 
 [dependencies]
 neopdf = { path = "../neopdf" }
