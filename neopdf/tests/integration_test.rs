@@ -1,5 +1,5 @@
-use lhapdf_rust::*;
 use ndarray::Array3;
+use neopdf::PDF;
 use std::path::Path;
 
 const PRECISION: f64 = 1e-12;
