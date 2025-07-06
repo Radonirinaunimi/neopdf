@@ -677,8 +677,7 @@ impl LogTricubicInterpolation {
     }
 
     /// Calculates the derivative with respect to x (or log(x)) at a given knot.
-    /// This mirrors the _ddx function in LHAPDF's C++ implementation.
-    pub fn calculate_ddx<D>(data: &InterpData3D<D>, ix: usize, iq2: usize, imu2: usize) -> f64
+    pub fn calculate_ddx<D>(data: &InterpData3D<D>, ix: usize, iq2: usize, iz: usize) -> f64
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
@@ -699,15 +698,15 @@ impl LogTricubicInterpolation {
 
         if ix != 0 && ix != nxknots - 1 {
             // Central difference
-            let lddx = (values[[ix, iq2, imu2]] - values[[ix - 1, iq2, imu2]]) / del1;
-            let rddx = (values[[ix + 1, iq2, imu2]] - values[[ix, iq2, imu2]]) / del2;
+            let lddx = (values[[ix, iq2, iz]] - values[[ix - 1, iq2, iz]]) / del1;
+            let rddx = (values[[ix + 1, iq2, iz]] - values[[ix, iq2, iz]]) / del2;
             (lddx + rddx) / 2.0
         } else if ix == 0 {
             // Forward difference
-            (values[[ix + 1, iq2, imu2]] - values[[ix, iq2, imu2]]) / del2
+            (values[[ix + 1, iq2, iz]] - values[[ix, iq2, iz]]) / del2
         } else if ix == nxknots - 1 {
             // Backward difference
-            (values[[ix, iq2, imu2]] - values[[ix - 1, iq2, imu2]]) / del1
+            (values[[ix, iq2, iz]] - values[[ix - 1, iq2, iz]]) / del1
         } else {
             // This case should ideally not be reached given the checks above
             panic!("Should not reach here: Invalid index for derivative calculation.");
@@ -715,7 +714,7 @@ impl LogTricubicInterpolation {
     }
 
     /// Calculates the derivative with respect to y (or log(y)) at a given knot.
-    pub fn calculate_ddy<D>(data: &InterpData3D<D>, ix: usize, iq2: usize, imu2: usize) -> f64
+    pub fn calculate_ddy<D>(data: &InterpData3D<D>, ix: usize, iq2: usize, iz: usize) -> f64
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
@@ -736,22 +735,22 @@ impl LogTricubicInterpolation {
 
         if iq2 != 0 && iq2 != nq2knots - 1 {
             // Central difference
-            let lddq = (values[[ix, iq2, imu2]] - values[[ix, iq2 - 1, imu2]]) / del1;
-            let rddq = (values[[ix, iq2 + 1, imu2]] - values[[ix, iq2, imu2]]) / del2;
+            let lddq = (values[[ix, iq2, iz]] - values[[ix, iq2 - 1, iz]]) / del1;
+            let rddq = (values[[ix, iq2 + 1, iz]] - values[[ix, iq2, iz]]) / del2;
             (lddq + rddq) / 2.0
         } else if iq2 == 0 {
             // Forward difference
-            (values[[ix, iq2 + 1, imu2]] - values[[ix, iq2, imu2]]) / del2
+            (values[[ix, iq2 + 1, iz]] - values[[ix, iq2, iz]]) / del2
         } else if iq2 == nq2knots - 1 {
             // Backward difference
-            (values[[ix, iq2, imu2]] - values[[ix, iq2 - 1, imu2]]) / del1
+            (values[[ix, iq2, iz]] - values[[ix, iq2 - 1, iz]]) / del1
         } else {
             panic!("Should not reach here: Invalid index for derivative calculation.");
         }
     }
 
     /// Calculates the derivative with respect to z (or log(z)) at a given knot.
-    pub fn calculate_ddz<D>(data: &InterpData3D<D>, ix: usize, iq2: usize, imu2: usize) -> f64
+    pub fn calculate_ddz<D>(data: &InterpData3D<D>, ix: usize, iq2: usize, iz: usize) -> f64
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
@@ -760,27 +759,27 @@ impl LogTricubicInterpolation {
         let log_mu2_coords: Vec<f64> = mu2_coords.iter().map(|&mui| mui.ln()).collect();
         let values = &data.values;
 
-        let del1 = match imu2 {
+        let del1 = match iz {
             0 => 0.0,
             i => log_mu2_coords[i] - log_mu2_coords[i - 1],
         };
 
-        let del2 = match log_mu2_coords.get(imu2 + 1) {
-            Some(&next) => next - log_mu2_coords[imu2],
+        let del2 = match log_mu2_coords.get(iz + 1) {
+            Some(&next) => next - log_mu2_coords[iz],
             None => 0.0,
         };
 
-        if imu2 != 0 && imu2 != nmu2knots - 1 {
+        if iz != 0 && iz != nmu2knots - 1 {
             // Central difference
-            let lddmu = (values[[ix, iq2, imu2]] - values[[ix, iq2, imu2 - 1]]) / del1;
-            let rddmu = (values[[ix, iq2, imu2 + 1]] - values[[ix, iq2, imu2]]) / del2;
+            let lddmu = (values[[ix, iq2, iz]] - values[[ix, iq2, iz - 1]]) / del1;
+            let rddmu = (values[[ix, iq2, iz + 1]] - values[[ix, iq2, iz]]) / del2;
             (lddmu + rddmu) / 2.0
-        } else if imu2 == 0 {
+        } else if iz == 0 {
             // Forward difference
-            (values[[ix, iq2, imu2 + 1]] - values[[ix, iq2, imu2]]) / del2
-        } else if imu2 == nmu2knots - 1 {
+            (values[[ix, iq2, iz + 1]] - values[[ix, iq2, iz]]) / del2
+        } else if iz == nmu2knots - 1 {
             // Backward difference
-            (values[[ix, iq2, imu2]] - values[[ix, iq2, imu2 - 1]]) / del1
+            (values[[ix, iq2, iz]] - values[[ix, iq2, iz - 1]]) / del1
         } else {
             panic!("Should not reach here: Invalid index for derivative calculation.");
         }
@@ -792,7 +791,7 @@ impl LogTricubicInterpolation {
         data: &InterpData3D<D>,
         ix: usize,
         iq2: usize,
-        imu2: usize,
+        iz: usize,
         u: f64,
         v: f64,
         w: f64,
@@ -803,24 +802,24 @@ impl LogTricubicInterpolation {
         let values = &data.values;
 
         // Get the 8 corner values of the cube
-        let f000 = values[[ix, iq2, imu2]];
-        let f001 = values[[ix, iq2, imu2 + 1]];
-        let f010 = values[[ix, iq2 + 1, imu2]];
-        let f011 = values[[ix, iq2 + 1, imu2 + 1]];
-        let f100 = values[[ix + 1, iq2, imu2]];
-        let f101 = values[[ix + 1, iq2, imu2 + 1]];
-        let f110 = values[[ix + 1, iq2 + 1, imu2]];
-        let f111 = values[[ix + 1, iq2 + 1, imu2 + 1]];
+        let f000 = values[[ix, iq2, iz]];
+        let f001 = values[[ix, iq2, iz + 1]];
+        let f010 = values[[ix, iq2 + 1, iz]];
+        let f011 = values[[ix, iq2 + 1, iz + 1]];
+        let f100 = values[[ix + 1, iq2, iz]];
+        let f101 = values[[ix + 1, iq2, iz + 1]];
+        let f110 = values[[ix + 1, iq2 + 1, iz]];
+        let f111 = values[[ix + 1, iq2 + 1, iz + 1]];
 
         // Calculate derivatives in all three directions for each corner
-        let fx000 = Self::calculate_ddx(data, ix, iq2, imu2);
-        let fx001 = Self::calculate_ddx(data, ix, iq2, imu2 + 1);
-        let fx010 = Self::calculate_ddx(data, ix, iq2 + 1, imu2);
-        let fx011 = Self::calculate_ddx(data, ix, iq2 + 1, imu2 + 1);
-        let fx100 = Self::calculate_ddx(data, ix + 1, iq2, imu2);
-        let fx101 = Self::calculate_ddx(data, ix + 1, iq2, imu2 + 1);
-        let fx110 = Self::calculate_ddx(data, ix + 1, iq2 + 1, imu2);
-        let fx111 = Self::calculate_ddx(data, ix + 1, iq2 + 1, imu2 + 1);
+        let fx000 = Self::calculate_ddx(data, ix, iq2, iz);
+        let fx001 = Self::calculate_ddx(data, ix, iq2, iz + 1);
+        let fx010 = Self::calculate_ddx(data, ix, iq2 + 1, iz);
+        let fx011 = Self::calculate_ddx(data, ix, iq2 + 1, iz + 1);
+        let fx100 = Self::calculate_ddx(data, ix + 1, iq2, iz);
+        let fx101 = Self::calculate_ddx(data, ix + 1, iq2, iz + 1);
+        let fx110 = Self::calculate_ddx(data, ix + 1, iq2 + 1, iz);
+        let fx111 = Self::calculate_ddx(data, ix + 1, iq2 + 1, iz + 1);
 
         // For a proper implementation, we need to do a full 3D interpolation
         // This uses trilinear interpolation with cubic smoothing in each direction
@@ -832,18 +831,18 @@ impl LogTricubicInterpolation {
         let c11 = Self::cubic_interpolate(u, f011, fx011, f111, fx111);
 
         // Calculate derivatives for y-direction interpolation
-        let cy00 = Self::calculate_ddy(data, ix, iq2, imu2);
-        let cy01 = Self::calculate_ddy(data, ix, iq2, imu2 + 1);
-        let cy10 = Self::calculate_ddy(data, ix, iq2 + 1, imu2);
-        let cy11 = Self::calculate_ddy(data, ix, iq2 + 1, imu2 + 1);
+        let cy00 = Self::calculate_ddy(data, ix, iq2, iz);
+        let cy01 = Self::calculate_ddy(data, ix, iq2, iz + 1);
+        let cy10 = Self::calculate_ddy(data, ix, iq2 + 1, iz);
+        let cy11 = Self::calculate_ddy(data, ix, iq2 + 1, iz + 1);
 
         // Interpolate along y-axis
         let c0 = Self::cubic_interpolate(v, c00, cy00, c10, cy10);
         let c1 = Self::cubic_interpolate(v, c01, cy01, c11, cy11);
 
         // Calculate derivatives for z-direction interpolation
-        let cz0 = Self::calculate_ddz(data, ix, iq2, imu2);
-        let cz1 = Self::calculate_ddz(data, ix, iq2, imu2 + 1);
+        let cz0 = Self::calculate_ddz(data, ix, iq2, iz);
+        let cz1 = Self::calculate_ddz(data, ix, iq2, iz + 1);
 
         // Final interpolation along z-axis
         Self::cubic_interpolate(w, c0, cz0, c1, cz1)
@@ -951,7 +950,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ndarray::{Array1, Array2, OwnedRepr};
+    use ndarray::{Array1, Array2, Array3, OwnedRepr};
     use ninterp::data::{InterpData1D, InterpData2D};
 
     // Helper constants for commonly used values
@@ -973,6 +972,23 @@ mod tests {
         let shape = (x_coords.len(), y_coords.len());
         let values_array = Array2::from_shape_vec(shape, values).unwrap();
         InterpData2D::new(x_coords.into(), y_coords.into(), values_array).unwrap()
+    }
+
+    fn create_test_data_3d(
+        x_coords: Vec<f64>,
+        y_coords: Vec<f64>,
+        z_coords: Vec<f64>,
+        values: Vec<f64>,
+    ) -> InterpData3D<OwnedRepr<f64>> {
+        let shape = (x_coords.len(), y_coords.len(), z_coords.len());
+        let values_array = Array3::from_shape_vec(shape, values).unwrap();
+        InterpData3D::new(
+            x_coords.into(),
+            y_coords.into(),
+            z_coords.into(),
+            values_array,
+        )
+        .unwrap()
     }
 
     fn create_target_data(max_num: i32) -> Vec<f64> {
@@ -1064,6 +1080,25 @@ mod tests {
             result.unwrap_err().to_string(),
             "The input values must be positive for logarithmic scaling"
         );
+    }
+
+    #[test]
+    fn test_log_tricubic_interpolation() {
+        // Create a simple 3x3x3 grid
+        let x_coords = vec![1e-5, 1e-4, 1e-3, 1e-2, 1.0];
+        let y_coords = vec![1e-5, 1e-4, 1e-3, 1e-2, 1.0];
+        let z_coords = vec![1e-5, 1e-4, 1e-3, 1e-2, 1.0];
+        let values: Vec<f64> = (0..5)
+            .flat_map(|i| (0..5).flat_map(move |j| (0..5).map(move |k| (i + j + k) as f64)))
+            .collect();
+        let interp_data = create_test_data_3d(x_coords, y_coords, z_coords, values);
+
+        let mut interpolator = LogTricubicInterpolation::default();
+        interpolator.init(&interp_data).unwrap();
+
+        let point = [0.5, 0.2, 0.1];
+        let result = interpolator.interpolate(&interp_data, &point);
+        assert!(result.is_ok());
     }
 
     #[test]
