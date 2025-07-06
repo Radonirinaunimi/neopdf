@@ -10,7 +10,7 @@ pub struct PDF {
 }
 
 impl PDF {
-    /// Loads a PDF set from the specified path.
+    /// Loads a given member of the PDF set.
     ///
     /// This function reads the `.info` file and the first `.dat` member file
     /// to construct a `GridPDF` object.
@@ -46,7 +46,7 @@ impl PDF {
         }
     }
 
-    /// Loads all PDF sets from the specified path in parallel.
+    /// Loads all the members of the PDF set.
     ///
     /// This function reads the `.info` file and all `.dat` member files
     /// to construct a `Vec<PDF>` object.
