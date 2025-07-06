@@ -88,20 +88,17 @@ impl GridArray {
     /// # Arguments
     ///
     /// * `subgrid_data` - A vector of tuples, where each tuple contains the data for a subgrid.
-    /// * `flavors` - A vector of flavor IDs.
-    pub fn new(subgrid_data: Vec<SubgridData>, flavors: Vec<i32>) -> Self {
-        let nflav = flavors.len();
-        let flavors = Array1::from_vec(flavors);
+    /// * `pids` - A vector of flavor IDs.
+    pub fn new(subgrid_data: Vec<SubgridData>, pids: Vec<i32>) -> Self {
+        let nflav = pids.len();
+        let pids = Array1::from_vec(pids);
 
         let subgrids = subgrid_data
             .into_iter()
             .map(|subgrid| SubGrid::new(subgrid.xs, subgrid.q2s, nflav, subgrid.grid_data))
             .collect();
 
-        Self {
-            pids: flavors,
-            subgrids,
-        }
+        Self { pids, subgrids }
     }
 
     /// Retrieves the PDF value (xf) at a specific knot point.
@@ -112,13 +109,14 @@ impl GridArray {
     /// * `iq2` - The index of the Q2-value.
     /// * `id` - The flavor ID.
     /// * `subgrid_id` - The subgrid to be used.
-    pub fn xf(&self, ix: usize, iq2: usize, id: i32, subgrid_id: usize) -> f64 {
+    pub fn xf_from_index(&self, ix: usize, iq2: usize, id: i32, subgrid_id: usize) -> f64 {
         let pid_index = self.pids.iter().position(|&p| p == id).unwrap();
         self.subgrids[subgrid_id].grid[[pid_index, ix, iq2]]
     }
 }
 
-/// A trait for dynamic interpolation, allowing different interpolation strategies to be used interchangeably.
+/// A trait for dynamic interpolation, allowing different interpolation strategies to be
+/// used interchangeably.
 pub trait DynInterpolator: Send + Sync {
     /// Interpolates a point given its coordinates.
     ///
@@ -141,7 +139,8 @@ where
     }
 }
 
-/// Represents a Parton Distribution Function (PDF) grid, containing the PDF info, knot array, and interpolators.
+/// Represents a Parton Distribution Function (PDF) grid, containing the PDF info, knot array,
+/// and interpolators.
 pub struct GridPDF {
     info: MetaData,
     /// The underlying knot array containing the PDF grid data.

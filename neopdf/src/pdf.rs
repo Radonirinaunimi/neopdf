@@ -17,7 +17,7 @@ impl PDF {
     ///
     /// # Arguments
     ///
-    /// * `path` - The path to the directory containing the PDF set files.
+    /// * `pdf_name` - The name of the PDF set.
     ///
     /// # Returns
     ///
@@ -53,7 +53,7 @@ impl PDF {
     ///
     /// # Arguments
     ///
-    /// * `path` - The path to the directory containing the PDF set files.
+    /// * `pdf_name` - The name of the PDF set.
     ///
     /// # Returns
     ///
@@ -125,7 +125,9 @@ impl PDF {
 
     /// Retrieves the PDF value (xf) at a specific knot point.
     pub fn xf(&self, ix: usize, iq2: usize, id: i32, subgrid_id: usize) -> f64 {
-        self.grid_pdf.knot_array.xf(ix, iq2, id, subgrid_id)
+        self.grid_pdf
+            .knot_array
+            .xf_from_index(ix, iq2, id, subgrid_id)
     }
 
     /// Retrieves the `x_min` for this PDF set.

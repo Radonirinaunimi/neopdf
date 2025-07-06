@@ -1,7 +1,8 @@
 use ndarray::Array3;
 use neopdf::pdf::PDF;
 
-const PRECISION: f64 = 1e-12;
+const PRECISION: f64 = 1e-16;
+const LOW_PRECISION: f64 = 1e-12;
 
 #[test]
 fn test_xf_at_knots() {
@@ -217,7 +218,7 @@ pub fn test_xfxq2s() {
     let expected_res = Array3::from_shape_vec(results.raw_dim(), expected).unwrap();
 
     for ((i, j, k), elems) in results.indexed_iter() {
-        assert!((*elems - expected_res[[i, j, k]]).abs() < PRECISION);
+        assert!((*elems - expected_res[[i, j, k]]).abs() < LOW_PRECISION);
     }
 }
 
