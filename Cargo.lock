@@ -791,6 +791,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "neopdf_capi"
+version = "0.1.0"
+
+[[package]]
+name = "neopdf_cli"
+version = "0.1.0"
+
+[[package]]
 name = "neopdf_pyapi"
 version = "0.1.0"
 dependencies = [
