@@ -18,11 +18,12 @@ impl PDF {
     /// # Arguments
     ///
     /// * `pdf_name` - The name of the PDF set.
+    /// * `member` - ID of the PDF member.
     ///
     /// # Returns
     ///
     /// A `PDF` instance representing the loaded PDF set.
-    pub fn load(pdf_name: &str) -> PDF {
+    pub fn load(pdf_name: &str, member: usize) -> PDF {
         let manager = ManageData::new(pdf_name);
         let pdfset_path = manager.set_path();
 
@@ -36,7 +37,7 @@ impl PDF {
         let data_path = pdfset_path.join(format!(
             "{}_{:04}.dat",
             pdfset_path.file_name().unwrap().to_str().unwrap(),
-            0
+            member
         ));
         let pdf_data = parser::read_lhapdf_data(&data_path);
         let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.flavors);

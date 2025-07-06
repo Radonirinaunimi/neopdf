@@ -19,11 +19,13 @@ impl PyPDF {
     /// ----------
     /// pdf_name: str
     ///     name of the PDF set
+    /// member: int
+    ///     ID of the PDF member
     #[new]
     #[must_use]
-    pub fn new(pdf_name: &str) -> Self {
+    pub fn new(pdf_name: &str, member: usize) -> Self {
         Self {
-            pdf: PDF::load(pdf_name),
+            pdf: PDF::load(pdf_name, member),
         }
     }
 
@@ -33,11 +35,14 @@ impl PyPDF {
     /// ----------
     /// pdf_name: str
     ///     name of the PDF set
+    /// member: int
+    ///     ID of the PDF member
     #[must_use]
     #[staticmethod]
     #[pyo3(name = "mkPDF")]
-    pub fn mkpdf(pdf_name: &str) -> Self {
-        Self::new(pdf_name)
+    #[pyo3(signature = (pdf_name, member = 0))]
+    pub fn mkpdf(pdf_name: &str, member: usize) -> Self {
+        Self::new(pdf_name, member)
     }
 
     /// Loads all of the members of the PDF set.
