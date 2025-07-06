@@ -33,14 +33,13 @@ impl PDF {
         ));
         let info: MetaData = parser::read_lhapdf_metadata(&info_path).unwrap();
 
-        // For now, only load the first member
         let data_path = pdfset_path.join(format!(
             "{}_{:04}.dat",
             pdfset_path.file_name().unwrap().to_str().unwrap(),
             member
         ));
         let pdf_data = parser::read_lhapdf_data(&data_path);
-        let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.flavors);
+        let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
 
         PDF {
             grid_pdf: GridPDF::new(info, knot_array),
@@ -78,7 +77,7 @@ impl PDF {
                     i
                 ));
                 let pdf_data = parser::read_lhapdf_data(&data_path);
-                let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.flavors);
+                let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
                 PDF {
                     grid_pdf: GridPDF::new(info.clone(), knot_array),
                 }

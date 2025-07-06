@@ -1,3 +1,6 @@
+//! The interpolation strategies.
+//! TODO: Move the taking of the logs of the input data outside.
+
 use ndarray::{Data, RawDataClone};
 use ninterp::data::{InterpData1D, InterpData2D, InterpData3D};
 use ninterp::error::{InterpolateError, ValidateError};
@@ -229,7 +232,7 @@ impl LogBicubicInterpolation {
 
     /// Calculates the derivative with respect to x (or log(x)) at a given knot.
     /// This mirrors the _ddx function in LHAPDF's C++ implementation.
-    pub fn calculate_ddx<D>(data: &InterpData2D<D>, ix: usize, iq2: usize, logspace: bool) -> f64
+    pub fn calculate_ddx<D>(data: &InterpData2D<D>, ix: usize, iq2: usize) -> f64
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
@@ -238,30 +241,14 @@ impl LogBicubicInterpolation {
         let log_x_coords: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
         let values = &data.values;
 
-        let (del1, del2) = if logspace {
-            let d1 = if ix == 0 {
-                0.0
-            } else {
-                log_x_coords[ix] - log_x_coords[ix - 1]
-            };
-            let d2 = if ix == nxknots - 1 {
-                0.0
-            } else {
-                log_x_coords[ix + 1] - log_x_coords[ix]
-            };
-            (d1, d2)
-        } else {
-            let d1 = if ix == 0 {
-                0.0
-            } else {
-                x_coords[ix] - x_coords[ix - 1]
-            };
-            let d2 = if ix == nxknots - 1 {
-                0.0
-            } else {
-                x_coords[ix + 1] - x_coords[ix]
-            };
-            (d1, d2)
+        let del1 = match ix {
+            0 => 0.0,
+            i => log_x_coords[i] - log_x_coords[i - 1],
+        };
+
+        let del2 = match log_x_coords.get(ix + 1) {
+            Some(&next) => next - log_x_coords[ix],
+            None => 0.0,
         };
 
         if ix != 0 && ix != nxknots - 1 {
@@ -282,7 +269,7 @@ impl LogBicubicInterpolation {
     }
 
     /// Computes the polynomial coefficients for bicubic interpolation, mirroring LHAPDF's C++ implementation.
-    fn compute_polynomial_coefficients<D>(data: &InterpData2D<D>, logspace: bool) -> Vec<f64>
+    fn compute_polynomial_coefficients<D>(data: &InterpData2D<D>) -> Vec<f64>
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
@@ -295,17 +282,13 @@ impl LogBicubicInterpolation {
 
         for ix in 0..nxknots - 1 {
             for iq2 in 0..nq2knots {
-                let dlogx = if logspace {
-                    data.grid[0].as_slice().unwrap()[ix + 1].ln()
-                        - data.grid[0].as_slice().unwrap()[ix].ln()
-                } else {
-                    data.grid[0].as_slice().unwrap()[ix + 1] - data.grid[0].as_slice().unwrap()[ix]
-                };
+                let dlogx = data.grid[0].as_slice().unwrap()[ix + 1].ln()
+                    - data.grid[0].as_slice().unwrap()[ix].ln();
 
                 let vl = values[[ix, iq2]];
                 let vh = values[[ix + 1, iq2]];
-                let vdl = Self::calculate_ddx(data, ix, iq2, logspace) * dlogx;
-                let vdh = Self::calculate_ddx(data, ix + 1, iq2, logspace) * dlogx;
+                let vdl = Self::calculate_ddx(data, ix, iq2) * dlogx;
+                let vdh = Self::calculate_ddx(data, ix + 1, iq2) * dlogx;
 
                 // polynomial coefficients
                 let a = vdh + vdl - 2.0 * vh + 2.0 * vl;
@@ -431,7 +414,7 @@ where
             ));
         }
 
-        self.coeffs = Self::compute_polynomial_coefficients(data, true);
+        self.coeffs = Self::compute_polynomial_coefficients(data);
         Ok(())
     }
 
@@ -473,170 +456,6 @@ where
         let result = self.interpolate_with_coeffs(data, i, j, u, v);
 
         Ok(result)
-    }
-
-    fn allow_extrapolate(&self) -> bool {
-        false
-    }
-}
-
-/// Implements cubic interpolation for alpha_s values in log-Q2 space.
-///
-/// This strategy handles the specific extrapolation and interpolation rules
-/// for alpha_s as defined in LHAPDF.
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct AlphaSCubicInterpolation;
-
-impl AlphaSCubicInterpolation {
-    /// Get the index of the closest Q2 knot row <= q2
-    ///
-    /// If the value is >= q2_max, return i_max-1 (for polynomial spine construction)
-    fn iq2below<D>(data: &InterpData1D<D>, q2: f64) -> usize
-    where
-        D: Data<Elem = f64> + RawDataClone + Clone,
-    {
-        let q2s = data.grid[0].as_slice().unwrap();
-        // Test that Q2 is in the grid range
-        if q2 < *q2s.first().unwrap() {
-            panic!(
-                "Q2 value {} is lower than lowest-Q2 grid point at {}",
-                q2,
-                q2s.first().unwrap()
-            );
-        }
-        if q2 > *q2s.last().unwrap() {
-            panic!(
-                "Q2 value {} is higher than highest-Q2 grid point at {}",
-                q2,
-                q2s.last().unwrap()
-            );
-        }
-
-        // Find the closest knot below the requested value
-        let idx = q2s.partition_point(|&x| x < q2);
-
-        if idx == q2s.len() {
-            // q2 is greater than or equal to the last element.
-            // Since we already checked q2 > last element, it must be equal.
-            // For interpolation, we need the interval [idx-1, idx].
-            idx - 1
-        } else if (q2s[idx] - q2).abs() < 1e-9 {
-            // q2 is exactly a knot.
-            // If it's the last knot, we need the interval [idx-1, idx].
-            // Otherwise, we use the knot itself as the lower bound of the interval.
-            if idx == q2s.len() - 1 && q2s.len() >= 2 {
-                idx - 1
-            } else {
-                idx
-            }
-        } else {
-            // q2 is between two knots.
-            // idx is the first element greater than q2, so idx-1 is the lower bound.
-            idx - 1
-        }
-    }
-
-    /// Forward derivative w.r.t. logQ2
-    fn ddlogq_forward<D>(data: &InterpData1D<D>, i: usize) -> f64
-    where
-        D: Data<Elem = f64> + RawDataClone + Clone,
-    {
-        let logq2s: Vec<f64> = data.grid[0]
-            .as_slice()
-            .unwrap()
-            .iter()
-            .map(|&q2| q2.ln())
-            .collect();
-        let alphas = data.values.as_slice().unwrap();
-        (alphas[i + 1] - alphas[i]) / (logq2s[i + 1] - logq2s[i])
-    }
-
-    /// Backward derivative w.r.t. logQ2
-    fn ddlogq_backward<D>(data: &InterpData1D<D>, i: usize) -> f64
-    where
-        D: Data<Elem = f64> + RawDataClone + Clone,
-    {
-        let logq2s: Vec<f64> = data.grid[0]
-            .as_slice()
-            .unwrap()
-            .iter()
-            .map(|&q2| q2.ln())
-            .collect();
-        let alphas = data.values.as_slice().unwrap();
-        (alphas[i] - alphas[i - 1]) / (logq2s[i] - logq2s[i - 1])
-    }
-
-    /// Central (avg of forward and backward) derivative w.r.t. logQ2
-    fn ddlogq_central<D>(data: &InterpData1D<D>, i: usize) -> f64
-    where
-        D: Data<Elem = f64> + RawDataClone + Clone,
-    {
-        0.5 * (Self::ddlogq_forward(data, i) + Self::ddlogq_backward(data, i))
-    }
-}
-
-impl<D> Strategy1D<D> for AlphaSCubicInterpolation
-where
-    D: Data<Elem = f64> + RawDataClone + Clone,
-{
-    fn interpolate(
-        &self,
-        data: &InterpData1D<D>,
-        point: &[f64; 1],
-    ) -> Result<f64, InterpolateError> {
-        let q2 = point[0];
-        let q2s = data.grid[0].as_slice().unwrap();
-        let alphas = data.values.as_slice().unwrap();
-        let logq2s: Vec<f64> = q2s.iter().map(|&q2| q2.ln()).collect();
-
-        assert!(q2 >= 0.0);
-
-        // Using base 10 for logs to get constant gradient extrapolation in
-        // a log 10 - log 10 plot
-        if q2 < *q2s.first().unwrap() {
-            // Remember to take situations where the first knot also is a
-            // flavor threshold into account
-            let mut next_point = 1;
-            while q2s[0] == q2s[next_point] {
-                next_point += 1;
-            }
-            let dlogq2 = (q2s[next_point] / q2s[0]).log10();
-            let dlogas = (alphas[next_point] / alphas[0]).log10();
-            let loggrad = dlogas / dlogq2;
-            return Ok(alphas[0] * (q2 / q2s[0]).powf(loggrad));
-        }
-
-        if q2 > *q2s.last().unwrap() {
-            return Ok(*alphas.last().unwrap());
-        }
-
-        // Get the Q/alpha_s index on this array which is *below* this Q point
-        let i = Self::iq2below(data, q2);
-
-        // Calculate derivatives
-        let didlogq2: f64;
-        let di1dlogq2: f64;
-        if i == 0 {
-            didlogq2 = Self::ddlogq_forward(data, i);
-            di1dlogq2 = Self::ddlogq_central(data, i + 1);
-        } else if i == logq2s.len() - 2 {
-            didlogq2 = Self::ddlogq_central(data, i);
-            di1dlogq2 = Self::ddlogq_backward(data, i + 1);
-        } else {
-            didlogq2 = Self::ddlogq_central(data, i);
-            di1dlogq2 = Self::ddlogq_central(data, i + 1);
-        }
-
-        // Calculate alpha_s
-        let dlogq2 = logq2s[i + 1] - logq2s[i];
-        let tlogq2 = (q2.ln() - logq2s[i]) / dlogq2;
-        Ok(utils::hermite_cubic_interpolate(
-            tlogq2,
-            alphas[i],
-            didlogq2 * dlogq2,
-            alphas[i + 1],
-            di1dlogq2 * dlogq2,
-        ))
     }
 
     fn allow_extrapolate(&self) -> bool {
@@ -947,6 +766,170 @@ where
     }
 }
 
+/// Implements cubic interpolation for alpha_s values in log-Q2 space.
+///
+/// This strategy handles the specific extrapolation and interpolation rules
+/// for alpha_s as defined in LHAPDF.
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct AlphaSCubicInterpolation;
+
+impl AlphaSCubicInterpolation {
+    /// Get the index of the closest Q2 knot row <= q2
+    ///
+    /// If the value is >= q2_max, return i_max-1 (for polynomial spine construction)
+    fn iq2below<D>(data: &InterpData1D<D>, q2: f64) -> usize
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let q2s = data.grid[0].as_slice().unwrap();
+        // Test that Q2 is in the grid range
+        if q2 < *q2s.first().unwrap() {
+            panic!(
+                "Q2 value {} is lower than lowest-Q2 grid point at {}",
+                q2,
+                q2s.first().unwrap()
+            );
+        }
+        if q2 > *q2s.last().unwrap() {
+            panic!(
+                "Q2 value {} is higher than highest-Q2 grid point at {}",
+                q2,
+                q2s.last().unwrap()
+            );
+        }
+
+        // Find the closest knot below the requested value
+        let idx = q2s.partition_point(|&x| x < q2);
+
+        if idx == q2s.len() {
+            // q2 is greater than or equal to the last element.
+            // Since we already checked q2 > last element, it must be equal.
+            // For interpolation, we need the interval [idx-1, idx].
+            idx - 1
+        } else if (q2s[idx] - q2).abs() < 1e-9 {
+            // q2 is exactly a knot.
+            // If it's the last knot, we need the interval [idx-1, idx].
+            // Otherwise, we use the knot itself as the lower bound of the interval.
+            if idx == q2s.len() - 1 && q2s.len() >= 2 {
+                idx - 1
+            } else {
+                idx
+            }
+        } else {
+            // q2 is between two knots.
+            // idx is the first element greater than q2, so idx-1 is the lower bound.
+            idx - 1
+        }
+    }
+
+    /// Forward derivative w.r.t. logQ2
+    fn ddlogq_forward<D>(data: &InterpData1D<D>, i: usize) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let logq2s: Vec<f64> = data.grid[0]
+            .as_slice()
+            .unwrap()
+            .iter()
+            .map(|&q2| q2.ln())
+            .collect();
+        let alphas = data.values.as_slice().unwrap();
+        (alphas[i + 1] - alphas[i]) / (logq2s[i + 1] - logq2s[i])
+    }
+
+    /// Backward derivative w.r.t. logQ2
+    fn ddlogq_backward<D>(data: &InterpData1D<D>, i: usize) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let logq2s: Vec<f64> = data.grid[0]
+            .as_slice()
+            .unwrap()
+            .iter()
+            .map(|&q2| q2.ln())
+            .collect();
+        let alphas = data.values.as_slice().unwrap();
+        (alphas[i] - alphas[i - 1]) / (logq2s[i] - logq2s[i - 1])
+    }
+
+    /// Central (avg of forward and backward) derivative w.r.t. logQ2
+    fn ddlogq_central<D>(data: &InterpData1D<D>, i: usize) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        0.5 * (Self::ddlogq_forward(data, i) + Self::ddlogq_backward(data, i))
+    }
+}
+
+impl<D> Strategy1D<D> for AlphaSCubicInterpolation
+where
+    D: Data<Elem = f64> + RawDataClone + Clone,
+{
+    fn interpolate(
+        &self,
+        data: &InterpData1D<D>,
+        point: &[f64; 1],
+    ) -> Result<f64, InterpolateError> {
+        let q2 = point[0];
+        let q2s = data.grid[0].as_slice().unwrap();
+        let alphas = data.values.as_slice().unwrap();
+        let logq2s: Vec<f64> = q2s.iter().map(|&q2| q2.ln()).collect();
+
+        assert!(q2 >= 0.0);
+
+        // Using base 10 for logs to get constant gradient extrapolation in
+        // a log 10 - log 10 plot
+        if q2 < *q2s.first().unwrap() {
+            // Remember to take situations where the first knot also is a
+            // flavor threshold into account
+            let mut next_point = 1;
+            while q2s[0] == q2s[next_point] {
+                next_point += 1;
+            }
+            let dlogq2 = (q2s[next_point] / q2s[0]).log10();
+            let dlogas = (alphas[next_point] / alphas[0]).log10();
+            let loggrad = dlogas / dlogq2;
+            return Ok(alphas[0] * (q2 / q2s[0]).powf(loggrad));
+        }
+
+        if q2 > *q2s.last().unwrap() {
+            return Ok(*alphas.last().unwrap());
+        }
+
+        // Get the Q/alpha_s index on this array which is *below* this Q point
+        let i = Self::iq2below(data, q2);
+
+        // Calculate derivatives
+        let didlogq2: f64;
+        let di1dlogq2: f64;
+        if i == 0 {
+            didlogq2 = Self::ddlogq_forward(data, i);
+            di1dlogq2 = Self::ddlogq_central(data, i + 1);
+        } else if i == logq2s.len() - 2 {
+            didlogq2 = Self::ddlogq_central(data, i);
+            di1dlogq2 = Self::ddlogq_backward(data, i + 1);
+        } else {
+            didlogq2 = Self::ddlogq_central(data, i);
+            di1dlogq2 = Self::ddlogq_central(data, i + 1);
+        }
+
+        // Calculate alpha_s
+        let dlogq2 = logq2s[i + 1] - logq2s[i];
+        let tlogq2 = (q2.ln() - logq2s[i]) / dlogq2;
+        Ok(utils::hermite_cubic_interpolate(
+            tlogq2,
+            alphas[i],
+            didlogq2 * dlogq2,
+            alphas[i + 1],
+            di1dlogq2 * dlogq2,
+        ))
+    }
+
+    fn allow_extrapolate(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -955,7 +938,6 @@ mod tests {
 
     // Helper constants for commonly used values
     const EPSILON: f64 = 1e-9;
-    const LN_10: f64 = std::f64::consts::LN_10;
 
     fn create_test_data_1d(
         q2_values: Vec<f64>,
@@ -1169,75 +1151,6 @@ mod tests {
         for (coeffs, x, expected) in test_cases {
             let result = LogBicubicInterpolation::hermite_cubic_interpolate_from_coeffs(x, &coeffs);
             assert_close(result, expected, EPSILON);
-        }
-    }
-
-    #[test]
-    fn test_calculate_ddx() {
-        let target_data = create_target_data(5);
-        let data = create_test_data_2d(
-            vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            target_data.clone(),
-        );
-
-        // Test different difference types
-        assert_eq!(
-            LogBicubicInterpolation::calculate_ddx(&data, 1, 0, false),
-            1.0
-        ); // Central
-        assert_eq!(
-            LogBicubicInterpolation::calculate_ddx(&data, 0, 0, false),
-            1.0
-        ); // Forward
-        assert_eq!(
-            LogBicubicInterpolation::calculate_ddx(&data, 4, 0, false),
-            1.0
-        ); // Backward
-
-        // Test with logarithmic spacing
-        let data_log = create_test_data_2d(
-            vec![1.0, 10.0, 100.0, 1000.0, 10000.0],
-            vec![1.0, 2.0, 3.0, 4.0, 5.0],
-            target_data,
-        );
-
-        let expected_ddx_log = 1.0 / LN_10;
-        let result = LogBicubicInterpolation::calculate_ddx(&data_log, 1, 0, true);
-        assert_close(result, expected_ddx_log, EPSILON);
-    }
-
-    #[test]
-    fn test_compute_polynomial_coefficients() {
-        let target_data = create_target_data(4);
-        let data = create_test_data_2d(
-            vec![1.0, 2.0, 3.0, 4.0],
-            vec![1.0, 2.0, 3.0, 4.0],
-            target_data.clone(),
-        );
-
-        let coeffs = LogBicubicInterpolation::compute_polynomial_coefficients(&data, false);
-        assert_eq!(coeffs.len(), 48); // (4-1) * 4 * 4
-
-        // Test specific coefficients for cell (0,0) -> (1,0)
-        let expected_coeffs = [0.0, 0.0, 1.0, 1.0]; // [a, b, c, d]
-        for (i, &expected) in expected_coeffs.iter().enumerate() {
-            assert_close(coeffs[i], expected, EPSILON);
-        }
-
-        // Test with logarithmic spacing
-        let data_log = create_test_data_2d(
-            vec![1.0, 10.0, 100.0, 1000.0],
-            vec![1.0, 2.0, 3.0, 4.0],
-            target_data,
-        );
-
-        let coeffs_log = LogBicubicInterpolation::compute_polynomial_coefficients(&data_log, true);
-        assert_eq!(coeffs_log.len(), 48);
-
-        // Coefficients should be similar for this linear example
-        for (i, &expected) in expected_coeffs.iter().enumerate() {
-            assert_close(coeffs_log[i], expected, EPSILON);
         }
     }
 

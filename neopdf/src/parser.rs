@@ -13,7 +13,7 @@ pub struct SubgridData {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PdfData {
     pub subgrid_data: Vec<SubgridData>,
-    pub flavors: Vec<i32>,
+    pub pids: Vec<i32>,
 }
 
 /// Reads the `.info` file for a PDF set and deserializes it into an `Info` struct.
@@ -104,7 +104,7 @@ pub fn read_lhapdf_data(path: &Path) -> PdfData {
 
     PdfData {
         subgrid_data,
-        flavors,
+        pids: flavors,
     }
 }
 
@@ -165,7 +165,7 @@ mod tests {
         write!(temp_file, "{}", data_content).unwrap();
         let pdf_data = read_lhapdf_data(temp_file.path());
 
-        assert_eq!(pdf_data.flavors, vec![21, 1, 2]);
+        assert_eq!(pdf_data.pids, vec![21, 1, 2]);
         assert_eq!(pdf_data.subgrid_data.len(), 2);
 
         // Check the first subgrid
