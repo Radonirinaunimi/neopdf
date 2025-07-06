@@ -620,50 +620,27 @@ impl LogTricubicInterpolation {
     {
         let values = &data.values;
 
-        // Get the 8 corner values of the cube
-        let f000 = values[[ix, iq2, iz]];
-        let f001 = values[[ix, iq2, iz + 1]];
-        let f010 = values[[ix, iq2 + 1, iz]];
-        let f011 = values[[ix, iq2 + 1, iz + 1]];
-        let f100 = values[[ix + 1, iq2, iz]];
-        let f101 = values[[ix + 1, iq2, iz + 1]];
-        let f110 = values[[ix + 1, iq2 + 1, iz]];
-        let f111 = values[[ix + 1, iq2 + 1, iz + 1]];
+        let get = |dx, dy, dz| values[[ix + dx, iq2 + dy, iz + dz]];
+        let ddx = |dx, dy, dz| Self::calculate_ddx(data, ix + dx, iq2 + dy, iz + dz);
+        let ddy = |dx, dy, dz| Self::calculate_ddy(data, ix + dx, iq2 + dy, iz + dz);
+        let ddz = |dx, dy, dz| Self::calculate_ddz(data, ix + dx, iq2 + dy, iz + dz);
 
-        // Calculate derivatives in all three directions for each corner
-        let fx000 = Self::calculate_ddx(data, ix, iq2, iz);
-        let fx001 = Self::calculate_ddx(data, ix, iq2, iz + 1);
-        let fx010 = Self::calculate_ddx(data, ix, iq2 + 1, iz);
-        let fx011 = Self::calculate_ddx(data, ix, iq2 + 1, iz + 1);
-        let fx100 = Self::calculate_ddx(data, ix + 1, iq2, iz);
-        let fx101 = Self::calculate_ddx(data, ix + 1, iq2, iz + 1);
-        let fx110 = Self::calculate_ddx(data, ix + 1, iq2 + 1, iz);
-        let fx111 = Self::calculate_ddx(data, ix + 1, iq2 + 1, iz + 1);
+        let cx = [(0, 0), (0, 1), (1, 0), (1, 1)].map(|(dy, dz)| {
+            let f0 = get(0, dy, dz);
+            let f1 = get(1, dy, dz);
+            let d0 = ddx(0, dy, dz);
+            let d1 = ddx(1, dy, dz);
+            Self::cubic_interpolate(u, f0, d0, f1, d1)
+        });
 
-        // For a proper implementation, we need to do a full 3D interpolation
-        // This uses trilinear interpolation with cubic smoothing in each direction
+        let cy = [(0, 0), (0, 1), (1, 0), (1, 1)].map(|(dy, dz)| ddy(0, dy, dz));
 
-        // Interpolate along x-axis for each of the 4 edges parallel to x
-        let c00 = Self::cubic_interpolate(u, f000, fx000, f100, fx100);
-        let c01 = Self::cubic_interpolate(u, f001, fx001, f101, fx101);
-        let c10 = Self::cubic_interpolate(u, f010, fx010, f110, fx110);
-        let c11 = Self::cubic_interpolate(u, f011, fx011, f111, fx111);
+        let c0 = Self::cubic_interpolate(v, cx[0], cy[0], cx[2], cy[2]);
+        let c1 = Self::cubic_interpolate(v, cx[1], cy[1], cx[3], cy[3]);
 
-        // Calculate derivatives for y-direction interpolation
-        let cy00 = Self::calculate_ddy(data, ix, iq2, iz);
-        let cy01 = Self::calculate_ddy(data, ix, iq2, iz + 1);
-        let cy10 = Self::calculate_ddy(data, ix, iq2 + 1, iz);
-        let cy11 = Self::calculate_ddy(data, ix, iq2 + 1, iz + 1);
+        let cz0 = ddz(0, 0, 0);
+        let cz1 = ddz(0, 0, 1);
 
-        // Interpolate along y-axis
-        let c0 = Self::cubic_interpolate(v, c00, cy00, c10, cy10);
-        let c1 = Self::cubic_interpolate(v, c01, cy01, c11, cy11);
-
-        // Calculate derivatives for z-direction interpolation
-        let cz0 = Self::calculate_ddz(data, ix, iq2, iz);
-        let cz1 = Self::calculate_ddz(data, ix, iq2, iz + 1);
-
-        // Final interpolation along z-axis
         Self::cubic_interpolate(w, c0, cz0, c1, cz1)
     }
 
@@ -973,7 +950,7 @@ mod tests {
         .unwrap()
     }
 
-    fn create_target_data(max_num: i32) -> Vec<f64> {
+    fn create_target_data_2d(max_num: i32) -> Vec<f64> {
         (1..=max_num)
             .flat_map(|i| (1..=max_num).map(move |j| (i * j) as f64))
             .collect()
@@ -1067,20 +1044,20 @@ mod tests {
     #[test]
     fn test_log_tricubic_interpolation() {
         // Create a simple 3x3x3 grid
-        let x_coords = vec![1e-5, 1e-4, 1e-3, 1e-2, 1.0];
-        let y_coords = vec![1e-5, 1e-4, 1e-3, 1e-2, 1.0];
-        let z_coords = vec![1e-5, 1e-4, 1e-3, 1e-2, 1.0];
-        let values: Vec<f64> = (0..5)
-            .flat_map(|i| (0..5).flat_map(move |j| (0..5).map(move |k| (i + j + k) as f64)))
+        let x_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let y_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let z_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let values: Vec<f64> = (1..6)
+            .flat_map(|i| (1..6).flat_map(move |j| (1..6).map(move |k| (i + j + k) as f64)))
             .collect();
         let interp_data = create_test_data_3d(x_coords, y_coords, z_coords, values);
 
         let mut interpolator = LogTricubicInterpolation::default();
         interpolator.init(&interp_data).unwrap();
 
-        let point = [0.5, 0.2, 0.1];
-        let result = interpolator.interpolate(&interp_data, &point);
-        assert!(result.is_ok());
+        let point = [1.5, 1.5, 1.5];
+        let result = interpolator.interpolate(&interp_data, &point).unwrap();
+        assert_close(result, 4.5, 2e-2);
     }
 
     #[test]
@@ -1199,7 +1176,7 @@ mod tests {
 
     #[test]
     fn test_log_bicubic_interpolation() {
-        let target_data = create_target_data(4);
+        let target_data = create_target_data_2d(4);
         let data = create_test_data_2d(
             vec![1.0, 10.0, 100.0, 1000.0],
             vec![1.0, 10.0, 100.0, 1000.0],
