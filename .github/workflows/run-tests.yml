@@ -15,6 +15,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Build
-      run: cargo build --verbose --release
+      run: cargo build --release
     - name: Run tests
-      run: cargo test --verbose --release --no-fail-fast
+      run: cargo test --release --no-fail-fast -p neopdf
