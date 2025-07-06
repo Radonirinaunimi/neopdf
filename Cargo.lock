@@ -798,6 +798,7 @@ dependencies = [
  "neopdf",
  "numpy",
  "pyo3",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
