@@ -1,7 +1,7 @@
 use ndarray::{Data, RawDataClone};
-use ninterp::data::{InterpData1D, InterpData2D};
+use ninterp::data::{InterpData1D, InterpData2D, InterpData3D};
 use ninterp::error::{InterpolateError, ValidateError};
-use ninterp::strategy::traits::{Strategy1D, Strategy2D};
+use ninterp::strategy::traits::{Strategy1D, Strategy2D, Strategy3D};
 use serde::{Deserialize, Serialize};
 
 use super::utils;
@@ -644,6 +644,310 @@ where
     }
 }
 
+/// LogTricubic interpolation strategy for PDF-like data
+///
+/// This strategy implements tricubic interpolation with logarithmic coordinate scaling:
+/// - x-coordinates are logarithmically spaced (e.g., 1e-9 to 1)
+/// - y-coordinates are logarithmically spaced (e.g., Q² values)
+/// - z-coordinates are logarithmically spaced (e.g., Mass Atomic A, AlphaS)
+/// - w-values (PDF values) are interpolated using tricubic splines
+///
+/// Tricubic interpolation uses a 4x4x4 grid of points around the interpolation point
+/// and provides C1 continuity (continuous first derivatives).
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub struct LogTricubicInterpolation {
+    coeffs: Vec<f64>,
+}
+
+impl LogTricubicInterpolation {
+    /// Find the interval for tricubic interpolation
+    /// Returns the index i such that we can use points [i-1, i, i+1, i+2] for interpolation
+    fn find_tricubic_interval(coords: &[f64], x: f64) -> Result<usize, InterpolateError> {
+        // Find the interval [i, i+1] such that coords[i] <= x < coords[i+1]
+        let i = utils::find_interval_index(coords, x)?;
+        Ok(i)
+    }
+
+    /// Cubic interpolation using a passed array of coefficients (a*x^3 + b*x^2 + c*x + d)
+    pub fn hermite_cubic_interpolate_from_coeffs(t: f64, coeffs: &[f64; 4]) -> f64 {
+        let x = t;
+        let x2 = x * x;
+        let x3 = x2 * x;
+        coeffs[0] * x3 + coeffs[1] * x2 + coeffs[2] * x + coeffs[3]
+    }
+
+    /// Calculates the derivative with respect to x (or log(x)) at a given knot.
+    /// This mirrors the _ddx function in LHAPDF's C++ implementation.
+    pub fn calculate_ddx<D>(data: &InterpData3D<D>, ix: usize, iq2: usize, imu2: usize) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let nxknots = data.grid[0].len();
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let log_x_coords: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
+        let values = &data.values;
+
+        let del1 = match ix {
+            0 => 0.0,
+            i => log_x_coords[i] - log_x_coords[i - 1],
+        };
+
+        let del2 = match log_x_coords.get(ix + 1) {
+            Some(&next) => next - log_x_coords[ix],
+            None => 0.0,
+        };
+
+        if ix != 0 && ix != nxknots - 1 {
+            // Central difference
+            let lddx = (values[[ix, iq2, imu2]] - values[[ix - 1, iq2, imu2]]) / del1;
+            let rddx = (values[[ix + 1, iq2, imu2]] - values[[ix, iq2, imu2]]) / del2;
+            (lddx + rddx) / 2.0
+        } else if ix == 0 {
+            // Forward difference
+            (values[[ix + 1, iq2, imu2]] - values[[ix, iq2, imu2]]) / del2
+        } else if ix == nxknots - 1 {
+            // Backward difference
+            (values[[ix, iq2, imu2]] - values[[ix - 1, iq2, imu2]]) / del1
+        } else {
+            // This case should ideally not be reached given the checks above
+            panic!("Should not reach here: Invalid index for derivative calculation.");
+        }
+    }
+
+    /// Calculates the derivative with respect to y (or log(y)) at a given knot.
+    pub fn calculate_ddy<D>(data: &InterpData3D<D>, ix: usize, iq2: usize, imu2: usize) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let nq2knots = data.grid[1].len();
+        let q2_coords = data.grid[1].as_slice().unwrap();
+        let log_q2_coords: Vec<f64> = q2_coords.iter().map(|&qi| qi.ln()).collect();
+        let values = &data.values;
+
+        let del1 = match iq2 {
+            0 => 0.0,
+            i => log_q2_coords[i] - log_q2_coords[i - 1],
+        };
+
+        let del2 = match log_q2_coords.get(iq2 + 1) {
+            Some(&next) => next - log_q2_coords[iq2],
+            None => 0.0,
+        };
+
+        if iq2 != 0 && iq2 != nq2knots - 1 {
+            // Central difference
+            let lddq = (values[[ix, iq2, imu2]] - values[[ix, iq2 - 1, imu2]]) / del1;
+            let rddq = (values[[ix, iq2 + 1, imu2]] - values[[ix, iq2, imu2]]) / del2;
+            (lddq + rddq) / 2.0
+        } else if iq2 == 0 {
+            // Forward difference
+            (values[[ix, iq2 + 1, imu2]] - values[[ix, iq2, imu2]]) / del2
+        } else if iq2 == nq2knots - 1 {
+            // Backward difference
+            (values[[ix, iq2, imu2]] - values[[ix, iq2 - 1, imu2]]) / del1
+        } else {
+            panic!("Should not reach here: Invalid index for derivative calculation.");
+        }
+    }
+
+    /// Calculates the derivative with respect to z (or log(z)) at a given knot.
+    pub fn calculate_ddz<D>(data: &InterpData3D<D>, ix: usize, iq2: usize, imu2: usize) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let nmu2knots = data.grid[2].len();
+        let mu2_coords = data.grid[2].as_slice().unwrap();
+        let log_mu2_coords: Vec<f64> = mu2_coords.iter().map(|&mui| mui.ln()).collect();
+        let values = &data.values;
+
+        let del1 = match imu2 {
+            0 => 0.0,
+            i => log_mu2_coords[i] - log_mu2_coords[i - 1],
+        };
+
+        let del2 = match log_mu2_coords.get(imu2 + 1) {
+            Some(&next) => next - log_mu2_coords[imu2],
+            None => 0.0,
+        };
+
+        if imu2 != 0 && imu2 != nmu2knots - 1 {
+            // Central difference
+            let lddmu = (values[[ix, iq2, imu2]] - values[[ix, iq2, imu2 - 1]]) / del1;
+            let rddmu = (values[[ix, iq2, imu2 + 1]] - values[[ix, iq2, imu2]]) / del2;
+            (lddmu + rddmu) / 2.0
+        } else if imu2 == 0 {
+            // Forward difference
+            (values[[ix, iq2, imu2 + 1]] - values[[ix, iq2, imu2]]) / del2
+        } else if imu2 == nmu2knots - 1 {
+            // Backward difference
+            (values[[ix, iq2, imu2]] - values[[ix, iq2, imu2 - 1]]) / del1
+        } else {
+            panic!("Should not reach here: Invalid index for derivative calculation.");
+        }
+    }
+
+    /// Corrected Hermite tricubic interpolation that properly handles the 3D nature
+    fn hermite_tricubic_interpolate<D>(
+        &self,
+        data: &InterpData3D<D>,
+        ix: usize,
+        iq2: usize,
+        imu2: usize,
+        u: f64,
+        v: f64,
+        w: f64,
+    ) -> f64
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let values = &data.values;
+
+        // Get the 8 corner values of the cube
+        let f000 = values[[ix, iq2, imu2]];
+        let f001 = values[[ix, iq2, imu2 + 1]];
+        let f010 = values[[ix, iq2 + 1, imu2]];
+        let f011 = values[[ix, iq2 + 1, imu2 + 1]];
+        let f100 = values[[ix + 1, iq2, imu2]];
+        let f101 = values[[ix + 1, iq2, imu2 + 1]];
+        let f110 = values[[ix + 1, iq2 + 1, imu2]];
+        let f111 = values[[ix + 1, iq2 + 1, imu2 + 1]];
+
+        // Calculate derivatives in all three directions for each corner
+        let fx000 = Self::calculate_ddx(data, ix, iq2, imu2);
+        let fx001 = Self::calculate_ddx(data, ix, iq2, imu2 + 1);
+        let fx010 = Self::calculate_ddx(data, ix, iq2 + 1, imu2);
+        let fx011 = Self::calculate_ddx(data, ix, iq2 + 1, imu2 + 1);
+        let fx100 = Self::calculate_ddx(data, ix + 1, iq2, imu2);
+        let fx101 = Self::calculate_ddx(data, ix + 1, iq2, imu2 + 1);
+        let fx110 = Self::calculate_ddx(data, ix + 1, iq2 + 1, imu2);
+        let fx111 = Self::calculate_ddx(data, ix + 1, iq2 + 1, imu2 + 1);
+
+        // For a proper implementation, we need to do a full 3D interpolation
+        // This uses trilinear interpolation with cubic smoothing in each direction
+
+        // Interpolate along x-axis for each of the 4 edges parallel to x
+        let c00 = Self::cubic_interpolate(u, f000, fx000, f100, fx100);
+        let c01 = Self::cubic_interpolate(u, f001, fx001, f101, fx101);
+        let c10 = Self::cubic_interpolate(u, f010, fx010, f110, fx110);
+        let c11 = Self::cubic_interpolate(u, f011, fx011, f111, fx111);
+
+        // Calculate derivatives for y-direction interpolation
+        let cy00 = Self::calculate_ddy(data, ix, iq2, imu2);
+        let cy01 = Self::calculate_ddy(data, ix, iq2, imu2 + 1);
+        let cy10 = Self::calculate_ddy(data, ix, iq2 + 1, imu2);
+        let cy11 = Self::calculate_ddy(data, ix, iq2 + 1, imu2 + 1);
+
+        // Interpolate along y-axis
+        let c0 = Self::cubic_interpolate(v, c00, cy00, c10, cy10);
+        let c1 = Self::cubic_interpolate(v, c01, cy01, c11, cy11);
+
+        // Calculate derivatives for z-direction interpolation
+        let cz0 = Self::calculate_ddz(data, ix, iq2, imu2);
+        let cz1 = Self::calculate_ddz(data, ix, iq2, imu2 + 1);
+
+        // Final interpolation along z-axis
+        Self::cubic_interpolate(w, c0, cz0, c1, cz1)
+    }
+
+    /// Hermite cubic interpolation with derivatives
+    fn cubic_interpolate(t: f64, f0: f64, f0_prime: f64, f1: f64, f1_prime: f64) -> f64 {
+        let t2 = t * t;
+        let t3 = t2 * t;
+
+        // Hermite basis functions
+        let h00 = 2.0 * t3 - 3.0 * t2 + 1.0;
+        let h10 = t3 - 2.0 * t2 + t;
+        let h01 = -2.0 * t3 + 3.0 * t2;
+        let h11 = t3 - t2;
+
+        h00 * f0 + h10 * f0_prime + h01 * f1 + h11 * f1_prime
+    }
+}
+
+impl<D> Strategy3D<D> for LogTricubicInterpolation
+where
+    D: Data<Elem = f64> + RawDataClone + Clone,
+{
+    fn init(&mut self, data: &InterpData3D<D>) -> Result<(), ValidateError> {
+        // Get the coordinate arrays
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+        let z_coords = data.grid[2].as_slice().unwrap();
+
+        // Check that all coordinates are positive for logarithmic scaling
+        if x_coords.iter().any(|&x| x <= 0.0)
+            || y_coords.iter().any(|&y| y <= 0.0)
+            || z_coords.iter().any(|&z| z <= 0.0)
+        {
+            return Err(ValidateError::Other(
+                "All input values must be positive for logarithmic scaling".to_string(),
+            ));
+        }
+
+        // Check that we have at least 4x4x4 grid for tricubic interpolation
+        if x_coords.len() < 4 || y_coords.len() < 4 || z_coords.len() < 4 {
+            return Err(ValidateError::Other(
+                "Need at least 4x4x4 grid for tricubic interpolation".to_string(),
+            ));
+        }
+
+        // Use the Hermite approach instead of coefficient precomputation
+        // This is more straightforward and avoids the complex 64x64 matrix
+        self.coeffs = Vec::new(); // Not needed for Hermite approach
+        Ok(())
+    }
+
+    fn interpolate(
+        &self,
+        data: &InterpData3D<D>,
+        point: &[f64; 3],
+    ) -> Result<f64, InterpolateError> {
+        let [x, y, z] = *point;
+
+        // Get the coordinate arrays
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+        let z_coords = data.grid[2].as_slice().unwrap();
+
+        // Transform coordinates to log space
+        let log_x = x.ln();
+        let log_y = y.ln();
+        let log_z = z.ln();
+
+        // Transform grid coordinates to log space
+        let log_x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
+        let log_y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
+        let log_z_grid: Vec<f64> = z_coords.iter().map(|&zi| zi.ln()).collect();
+
+        // Find the grid cell containing the point
+        let i = Self::find_tricubic_interval(&log_x_grid, log_x)?;
+        let j = Self::find_tricubic_interval(&log_y_grid, log_y)?;
+        let k = Self::find_tricubic_interval(&log_z_grid, log_z)?;
+
+        // Normalize coordinates to [0,1] within the cell
+        let dx = log_x_grid[i + 1] - log_x_grid[i];
+        let dy = log_y_grid[j + 1] - log_y_grid[j];
+        let dz = log_z_grid[k + 1] - log_z_grid[k];
+
+        if dx == 0.0 || dy == 0.0 || dz == 0.0 {
+            return Err(InterpolateError::Other("Grid spacing is zero".to_string()));
+        }
+
+        let u = (log_x - log_x_grid[i]) / dx;
+        let v = (log_y - log_y_grid[j]) / dy;
+        let w = (log_z - log_z_grid[k]) / dz;
+
+        // Use the corrected Hermite tricubic interpolation
+        let result = self.hermite_tricubic_interpolate(data, i, j, k, u, v, w);
+
+        Ok(result)
+    }
+
+    fn allow_extrapolate(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -654,7 +958,13 @@ mod tests {
     const EPSILON: f64 = 1e-9;
     const LN_10: f64 = std::f64::consts::LN_10;
 
-    // Helper functions to reduce code duplication
+    fn create_test_data_1d(
+        q2_values: Vec<f64>,
+        alphas_vals: Vec<f64>,
+    ) -> InterpData1D<OwnedRepr<f64>> {
+        InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap()
+    }
+
     fn create_test_data_2d(
         x_coords: Vec<f64>,
         y_coords: Vec<f64>,
@@ -663,13 +973,6 @@ mod tests {
         let shape = (x_coords.len(), y_coords.len());
         let values_array = Array2::from_shape_vec(shape, values).unwrap();
         InterpData2D::new(x_coords.into(), y_coords.into(), values_array).unwrap()
-    }
-
-    fn create_test_data_1d(
-        q2_values: Vec<f64>,
-        alphas_vals: Vec<f64>,
-    ) -> InterpData1D<OwnedRepr<f64>> {
-        InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap()
     }
 
     fn create_target_data(max_num: i32) -> Vec<f64> {
