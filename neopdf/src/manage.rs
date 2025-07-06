@@ -86,7 +86,6 @@ impl ManageData {
     /// Ensure that the PDF set is installed, otherwise download it.
     pub fn ensure_pdf_installed(&self) -> Result<(), Box<dyn Error>> {
         if self.is_pdf_installed() {
-            println!("PDF set '{}' is already installed", self.set_name);
             return Ok(());
         }
 

@@ -1,0 +1,52 @@
+[build-system]
+requires = ["maturin>=0.13.4"]
+build-backend = "maturin"
+
+[project]
+name = "neopdf"
+# due to a bug in warehouse, https://github.com/pypi/warehouse/issues/8090, this file must be the
+# same across all wheels of a single version and therefore `requires-python` must give the minimum
+# Python version that we support
+requires-python = ">=3.7"
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+  "Natural Language :: English",
+  "Operating System :: MacOS",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Rust",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+dependencies = ["numpy>=1.16.0"]
+dynamic = ["version"]
+
+[project.optional-dependencies]
+docs = [
+  "sphinx>=7.0.0",
+  "sphinx_rtd_theme>=1.2.2",
+  "nbsphinx>=0.8.8",
+  "ipykernel>=6.13.0",
+  "polars>=1.8.0"
+]
+test = ["pytest", "pytest-cov"]
+
+[project.urls]
+homepage = "https://github.com/Radonirinaunimi/neopdf"
+documentation = ""
+changelog = ""
+
+[tool.maturin]
+bindings = "pyo3"
+strip = true
+
+[tool.pytest.ini_options]
+testpaths = ['tests/']
+addopts = [
+  '--cov=neopdf',
+  '--cov-report=html',
+  '--cov-report=xml',
+  '--strict-markers',
+]

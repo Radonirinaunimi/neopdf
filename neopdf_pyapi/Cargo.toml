@@ -21,4 +21,8 @@ name = "neopdf"
 crate-type = ["cdylib"]
 
 [dependencies]
-neopdf = { path = "../neopdf" }
+neopdf = { path = "../neopdf", version = "0.1.0" }
+thiserror = "2.0.12"
+ndarray = { version = "0.16.1", features = ["serde"] }
+numpy = "0.25.0"
+pyo3 = { version = "0.25.1", features = ["extension-module"] }
