@@ -4,6 +4,10 @@ NeoPDF is a fast, reliable, and scalable interpolation library for
 Parton Distribution Functions (PDFs) with modern features targeting
 both present and future hadron colliders.
 
+**NOTE:** Although the C/C++/Python APIs should be stable, the main
+`neopdf` crate is still WIP, especially when it regards the design
+structure of the data management.
+
 Physics' features
 -----------------
 
