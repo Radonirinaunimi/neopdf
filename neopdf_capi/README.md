@@ -13,6 +13,7 @@ cargo install cargo-c
 then run the following command:
 
 ```
+export CARGO_C_INSTALL_PREFIX=${prefix} # Needed if you want the OOP C++ header
 cargo cinstall --release --prefix=${prefix}
 ```
 
