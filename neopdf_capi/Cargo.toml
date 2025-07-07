@@ -23,3 +23,8 @@ capi = []
 
 [lints]
 workspace = true
+
+[package.metadata.capi]
+name = "neopdf_capi"
+include = "src/include"
+headers = ["NeoPDF.hpp"]
