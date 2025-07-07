@@ -1,3 +1,4 @@
+use super::manage::ManageData;
 use super::metadata::MetaData;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -14,6 +15,33 @@ pub struct SubgridData {
 pub struct PdfData {
     pub subgrid_data: Vec<SubgridData>,
     pub pids: Vec<i32>,
+}
+
+// TODO: make this a trait
+pub struct LhapdfSet {
+    manager: ManageData,
+    info: MetaData,
+}
+
+impl LhapdfSet {
+    pub fn new(pdf_name: &str) -> Self {
+        let manager = ManageData::new(pdf_name);
+        let info_path = manager.info_path();
+        let info: MetaData = read_lhapdf_metadata(&info_path).unwrap();
+        Self { manager, info }
+    }
+
+    pub fn member(&self, member: usize) -> (MetaData, PdfData) {
+        let data_path = self.manager.dat_path(member);
+        let pdf_data = read_lhapdf_data(&data_path);
+        (self.info.clone(), pdf_data)
+    }
+
+    pub fn members(&self) -> Vec<(MetaData, PdfData)> {
+        (0..self.info.num_members as usize)
+            .map(|i| self.member(i))
+            .collect()
+    }
 }
 
 /// Reads the `.info` file for a PDF set and deserializes it into an `Info` struct.

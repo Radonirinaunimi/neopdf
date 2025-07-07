@@ -107,4 +107,21 @@ impl ManageData {
     pub fn set_path(&self) -> &Path {
         &self.pdfset_path
     }
+
+    /// Get the path to the .info file for this PDF set.
+    pub fn info_path(&self) -> PathBuf {
+        self.pdfset_path.join(format!(
+            "{}.info",
+            self.pdfset_path.file_name().unwrap().to_str().unwrap()
+        ))
+    }
+
+    /// Get the path to a specific .dat member file for this PDF set.
+    pub fn dat_path(&self, member: usize) -> PathBuf {
+        self.pdfset_path.join(format!(
+            "{}_{:04}.dat",
+            self.pdfset_path.file_name().unwrap().to_str().unwrap(),
+            member
+        ))
+    }
 }

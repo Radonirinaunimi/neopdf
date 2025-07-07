@@ -1,7 +1,6 @@
 use super::gridpdf::{GridArray, GridPDF};
-use super::manage::ManageData;
 use super::metadata::MetaData;
-use super::parser;
+use super::parser::LhapdfSet;
 use ndarray::Array3;
 use rayon::prelude::*;
 
@@ -24,21 +23,8 @@ impl PDF {
     ///
     /// A `PDF` instance representing the loaded PDF set.
     pub fn load(pdf_name: &str, member: usize) -> PDF {
-        let manager = ManageData::new(pdf_name);
-        let pdfset_path = manager.set_path();
-
-        let info_path = pdfset_path.join(format!(
-            "{}.info",
-            pdfset_path.file_name().unwrap().to_str().unwrap()
-        ));
-        let info: MetaData = parser::read_lhapdf_metadata(&info_path).unwrap();
-
-        let data_path = pdfset_path.join(format!(
-            "{}_{:04}.dat",
-            pdfset_path.file_name().unwrap().to_str().unwrap(),
-            member
-        ));
-        let pdf_data = parser::read_lhapdf_data(&data_path);
+        let lhapdf_set = LhapdfSet::new(pdf_name);
+        let (info, pdf_data) = lhapdf_set.member(member);
         let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
 
         PDF {
@@ -59,27 +45,14 @@ impl PDF {
     ///
     /// A `Vec<PDF>` instance representing all loaded PDF sets.
     pub fn load_pdfs(pdf_name: &str) -> Vec<PDF> {
-        let manager = ManageData::new(pdf_name);
-        let pdfset_path = manager.set_path();
-
-        let info_path = pdfset_path.join(format!(
-            "{}.info",
-            pdfset_path.file_name().unwrap().to_str().unwrap()
-        ));
-        let info: MetaData = parser::read_lhapdf_metadata(&info_path).unwrap();
-
-        (0..info.num_members)
+        let lhapdf_set = LhapdfSet::new(pdf_name);
+        lhapdf_set
+            .members()
             .into_par_iter()
-            .map(|i| {
-                let data_path = pdfset_path.join(format!(
-                    "{}_{:04}.dat",
-                    pdfset_path.file_name().unwrap().to_str().unwrap(),
-                    i
-                ));
-                let pdf_data = parser::read_lhapdf_data(&data_path);
+            .map(|(info, pdf_data)| {
                 let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
                 PDF {
-                    grid_pdf: GridPDF::new(info.clone(), knot_array),
+                    grid_pdf: GridPDF::new(info, knot_array),
                 }
             })
             .collect()
