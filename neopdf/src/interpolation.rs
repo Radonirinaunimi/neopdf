@@ -608,9 +608,7 @@ impl LogTricubicInterpolation {
     fn hermite_tricubic_interpolate<D>(
         &self,
         data: &InterpData3D<D>,
-        ix: usize,
-        iq2: usize,
-        iz: usize,
+        indices: (usize, usize, usize),
         u: f64,
         v: f64,
         w: f64,
@@ -618,6 +616,7 @@ impl LogTricubicInterpolation {
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
+        let (ix, iq2, iz) = indices;
         let values = &data.values;
 
         let get = |dx, dy, dz| values[[ix + dx, iq2 + dy, iz + dz]];
@@ -733,7 +732,7 @@ where
         let w = (log_z - log_z_grid[k]) / dz;
 
         // Use the corrected Hermite tricubic interpolation
-        let result = self.hermite_tricubic_interpolate(data, i, j, k, u, v, w);
+        let result = self.hermite_tricubic_interpolate(data, (i, j, k), u, v, w);
 
         Ok(result)
     }

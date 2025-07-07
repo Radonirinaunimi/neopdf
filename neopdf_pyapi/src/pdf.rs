@@ -1,5 +1,3 @@
-//! Python bindings for the `neopdf` Rust library.
-
 use neopdf::pdf::PDF;
 use numpy::{IntoPyArray, PyArray3};
 use pyo3::prelude::*;
@@ -132,7 +130,7 @@ impl PyPDF {
         self.pdf.q2_max()
     }
 
-    /// Interpolates the PDF value for a given flavor, x, and Q2.
+    /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.
     ///
     /// Parameters
     /// ----------
@@ -154,7 +152,8 @@ impl PyPDF {
         self.pdf.xfxq2(id, x, q2)
     }
 
-    /// Interpolates the PDF value for lists of flavors, x-values, and Q2-values.
+    /// Interpolates the PDF value (xf) for lists of flavors, x-values,
+    /// and Q2-values.
     ///
     /// Parameters
     /// ----------
@@ -206,7 +205,7 @@ impl PyPDF {
 ///
 /// Parameters
 /// ----------
-/// `parent_module` : `pyo3.Bound[pyo3.types.PyModule]`
+/// `parent_module` : pyo3.Bound[pyo3.types.PyModule]
 ///     The parent Python module to which the `pdf` submodule will be added.
 ///
 /// Returns

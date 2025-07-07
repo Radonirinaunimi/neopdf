@@ -4,6 +4,7 @@
 
 use pyo3::prelude::*;
 
+/// Python bindings for the PDF module.
 pub mod pdf;
 
 /// PyO3 Python module that contains all exposed classes from Rust.
