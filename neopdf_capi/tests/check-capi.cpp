@@ -32,11 +32,12 @@ int main() {
         << std::setw(15) << "LHAPDF"
         << std::setw(15) << "NeoPDF"
         << std::setw(15) << "Rel. Diff." << "\n";
-    std::cout << std::string(71, '-') << "\n";
+    std::cout << std::string(81, '-') << "\n";
 
     for (size_t i = 0; i < cases.size(); ++i) {
         int pid;
         double x, q2, expected;
+
         std::tie(pid, x, q2, expected) = cases[i];
         double result = neopdf_pdf_xfxq2(pdf, pid, x, q2);
         double reldif = std::abs(result - expected) / expected;
