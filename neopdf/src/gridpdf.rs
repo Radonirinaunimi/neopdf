@@ -15,7 +15,7 @@ use super::interpolation::{
     AlphaSCubicInterpolation, BilinearInterpolation, LogBicubicInterpolation,
     LogBilinearInterpolation,
 };
-use super::metadata::MetaData;
+use super::metadata::{InterpolatorType, MetaData};
 use super::parser::SubgridData;
 
 /// Stores the PDF grid data for a single subgrid.
@@ -165,8 +165,8 @@ impl GridPDF {
             for i in 0..knot_array.pids.len() {
                 let grid_slice = subgrid.grid.slice(s![i, .., ..]);
 
-                let interp: Box<dyn DynInterpolator> = match info.interpolator_type.as_str() {
-                    "LogBilinear" => Box::new(
+                let interp: Box<dyn DynInterpolator> = match info.interpolator_type {
+                    InterpolatorType::LogBilinear => Box::new(
                         Interp2D::new(
                             subgrid.xs.to_owned(),
                             subgrid.q2s.to_owned(),
@@ -176,7 +176,7 @@ impl GridPDF {
                         )
                         .unwrap(),
                     ),
-                    "Bilinear" => Box::new(
+                    InterpolatorType::Bilinear => Box::new(
                         Interp2D::new(
                             subgrid.xs.to_owned(),
                             subgrid.q2s.to_owned(),
@@ -187,7 +187,7 @@ impl GridPDF {
                         )
                         .unwrap(),
                     ),
-                    "LogBicubic" => Box::new(
+                    InterpolatorType::LogBicubic => Box::new(
                         Interp2D::new(
                             subgrid.xs.to_owned(),
                             subgrid.q2s.to_owned(),
@@ -198,7 +198,7 @@ impl GridPDF {
                         )
                         .unwrap(),
                     ),
-                    _ => panic!("Unknown interpolator type: {}", info.interpolator_type),
+                    _ => panic!("Unknown interpolator type."),
                 };
                 subgrid_interpolators.push(interp);
             }

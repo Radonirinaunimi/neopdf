@@ -1,5 +1,59 @@
 use serde::{Deserialize, Serialize};
 
+/// Represents the type of PDF set.
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum SetType {
+    #[default]
+    Pdf,
+    Fragfn,
+}
+
+/// Represents the type of interpolator used for the PDF.
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+pub enum InterpolatorType {
+    Bilinear,
+    LogBilinear,
+    #[default]
+    LogBicubic,
+    LogTricubic,
+}
+
+/// Represents the nucleon number for the PDF set.
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NucleonNumber(u32);
+
+impl Default for NucleonNumber {
+    fn default() -> Self {
+        // If not given, the default is always the proton.
+        NucleonNumber(1)
+    }
+}
+
+impl NucleonNumber {
+    /// Creates a new `NucleonNumber` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The nucleon number. Must be greater than 0.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the `NucleonNumber` if successful, or an error string otherwise.
+    pub fn new(value: u32) -> Result<Self, String> {
+        if value > 0 {
+            Ok(NucleonNumber(value))
+        } else {
+            Err("Nucleon number must be greater than 0".to_string())
+        }
+    }
+
+    /// Returns the inner `u32` value of the `NucleonNumber`.
+    pub fn get_value(&self) -> u32 {
+        self.0
+    }
+}
+
 /// Represents the information block of a PDF set, typically found in an `.info` file.
 /// This struct is deserialized from a YAML-like format.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -37,12 +91,16 @@ pub struct MetaData {
     /// AlphaS values for interpolation.
     #[serde(rename = "AlphaS_Vals", default)]
     pub alphas_vals: Vec<f64>,
-    /// Type of interpolator used for the PDF (e.g., "LogBilinear").
-    #[serde(rename = "InterpolatorType", default = "default_interpolator_type")]
-    pub interpolator_type: String,
-}
-
-/// Provides the default interpolator type, "LogBilinear", for `Info`.
-fn default_interpolator_type() -> String {
-    "LogBicubic".to_string()
+    /// Polarisation of the hadrons.
+    #[serde(rename = "Polarized", default)]
+    pub polarised: bool,
+    /// Type of the hadrons.
+    #[serde(rename = "SetType", default)]
+    pub set_type: SetType,
+    /// Atomic mass number of the set.
+    #[serde(rename = "NucleonNumber", default)]
+    pub nucleon_number: NucleonNumber,
+    /// Type of interpolator used for the PDF (e.g., "LogBicubic").
+    #[serde(rename = "InterpolatorType", default)]
+    pub interpolator_type: InterpolatorType,
 }
