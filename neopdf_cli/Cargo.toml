@@ -1,5 +1,9 @@
 [package]
 name = "neopdf_cli"
+authors = ["Tanjona R. Rabemananjara <tanjona.hepc@gmail.com>"]
+description = "CLI interface to NeoPDF"
+readme = "README.md"
+
 categories.workspace = true
 edition.workspace = true
 keywords.workspace = true
