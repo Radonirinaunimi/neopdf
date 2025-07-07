@@ -19,41 +19,6 @@ pub enum InterpolatorType {
     LogTricubic,
 }
 
-/// Represents the nucleon number for the PDF set.
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct NucleonNumber(u32);
-
-impl Default for NucleonNumber {
-    fn default() -> Self {
-        // If not given, the default is always the proton.
-        NucleonNumber(1)
-    }
-}
-
-impl NucleonNumber {
-    /// Creates a new `NucleonNumber` instance.
-    ///
-    /// # Arguments
-    ///
-    /// * `value` - The nucleon number. Must be greater than 0.
-    ///
-    /// # Returns
-    ///
-    /// A `Result` containing the `NucleonNumber` if successful, or an error string otherwise.
-    pub fn new(value: u32) -> Result<Self, String> {
-        if value > 0 {
-            Ok(NucleonNumber(value))
-        } else {
-            Err("Nucleon number must be greater than 0".to_string())
-        }
-    }
-
-    /// Returns the inner `u32` value of the `NucleonNumber`.
-    pub fn get_value(&self) -> u32 {
-        self.0
-    }
-}
-
 /// Represents the information block of a PDF set, typically found in an `.info` file.
 /// This struct is deserialized from a YAML-like format.
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -97,9 +62,6 @@ pub struct MetaData {
     /// Type of the hadrons.
     #[serde(rename = "SetType", default)]
     pub set_type: SetType,
-    /// Atomic mass number of the set.
-    #[serde(rename = "NucleonNumber", default)]
-    pub nucleon_number: NucleonNumber,
     /// Type of interpolator used for the PDF (e.g., "LogBicubic").
     #[serde(rename = "InterpolatorType", default)]
     pub interpolator_type: InterpolatorType,

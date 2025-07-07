@@ -1,4 +1,4 @@
-use ndarray::{s, Array1, Array3};
+use ndarray::{s, Array1, Array3, Array5};
 use ninterp::interpolator::{Extrapolate, Interp2D};
 use ninterp::prelude::*;
 use rayon::prelude::*;
@@ -25,8 +25,12 @@ pub struct SubGrid {
     pub xs: Array1<f64>,
     /// Array of Q2-values (energy scale squared).
     pub q2s: Array1<f64>,
-    /// 3D grid of PDF values, indexed as `[flavor_index, x_index, q2_index]`.
-    pub grid: Array3<f64>,
+    /// ND grid of PDF values, indexed as `[..., flavor_index, x_index, q2_index]`.
+    pub grid: Array5<f64>,
+    /// Numbers representing the nucleons contained in the PDF.
+    pub nucleons: Vec<u32>,
+    /// Values of alphas contained in the PDF.
+    pub alphas: Vec<f64>,
     /// Minimum value of the `x` subgrid
     x_min: f64,
     /// Maximum value of the `x` subgrid
@@ -39,7 +43,16 @@ pub struct SubGrid {
 
 impl SubGrid {
     /// Creates a new `Subgrid` from raw data.
-    pub fn new(xs: Vec<f64>, q2s: Vec<f64>, nflav: usize, grid_data: Vec<f64>) -> Self {
+    pub fn new(
+        nucleons: Vec<u32>,
+        alphas: Vec<f64>,
+        xs: Vec<f64>,
+        q2s: Vec<f64>,
+        nflav: usize,
+        grid_data: Vec<f64>,
+    ) -> Self {
+        let n_nucleons = nucleons.len();
+        let n_alphas = alphas.len();
         let nx = xs.len();
         let nq2 = q2s.len();
 
@@ -50,16 +63,19 @@ impl SubGrid {
 
         let x_subgrid = Array1::from_vec(xs);
         let q2_subgrid = Array1::from_vec(q2s);
-        let subgrid_array = Array3::from_shape_vec((nx, nq2, nflav), grid_data)
-            .expect("Failed to create grid from data")
-            .permuted_axes([2, 0, 1]) // Permute (x, q2, flav) -> (flav, x, q2)
-            .as_standard_layout()
-            .to_owned();
+        let subgrid_array =
+            Array5::from_shape_vec((n_nucleons, n_alphas, nx, nq2, nflav), grid_data)
+                .expect("Failed to create grid from data")
+                .permuted_axes([0, 1, 4, 2, 3]) // Permute (z, x, q2, flav) -> (z, flav, x, q2)
+                .as_standard_layout()
+                .to_owned();
 
         Self {
             xs: x_subgrid,
             q2s: q2_subgrid,
             grid: subgrid_array,
+            nucleons,
+            alphas,
             x_min: x_subgrid_min,
             x_max: x_subgrid_max,
             q2_min: q2_subgrid_min,
@@ -95,7 +111,16 @@ impl GridArray {
 
         let subgrids = subgrid_data
             .into_iter()
-            .map(|subgrid| SubGrid::new(subgrid.xs, subgrid.q2s, nflav, subgrid.grid_data))
+            .map(|subgrid| {
+                SubGrid::new(
+                    subgrid.nucleons,
+                    subgrid.alphas,
+                    subgrid.xs,
+                    subgrid.q2s,
+                    nflav,
+                    subgrid.grid_data,
+                )
+            })
             .collect();
 
         Self { pids, subgrids }
@@ -109,9 +134,17 @@ impl GridArray {
     /// * `iq2` - The index of the Q2-value.
     /// * `id` - The flavor ID.
     /// * `subgrid_id` - The subgrid to be used.
-    pub fn xf_from_index(&self, ix: usize, iq2: usize, id: i32, subgrid_id: usize) -> f64 {
+    pub fn xf_from_index(
+        &self,
+        i_nucleons: usize,
+        i_alphas: usize,
+        ix: usize,
+        iq2: usize,
+        id: i32,
+        subgrid_id: usize,
+    ) -> f64 {
         let pid_index = self.pids.iter().position(|&p| p == id).unwrap();
-        self.subgrids[subgrid_id].grid[[pid_index, ix, iq2]]
+        self.subgrids[subgrid_id].grid[[i_nucleons, i_alphas, pid_index, ix, iq2]]
     }
 }
 
@@ -163,7 +196,8 @@ impl GridPDF {
         for subgrid in &knot_array.subgrids {
             let mut subgrid_interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
             for i in 0..knot_array.pids.len() {
-                let grid_slice = subgrid.grid.slice(s![i, .., ..]);
+                // TODO: Currently, always ignoring the extra-alphas/nucleon information
+                let grid_slice = subgrid.grid.slice(s![0, 0, i, .., ..]);
 
                 let interp: Box<dyn DynInterpolator> = match info.interpolator_type {
                     InterpolatorType::LogBilinear => Box::new(
@@ -338,6 +372,8 @@ mod tests {
     #[test]
     fn test_knot_array_new() {
         let subgrid_data = vec![SubgridData {
+            nucleons: vec![1],
+            alphas: vec![0.118],
             xs: vec![1.0, 2.0, 3.0],
             q2s: vec![4.0, 5.0],
             grid_data: vec![
@@ -346,6 +382,6 @@ mod tests {
         }];
         let flavors = vec![21, 22];
         let knot_array = GridArray::new(subgrid_data, flavors);
-        assert_eq!(knot_array.subgrids[0].grid.shape(), &[2, 3, 2]);
+        assert_eq!(knot_array.subgrids[0].grid.shape(), &[1, 1, 2, 3, 2]);
     }
 }

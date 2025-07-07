@@ -97,10 +97,18 @@ impl PDF {
     }
 
     /// Retrieves the PDF value (xf) at a specific knot point.
-    pub fn xf(&self, ix: usize, iq2: usize, id: i32, subgrid_id: usize) -> f64 {
+    pub fn xf(
+        &self,
+        i_nucleons: usize,
+        i_alphas: usize,
+        ix: usize,
+        iq2: usize,
+        id: i32,
+        subgrid_id: usize,
+    ) -> f64 {
         self.grid_pdf
             .knot_array
-            .xf_from_index(ix, iq2, id, subgrid_id)
+            .xf_from_index(i_nucleons, i_alphas, ix, iq2, id, subgrid_id)
     }
 
     /// Retrieves the `x_min` for this PDF set.
