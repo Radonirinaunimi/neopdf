@@ -43,32 +43,32 @@ impl SubGrid {
         let nx = xs.len();
         let nq2 = q2s.len();
 
-        let x_min = *xs.first().unwrap();
-        let x_max = *xs.last().unwrap();
-        let q2_min = *q2s.first().unwrap();
-        let q2_max = *q2s.last().unwrap();
+        let x_subgrid_min = *xs.first().unwrap();
+        let x_subgrid_max = *xs.last().unwrap();
+        let q2_subgrid_min = *q2s.first().unwrap();
+        let q2_subgrid_max = *q2s.last().unwrap();
 
-        let xs = Array1::from_vec(xs);
-        let q2s = Array1::from_vec(q2s);
-        let grid = Array3::from_shape_vec((nx, nq2, nflav), grid_data)
+        let x_subgrid = Array1::from_vec(xs);
+        let q2_subgrid = Array1::from_vec(q2s);
+        let subgrid_array = Array3::from_shape_vec((nx, nq2, nflav), grid_data)
             .expect("Failed to create grid from data")
             .permuted_axes([2, 0, 1]) // Permute (x, q2, flav) -> (flav, x, q2)
             .as_standard_layout()
             .to_owned();
 
         Self {
-            xs,
-            q2s,
-            grid,
-            x_min,
-            x_max,
-            q2_min,
-            q2_max,
+            xs: x_subgrid,
+            q2s: q2_subgrid,
+            grid: subgrid_array,
+            x_min: x_subgrid_min,
+            x_max: x_subgrid_max,
+            q2_min: q2_subgrid_min,
+            q2_max: q2_subgrid_max,
         }
     }
 
     /// Checks if a given (x, q2) point is within the boundaries of this subgrid.
-    pub fn in_bounds(&self, x: f64, q2: f64) -> bool {
+    pub fn is_in_subgrid(&self, x: f64, q2: f64) -> bool {
         x >= self.x_min && x <= self.x_max && q2 >= self.q2_min && q2 <= self.q2_max
     }
 }
@@ -228,7 +228,7 @@ impl GridPDF {
         self.knot_array
             .subgrids
             .iter()
-            .position(|subgrid| subgrid.in_bounds(x, q2))
+            .position(|subgrid| subgrid.is_in_subgrid(x, q2))
             .ok_or(Error::SubgridNotFound { x, q2 })
     }
 
@@ -242,7 +242,7 @@ impl GridPDF {
     ///
     /// # Returns
     ///
-    /// The interpolated PDF value. Returns 0.0 if extrapolation is attempted and not allowed.
+    /// The interpolated PDF value.
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
         let subgrid_index = self.find_subgrid_index(x, q2).unwrap();
         let pid_index = self.knot_array.pids.iter().position(|&p| p == id).unwrap();

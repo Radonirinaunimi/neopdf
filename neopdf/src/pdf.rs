@@ -22,12 +22,12 @@ impl PDF {
     /// # Returns
     ///
     /// A `PDF` instance representing the loaded PDF set.
-    pub fn load(pdf_name: &str, member: usize) -> PDF {
+    pub fn load(pdf_name: &str, member: usize) -> Self {
         let lhapdf_set = LhapdfSet::new(pdf_name);
         let (info, pdf_data) = lhapdf_set.member(member);
         let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
 
-        PDF {
+        Self {
             grid_pdf: GridPDF::new(info, knot_array),
         }
     }
