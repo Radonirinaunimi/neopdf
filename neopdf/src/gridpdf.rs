@@ -5,18 +5,18 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("No subgrid found for x={x}, q2={q2}")]
-    SubgridNotFound { x: f64, q2: f64 },
-}
-
 use super::interpolation::{
     AlphaSCubicInterpolation, BilinearInterpolation, LogBicubicInterpolation,
     LogBilinearInterpolation,
 };
 use super::metadata::{InterpolatorType, MetaData};
 use super::parser::SubgridData;
+
+#[derive(Debug, Error)]
+pub enum Error {
+    #[error("No subgrid found for x={x}, q2={q2}")]
+    SubgridNotFound { x: f64, q2: f64 },
+}
 
 /// Stores the PDF grid data for a single subgrid.
 #[derive(Debug, Serialize, Deserialize)]
