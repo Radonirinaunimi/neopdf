@@ -911,6 +911,9 @@ mod tests {
     use super::*;
     use ndarray::{Array1, Array2, Array3, OwnedRepr};
     use ninterp::data::{InterpData1D, InterpData2D};
+    use ninterp::interpolator::{Extrapolate, InterpND};
+    use ninterp::prelude::Interpolator;
+    use ninterp::strategy::Linear;
 
     // Helper constants for commonly used values
     const EPSILON: f64 = 1e-9;
@@ -1042,14 +1045,19 @@ mod tests {
 
     #[test]
     fn test_log_tricubic_interpolation() {
-        // Create a simple 3x3x3 grid
+        // Create a simple 5x5x5 grid
         let x_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let y_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let z_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let values: Vec<f64> = (1..6)
             .flat_map(|i| (1..6).flat_map(move |j| (1..6).map(move |k| (i + j + k) as f64)))
             .collect();
-        let interp_data = create_test_data_3d(x_coords, y_coords, z_coords, values);
+        let interp_data = create_test_data_3d(
+            x_coords.clone(),
+            y_coords.clone(),
+            z_coords.clone(),
+            values.clone(),
+        );
 
         let mut interpolator = LogTricubicInterpolation::default();
         interpolator.init(&interp_data).unwrap();
@@ -1057,6 +1065,18 @@ mod tests {
         let point = [1.5, 1.5, 1.5];
         let result = interpolator.interpolate(&interp_data, &point).unwrap();
         assert_close(result, 4.5, 2e-2);
+
+        // Compare to general ND interpolation
+        let interp_data_arr = Array3::from_shape_vec((5, 5, 5), values).unwrap();
+        let nd_interp = InterpND::new(
+            vec![x_coords.into(), y_coords.into(), z_coords.into()],
+            interp_data_arr.into_dyn(),
+            Linear,
+            Extrapolate::Error,
+        )
+        .unwrap();
+        let nd_interp_res = nd_interp.interpolate(&point).unwrap();
+        assert_close(nd_interp_res, 4.5, EPSILON);
     }
 
     #[test]
