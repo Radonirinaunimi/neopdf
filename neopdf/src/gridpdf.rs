@@ -1,4 +1,4 @@
-use ndarray::{s, Array1, Array3};
+use ndarray::{s, Array1, Array3, Array5};
 use ninterp::interpolator::{Extrapolate, Interp2D};
 use ninterp::prelude::*;
 use rayon::prelude::*;
@@ -25,8 +25,12 @@ pub struct SubGrid {
     pub xs: Array1<f64>,
     /// Array of Q2-values (energy scale squared).
     pub q2s: Array1<f64>,
-    /// 3D grid of PDF values, indexed as `[flavor_index, x_index, q2_index]`.
-    pub grid: Array3<f64>,
+    /// 5D grid of PDF values, indexed as `[nucleons, alphas, pids, x, Q2]`.
+    pub grid: Array5<f64>,
+    /// Numbers representing the nucleons contained in the PDF.
+    pub nucleons: Vec<u32>,
+    /// Values of alphas contained in the PDF.
+    pub alphas: Vec<f64>,
     /// Minimum value of the `x` subgrid
     x_min: f64,
     /// Maximum value of the `x` subgrid
@@ -39,36 +43,49 @@ pub struct SubGrid {
 
 impl SubGrid {
     /// Creates a new `Subgrid` from raw data.
-    pub fn new(xs: Vec<f64>, q2s: Vec<f64>, nflav: usize, grid_data: Vec<f64>) -> Self {
+    pub fn new(
+        nucleon_numbers: Vec<u32>,
+        alphas_values: Vec<f64>,
+        xs: Vec<f64>,
+        q2s: Vec<f64>,
+        nflav: usize,
+        grid_data: Vec<f64>,
+    ) -> Self {
+        let n_nucleons = nucleon_numbers.len();
+        let n_alphas = alphas_values.len();
         let nx = xs.len();
         let nq2 = q2s.len();
 
-        let x_min = *xs.first().unwrap();
-        let x_max = *xs.last().unwrap();
-        let q2_min = *q2s.first().unwrap();
-        let q2_max = *q2s.last().unwrap();
+        let x_subgrid_min = *xs.first().unwrap();
+        let x_subgrid_max = *xs.last().unwrap();
+        let q2_subgrid_min = *q2s.first().unwrap();
+        let q2_subgrid_max = *q2s.last().unwrap();
 
-        let xs = Array1::from_vec(xs);
-        let q2s = Array1::from_vec(q2s);
-        let grid = Array3::from_shape_vec((nx, nq2, nflav), grid_data)
-            .expect("Failed to create grid from data")
-            .permuted_axes([2, 0, 1]) // Permute (x, q2, flav) -> (flav, x, q2)
-            .as_standard_layout()
-            .to_owned();
+        let x_subgrid = Array1::from_vec(xs);
+        let q2_subgrid = Array1::from_vec(q2s);
+        let subgrid_array =
+            Array5::from_shape_vec((n_nucleons, n_alphas, nx, nq2, nflav), grid_data)
+                .expect("Failed to create grid from data")
+                // Permute  (nucleons, alphas, x, Q2, pids) -> (nucleons, alphas, pids, x, Q2)
+                .permuted_axes([0, 1, 4, 2, 3])
+                .as_standard_layout()
+                .to_owned();
 
         Self {
-            xs,
-            q2s,
-            grid,
-            x_min,
-            x_max,
-            q2_min,
-            q2_max,
+            xs: x_subgrid,
+            q2s: q2_subgrid,
+            grid: subgrid_array,
+            nucleons: nucleon_numbers,
+            alphas: alphas_values,
+            x_min: x_subgrid_min,
+            x_max: x_subgrid_max,
+            q2_min: q2_subgrid_min,
+            q2_max: q2_subgrid_max,
         }
     }
 
     /// Checks if a given (x, q2) point is within the boundaries of this subgrid.
-    pub fn in_bounds(&self, x: f64, q2: f64) -> bool {
+    pub fn is_in_subgrid(&self, x: f64, q2: f64) -> bool {
         x >= self.x_min && x <= self.x_max && q2 >= self.q2_min && q2 <= self.q2_max
     }
 }
@@ -95,7 +112,16 @@ impl GridArray {
 
         let subgrids = subgrid_data
             .into_iter()
-            .map(|subgrid| SubGrid::new(subgrid.xs, subgrid.q2s, nflav, subgrid.grid_data))
+            .map(|subgrid| {
+                SubGrid::new(
+                    subgrid.nucleons,
+                    subgrid.alphas,
+                    subgrid.xs,
+                    subgrid.q2s,
+                    nflav,
+                    subgrid.grid_data,
+                )
+            })
             .collect();
 
         Self { pids, subgrids }
@@ -109,9 +135,17 @@ impl GridArray {
     /// * `iq2` - The index of the Q2-value.
     /// * `id` - The flavor ID.
     /// * `subgrid_id` - The subgrid to be used.
-    pub fn xf_from_index(&self, ix: usize, iq2: usize, id: i32, subgrid_id: usize) -> f64 {
+    pub fn xf_from_index(
+        &self,
+        i_nucleons: usize,
+        i_alphas: usize,
+        ix: usize,
+        iq2: usize,
+        id: i32,
+        subgrid_id: usize,
+    ) -> f64 {
         let pid_index = self.pids.iter().position(|&p| p == id).unwrap();
-        self.subgrids[subgrid_id].grid[[pid_index, ix, iq2]]
+        self.subgrids[subgrid_id].grid[[i_nucleons, i_alphas, pid_index, ix, iq2]]
     }
 }
 
@@ -163,7 +197,8 @@ impl GridPDF {
         for subgrid in &knot_array.subgrids {
             let mut subgrid_interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
             for i in 0..knot_array.pids.len() {
-                let grid_slice = subgrid.grid.slice(s![i, .., ..]);
+                // TODO: Currently, always ignoring the extra-alphas/nucleon information
+                let grid_slice = subgrid.grid.slice(s![0, 0, i, .., ..]);
 
                 let interp: Box<dyn DynInterpolator> = match info.interpolator_type {
                     InterpolatorType::LogBilinear => Box::new(
@@ -228,7 +263,7 @@ impl GridPDF {
         self.knot_array
             .subgrids
             .iter()
-            .position(|subgrid| subgrid.in_bounds(x, q2))
+            .position(|subgrid| subgrid.is_in_subgrid(x, q2))
             .ok_or(Error::SubgridNotFound { x, q2 })
     }
 
@@ -242,7 +277,7 @@ impl GridPDF {
     ///
     /// # Returns
     ///
-    /// The interpolated PDF value. Returns 0.0 if extrapolation is attempted and not allowed.
+    /// The interpolated PDF value.
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
         let subgrid_index = self.find_subgrid_index(x, q2).unwrap();
         let pid_index = self.knot_array.pids.iter().position(|&p| p == id).unwrap();
@@ -338,6 +373,8 @@ mod tests {
     #[test]
     fn test_knot_array_new() {
         let subgrid_data = vec![SubgridData {
+            nucleons: vec![1],
+            alphas: vec![0.118],
             xs: vec![1.0, 2.0, 3.0],
             q2s: vec![4.0, 5.0],
             grid_data: vec![
@@ -346,6 +383,6 @@ mod tests {
         }];
         let flavors = vec![21, 22];
         let knot_array = GridArray::new(subgrid_data, flavors);
-        assert_eq!(knot_array.subgrids[0].grid.shape(), &[2, 3, 2]);
+        assert_eq!(knot_array.subgrids[0].grid.shape(), &[1, 1, 2, 3, 2]);
     }
 }

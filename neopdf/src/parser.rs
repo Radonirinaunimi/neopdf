@@ -7,6 +7,8 @@ use std::path::Path;
 /// Represents the data for a single subgrid within a PDF data file.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SubgridData {
+    pub nucleons: Vec<u32>,
+    pub alphas: Vec<f64>,
     pub xs: Vec<f64>,
     pub q2s: Vec<f64>,
     pub grid_data: Vec<f64>,
@@ -98,7 +100,7 @@ impl LhapdfSet {
     /// # Returns
     ///
     /// A `PdfData` struct containing the parsed subgrid data and flavor IDs.
-    fn read_data(path: &Path) -> PdfData {
+    pub fn read_data(path: &Path) -> PdfData {
         let content = fs::read_to_string(path).unwrap();
         let mut subgrid_data = Vec::new();
         let mut flavors = Vec::new();
@@ -151,7 +153,18 @@ impl LhapdfSet {
                 grid_data.extend(values);
             }
 
-            subgrid_data.push(SubgridData { xs, q2s, grid_data });
+            // TODO: extract the following information from the description
+            // in the `.info` file or from the name of the PDF set.
+            let nucleons: Vec<u32> = vec![1];
+            let alphas: Vec<f64> = vec![0.118];
+
+            subgrid_data.push(SubgridData {
+                nucleons,
+                alphas,
+                xs,
+                q2s,
+                grid_data,
+            });
         }
 
         PdfData {

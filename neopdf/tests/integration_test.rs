@@ -22,7 +22,7 @@ fn test_xf_at_knots() {
 
     for (x_id, q_id, pid, expected) in cases {
         assert!(
-            (pdf.xf(x_id, q_id, pid, 0) - expected).abs() < PRECISION,
+            (pdf.xf(0, 0, x_id, q_id, pid, 0) - expected).abs() < PRECISION,
             "Failed on knot (x, Q, pid)=({x_id}, {q_id}, {pid})"
         );
     }

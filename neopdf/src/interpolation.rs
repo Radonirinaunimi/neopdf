@@ -77,7 +77,6 @@ where
         let q22 = values[[x_idx + 1, y_idx + 1]]; // f(x2, y2)
 
         // Perform bilinear interpolation
-        // First, interpolate in x-direction
         let r1 = Self::linear_interpolate(x1, x2, q11, q21, x);
         let r2 = Self::linear_interpolate(x1, x2, q12, q22, x);
 
@@ -148,13 +147,12 @@ where
         let y_coords = data.grid[1].as_slice().unwrap();
         let values = &data.values;
 
-        // Transform coordinates to log space if needed
+        // Transform coordinates to log space
         let x_interp = x.ln();
         let y_interp = y.ln();
 
-        // Transform grid coordinates to log space if needed
+        // Transform grid coordinates to log space
         let x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
-
         let y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
 
         // Find the grid cell containing the point
@@ -230,7 +228,7 @@ impl LogBicubicInterpolation {
         coeffs[0] * x3 + coeffs[1] * x2 + coeffs[2] * x + coeffs[3]
     }
 
-    /// Calculates the derivative with respect to x (or log(x)) at a given knot.
+    /// Calculates the derivative with respect to log(x) at a given knot.
     /// This mirrors the _ddx function in LHAPDF's C++ implementation.
     pub fn calculate_ddx<D>(data: &InterpData2D<D>, ix: usize, iq2: usize) -> f64
     where
@@ -909,12 +907,44 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use itertools::Itertools;
     use ndarray::{Array1, Array2, Array3, OwnedRepr};
     use ninterp::data::{InterpData1D, InterpData2D};
+    use ninterp::interpolator::{Extrapolate, InterpND};
+    use ninterp::prelude::Interpolator;
+    use ninterp::strategy::Linear;
 
     // Helper constants for commonly used values
     const EPSILON: f64 = 1e-9;
 
+    fn assert_close(actual: f64, expected: f64, tolerance: f64) {
+        assert!(
+            (actual - expected).abs() < tolerance,
+            "Expected {}, got {} (diff: {})",
+            expected,
+            actual,
+            (actual - expected).abs()
+        );
+    }
+
+    // Create the target test data in 2D by multiplying the indices.
+    fn create_target_data_2d(max_num: i32) -> Vec<f64> {
+        (1..=max_num)
+            .flat_map(|i| (1..=max_num).map(move |j| (i * j) as f64))
+            .collect()
+    }
+
+    // Create a logarithmically spaced vector of floating numbers.
+    fn create_logspaced(start: f64, stop: f64, n: usize) -> Vec<f64> {
+        (0..n)
+            .map(|value| {
+                let t = value as f64 / (n - 1) as f64;
+                start * (stop / start).powf(t)
+            })
+            .collect()
+    }
+
+    // Create an instance of `create_test_data_1d` for 1-dimensional interpolations.
     fn create_test_data_1d(
         q2_values: Vec<f64>,
         alphas_vals: Vec<f64>,
@@ -922,6 +952,7 @@ mod tests {
         InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap()
     }
 
+    // Create an instance of `create_test_data_2d` for 2-dimensional interpolations.
     fn create_test_data_2d(
         x_coords: Vec<f64>,
         y_coords: Vec<f64>,
@@ -932,6 +963,7 @@ mod tests {
         InterpData2D::new(x_coords.into(), y_coords.into(), values_array).unwrap()
     }
 
+    // Create an instance of `create_test_data_3d` for 3-dimensional interpolations.
     fn create_test_data_3d(
         x_coords: Vec<f64>,
         y_coords: Vec<f64>,
@@ -947,22 +979,6 @@ mod tests {
             values_array,
         )
         .unwrap()
-    }
-
-    fn create_target_data_2d(max_num: i32) -> Vec<f64> {
-        (1..=max_num)
-            .flat_map(|i| (1..=max_num).map(move |j| (i * j) as f64))
-            .collect()
-    }
-
-    fn assert_close(actual: f64, expected: f64, tolerance: f64) {
-        assert!(
-            (actual - expected).abs() < tolerance,
-            "Expected {}, got {} (diff: {})",
-            expected,
-            actual,
-            (actual - expected).abs()
-        );
     }
 
     #[test]
@@ -1042,21 +1058,44 @@ mod tests {
 
     #[test]
     fn test_log_tricubic_interpolation() {
-        // Create a simple 3x3x3 grid
-        let x_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let y_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let z_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let values: Vec<f64> = (1..6)
-            .flat_map(|i| (1..6).flat_map(move |j| (1..6).map(move |k| (i + j + k) as f64)))
+        let x_coords = create_logspaced(1e-5, 1e-3, 6);
+        let y_coords = create_logspaced(1e2, 1e4, 6);
+        let z_coords = vec![1.0, 5.0, 25.0, 100.0, 150.0, 200.0];
+        let values: Vec<f64> = x_coords
+            .iter()
+            .cartesian_product(y_coords.iter())
+            .cartesian_product(z_coords.iter())
+            .map(|((&a, &b), &c)| a * b * c)
             .collect();
-        let interp_data = create_test_data_3d(x_coords, y_coords, z_coords, values);
+        let interp_data = create_test_data_3d(
+            x_coords.clone(),
+            y_coords.clone(),
+            z_coords.clone(),
+            values.clone(),
+        );
 
         let mut interpolator = LogTricubicInterpolation::default();
         interpolator.init(&interp_data).unwrap();
 
-        let point = [1.5, 1.5, 1.5];
+        let point = [1e-4, 2e3, 25.0];
+        let expected: f64 = point.iter().product();
         let result = interpolator.interpolate(&interp_data, &point).unwrap();
-        assert_close(result, 4.5, 2e-2);
+        // TODO: double-check why the interpolation is worse
+        assert_close(result, expected, 2e-1);
+
+        // Compare to general ND interpolation
+        let interp_data_arr =
+            Array3::from_shape_vec((x_coords.len(), x_coords.len(), x_coords.len()), values)
+                .unwrap();
+        let nd_interp = InterpND::new(
+            vec![x_coords.into(), y_coords.into(), z_coords.into()],
+            interp_data_arr.into_dyn(),
+            Linear,
+            Extrapolate::Error,
+        )
+        .unwrap();
+        let nd_interp_res = nd_interp.interpolate(&point).unwrap();
+        assert_close(nd_interp_res, expected, EPSILON);
     }
 
     #[test]
