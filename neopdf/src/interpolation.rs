@@ -917,6 +917,34 @@ mod tests {
     // Helper constants for commonly used values
     const EPSILON: f64 = 1e-9;
 
+    fn assert_close(actual: f64, expected: f64, tolerance: f64) {
+        assert!(
+            (actual - expected).abs() < tolerance,
+            "Expected {}, got {} (diff: {})",
+            expected,
+            actual,
+            (actual - expected).abs()
+        );
+    }
+
+    // Create the target test data in 2D by multiplying the indices.
+    fn create_target_data_2d(max_num: i32) -> Vec<f64> {
+        (1..=max_num)
+            .flat_map(|i| (1..=max_num).map(move |j| (i * j) as f64))
+            .collect()
+    }
+
+    // Create a logarithmically spaced vector of floating numbers.
+    fn create_logspaced(start: f64, stop: f64, n: usize) -> Vec<f64> {
+        (0..n)
+            .map(|value| {
+                let t = value as f64 / (n - 1) as f64;
+                start * (stop / start).powf(t)
+            })
+            .collect()
+    }
+
+    // Create an instance of `create_test_data_1d` for 1-dimensional interpolations.
     fn create_test_data_1d(
         q2_values: Vec<f64>,
         alphas_vals: Vec<f64>,
@@ -924,6 +952,7 @@ mod tests {
         InterpData1D::new(Array1::from(q2_values), Array1::from(alphas_vals)).unwrap()
     }
 
+    // Create an instance of `create_test_data_2d` for 2-dimensional interpolations.
     fn create_test_data_2d(
         x_coords: Vec<f64>,
         y_coords: Vec<f64>,
@@ -934,6 +963,7 @@ mod tests {
         InterpData2D::new(x_coords.into(), y_coords.into(), values_array).unwrap()
     }
 
+    // Create an instance of `create_test_data_3d` for 3-dimensional interpolations.
     fn create_test_data_3d(
         x_coords: Vec<f64>,
         y_coords: Vec<f64>,
@@ -949,32 +979,6 @@ mod tests {
             values_array,
         )
         .unwrap()
-    }
-
-    // TODO: combine this method with `create_target_data_3d`
-    fn create_target_data_2d(max_num: i32) -> Vec<f64> {
-        (1..=max_num)
-            .flat_map(|i| (1..=max_num).map(move |j| (i * j) as f64))
-            .collect()
-    }
-
-    fn create_logspaced(start: f64, stop: f64, n: usize) -> Vec<f64> {
-        (0..n)
-            .map(|value| {
-                let t = value as f64 / (n - 1) as f64;
-                start * (stop / start).powf(t)
-            })
-            .collect()
-    }
-
-    fn assert_close(actual: f64, expected: f64, tolerance: f64) {
-        assert!(
-            (actual - expected).abs() < tolerance,
-            "Expected {}, got {} (diff: {})",
-            expected,
-            actual,
-            (actual - expected).abs()
-        );
     }
 
     #[test]
