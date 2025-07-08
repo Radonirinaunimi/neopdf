@@ -25,10 +25,10 @@ Technical features
 - No-code change when switching to `neopdf` using the Fortran/C/C++/Python
   APIs
   ```python
-  from neopdf.pdf import PDF
-  pdfset = PDF("NNPDF40_nnlo_as_01180")
-  pdfset.xfxQ2(21, 1e-9, 1e2)
+  from neopdf.pdf import PDF as lhapdf
   # everything else the same
+  pdf = lhapdf.mkPDF("NNPDF40_nnlo_as_01180")
+  pdf.xfxQ2(21, 1e-9, 1e2)
   ```
 - Thread and memory safety
 - Safer Foreign Function Interface (FFI) and interoperability with
