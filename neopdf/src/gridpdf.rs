@@ -25,7 +25,7 @@ pub struct SubGrid {
     pub xs: Array1<f64>,
     /// Array of Q2-values (energy scale squared).
     pub q2s: Array1<f64>,
-    /// ND grid of PDF values, indexed as `[..., flavor_index, x_index, q2_index]`.
+    /// 5D grid of PDF values, indexed as `[nucleons, alphas, pids, x, Q2]`.
     pub grid: Array5<f64>,
     /// Numbers representing the nucleons contained in the PDF.
     pub nucleons: Vec<u32>,
@@ -44,15 +44,15 @@ pub struct SubGrid {
 impl SubGrid {
     /// Creates a new `Subgrid` from raw data.
     pub fn new(
-        nucleons: Vec<u32>,
-        alphas: Vec<f64>,
+        nucleon_numbers: Vec<u32>,
+        alphas_values: Vec<f64>,
         xs: Vec<f64>,
         q2s: Vec<f64>,
         nflav: usize,
         grid_data: Vec<f64>,
     ) -> Self {
-        let n_nucleons = nucleons.len();
-        let n_alphas = alphas.len();
+        let n_nucleons = nucleon_numbers.len();
+        let n_alphas = alphas_values.len();
         let nx = xs.len();
         let nq2 = q2s.len();
 
@@ -66,7 +66,8 @@ impl SubGrid {
         let subgrid_array =
             Array5::from_shape_vec((n_nucleons, n_alphas, nx, nq2, nflav), grid_data)
                 .expect("Failed to create grid from data")
-                .permuted_axes([0, 1, 4, 2, 3]) // Permute (z, x, q2, flav) -> (z, flav, x, q2)
+                // Permute  (nucleons, alphas, x, Q2, pids) -> (nucleons, alphas, pids, x, Q2)
+                .permuted_axes([0, 1, 4, 2, 3])
                 .as_standard_layout()
                 .to_owned();
 
@@ -74,8 +75,8 @@ impl SubGrid {
             xs: x_subgrid,
             q2s: q2_subgrid,
             grid: subgrid_array,
-            nucleons,
-            alphas,
+            nucleons: nucleon_numbers,
+            alphas: alphas_values,
             x_min: x_subgrid_min,
             x_max: x_subgrid_max,
             q2_min: q2_subgrid_min,

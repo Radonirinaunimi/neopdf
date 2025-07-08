@@ -77,7 +77,6 @@ where
         let q22 = values[[x_idx + 1, y_idx + 1]]; // f(x2, y2)
 
         // Perform bilinear interpolation
-        // First, interpolate in x-direction
         let r1 = Self::linear_interpolate(x1, x2, q11, q21, x);
         let r2 = Self::linear_interpolate(x1, x2, q12, q22, x);
 
@@ -148,13 +147,12 @@ where
         let y_coords = data.grid[1].as_slice().unwrap();
         let values = &data.values;
 
-        // Transform coordinates to log space if needed
+        // Transform coordinates to log space
         let x_interp = x.ln();
         let y_interp = y.ln();
 
-        // Transform grid coordinates to log space if needed
+        // Transform grid coordinates to log space
         let x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
-
         let y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
 
         // Find the grid cell containing the point
@@ -230,7 +228,7 @@ impl LogBicubicInterpolation {
         coeffs[0] * x3 + coeffs[1] * x2 + coeffs[2] * x + coeffs[3]
     }
 
-    /// Calculates the derivative with respect to x (or log(x)) at a given knot.
+    /// Calculates the derivative with respect to log(x) at a given knot.
     /// This mirrors the _ddx function in LHAPDF's C++ implementation.
     pub fn calculate_ddx<D>(data: &InterpData2D<D>, ix: usize, iq2: usize) -> f64
     where
