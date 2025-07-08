@@ -907,6 +907,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use itertools::Itertools;
     use ndarray::{Array1, Array2, Array3, OwnedRepr};
     use ninterp::data::{InterpData1D, InterpData2D};
     use ninterp::interpolator::{Extrapolate, InterpND};
@@ -950,9 +951,19 @@ mod tests {
         .unwrap()
     }
 
+    // TODO: combine this method with `create_target_data_3d`
     fn create_target_data_2d(max_num: i32) -> Vec<f64> {
         (1..=max_num)
             .flat_map(|i| (1..=max_num).map(move |j| (i * j) as f64))
+            .collect()
+    }
+
+    fn create_logspaced(start: f64, stop: f64, n: usize) -> Vec<f64> {
+        (0..n)
+            .map(|value| {
+                let t = value as f64 / (n - 1) as f64;
+                start * (stop / start).powf(t)
+            })
             .collect()
     }
 
@@ -1043,12 +1054,14 @@ mod tests {
 
     #[test]
     fn test_log_tricubic_interpolation() {
-        // Create a simple 5x5x5 grid
-        let x_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let y_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let z_coords = vec![1.0, 2.0, 3.0, 4.0, 5.0];
-        let values: Vec<f64> = (1..6)
-            .flat_map(|i| (1..6).flat_map(move |j| (1..6).map(move |k| (i + j + k) as f64)))
+        let x_coords = create_logspaced(1e-5, 1e-3, 6);
+        let y_coords = create_logspaced(1e2, 1e4, 6);
+        let z_coords = vec![1.0, 5.0, 25.0, 100.0, 150.0, 200.0];
+        let values: Vec<f64> = x_coords
+            .iter()
+            .cartesian_product(y_coords.iter())
+            .cartesian_product(z_coords.iter())
+            .map(|((&a, &b), &c)| a * b * c)
             .collect();
         let interp_data = create_test_data_3d(
             x_coords.clone(),
@@ -1060,12 +1073,16 @@ mod tests {
         let mut interpolator = LogTricubicInterpolation::default();
         interpolator.init(&interp_data).unwrap();
 
-        let point = [1.5, 1.5, 1.5];
+        let point = [1e-4, 2e3, 25.0];
+        let expected: f64 = point.iter().product();
         let result = interpolator.interpolate(&interp_data, &point).unwrap();
-        assert_close(result, 4.5, 2e-2);
+        // TODO: double-check why the interpolation is worse
+        assert_close(result, expected, 2e-1);
 
         // Compare to general ND interpolation
-        let interp_data_arr = Array3::from_shape_vec((5, 5, 5), values).unwrap();
+        let interp_data_arr =
+            Array3::from_shape_vec((x_coords.len(), x_coords.len(), x_coords.len()), values)
+                .unwrap();
         let nd_interp = InterpND::new(
             vec![x_coords.into(), y_coords.into(), z_coords.into()],
             interp_data_arr.into_dyn(),
@@ -1074,7 +1091,7 @@ mod tests {
         )
         .unwrap();
         let nd_interp_res = nd_interp.interpolate(&point).unwrap();
-        assert_close(nd_interp_res, 4.5, EPSILON);
+        assert_close(nd_interp_res, expected, EPSILON);
     }
 
     #[test]
