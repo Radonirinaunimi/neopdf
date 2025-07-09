@@ -11,40 +11,40 @@
 namespace neopdf {
 
 /** @brief Base PDF class that instantiates the PDF object. */
-class PDF {
+class NeoPDF {
     private:
         /** @brief Underlying raw object. */
-        NeoPDF* raw;
+        NeoPDFWrapper* raw;
 
     protected:
         /** @brief Constructor (protected to avoid direct instantiation). */
-        PDF(NeoPDF* pdf) : raw(pdf) {}
+        NeoPDF(NeoPDFWrapper* pdf) : raw(pdf) {}
 
         /** @brief Deleted copy/move semantics. */
-        PDF() = delete;
-        PDF(const PDF&) = delete;
-        PDF(PDF&&) = delete;
+        NeoPDF() = delete;
+        NeoPDF(const NeoPDF&) = delete;
+        NeoPDF(NeoPDF&&) = delete;
 
-        PDF& operator=(const PDF&) = delete;
-        PDF& operator=(PDF&&) = delete;
+        NeoPDF& operator=(const NeoPDF&) = delete;
+        NeoPDF& operator=(NeoPDF&&) = delete;
 
     public:
         /** @brief Destructor. */
-        virtual ~PDF() { neopdf_pdf_free(this->raw); }
+        virtual ~NeoPDF() { neopdf_pdf_free(this->raw); }
 
         /**
          * @brief Constructor of the PDF object.
          * @brief `pdf_name` Name of the PDF set.
          * @brief `member` ID number of the PDF member.
          */
-        PDF(const std::string& pdf_name, size_t member = 0) {
+        NeoPDF(const std::string& pdf_name, size_t member = 0) {
             this->raw = neopdf_pdf_load(pdf_name.c_str(), member);
         }
 
         // Needed for `PDFs` to call the protected constructor
-        // Static factory method to create PDF objects from NeoPDF*
-        static std::unique_ptr<PDF> from_raw(NeoPDF* pdf) {
-            return std::unique_ptr<PDF>(new PDF(pdf));
+        // Static factory method to create PDF objects from NeoPDFWrapper*
+        static std::unique_ptr<NeoPDF> from_raw(NeoPDFWrapper* pdf) {
+            return std::unique_ptr<NeoPDF>(new NeoPDF(pdf));
         }
 
         /** @brief Get the minimum value of the x-grid for the PDF. */
@@ -71,20 +71,20 @@ class PDF {
 };
 
 /** @brief Class to load and manage multiple PDF members. */
-class PDFs {
+class NeoPDFs {
     private:
-        std::vector<std::unique_ptr<PDF>> pdf_members;
+        std::vector<std::unique_ptr<NeoPDF>> pdf_members;
 
     public:
         /**
          * @brief Constructor that loads all PDF members for a given PDF set.
          * @param pdf_name Name of the PDF set.
          */
-        PDFs(const std::string& pdf_name) {
-            NeoPDFArray raw_pdfs = neopdf_pdf_load_all(pdf_name.c_str());
+        NeoPDFs(const std::string& pdf_name) {
+            NeoPDFMembers raw_pdfs = neopdf_pdf_load_all(pdf_name.c_str());
 
             for (size_t i = 0; i < raw_pdfs.size; ++i) {
-                pdf_members.push_back(PDF::from_raw(raw_pdfs.pdfs[i]));
+                pdf_members.push_back(NeoPDF::from_raw(raw_pdfs.pdfs[i]));
             }
         }
 
@@ -92,16 +92,16 @@ class PDFs {
         size_t size() const { return pdf_members.size(); }
 
         /** @brief Access a specific PDF member by index. */
-        PDF& operator[](size_t index) { return *pdf_members[index]; }
+        NeoPDF& operator[](size_t index) { return *pdf_members[index]; }
 
         /** @brief Access a specific PDF member by index (const version). */
-        const PDF& operator[](size_t index) const { return *pdf_members[index]; }
+        const NeoPDF& operator[](size_t index) const { return *pdf_members[index]; }
 
         /** @brief Access a specific PDF member by index with bounds checking. */
-        PDF& at(size_t index) { return *pdf_members.at(index); }
+        NeoPDF& at(size_t index) { return *pdf_members.at(index); }
 
         /** @brief Access a specific PDF member by index with bounds checking (const version). */
-        const PDF& at(size_t index) const { return *pdf_members.at(index); }
+        const NeoPDF& at(size_t index) const { return *pdf_members.at(index); }
 };
 
 } // namespace neopdf

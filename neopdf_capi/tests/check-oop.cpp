@@ -15,7 +15,7 @@ const double TOLERANCE= 1e-16;
 void test_xfxq2() {
     std::cout << "=== Test xfxQ2 for single PDF member ===\n";
 
-    PDF xpdf("NNPDF40_nnlo_as_01180", 0);
+    NeoPDF xpdf("NNPDF40_nnlo_as_01180", 0);
 
     std::vector<std::tuple<int, double, double, double>> cases = {
         {1, 1e-9, 1.65 * 1.65, 1.4254154},
@@ -65,7 +65,7 @@ void test_xfxq2() {
 void test_alphas_q2() {
     std::cout << "=== Test alphasQ2 for single PDF member ===\n";
 
-    PDF xpdf("NNPDF40_nnlo_as_01180", 0);
+    NeoPDF xpdf("NNPDF40_nnlo_as_01180", 0);
 
     std::vector<std::tuple<double, double>> cases ={
         {1e5 * 1e5, 0.057798546},
@@ -106,7 +106,7 @@ void test_alphas_q2() {
 void test_all_pdf_members() {
     std::cout << "=== Test PDFs class (loading all members) ===\n";
 
-    PDFs all_pdfs("NNPDF40_nnlo_as_01180");
+    NeoPDFs all_pdfs("NNPDF40_nnlo_as_01180");
 
     std::cout << "Loaded " << all_pdfs.size() << " PDF members\n";
 
@@ -158,7 +158,7 @@ void test_all_pdf_members() {
 
 void test_raw_load_all() {
     std::cout << "=== Test raw neopdf_pdf_load_all ===\n";
-    NeoPDFArray raw_pdfs = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
+    NeoPDFMembers raw_pdfs = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
     std::cout << "Loaded " << raw_pdfs.size << " PDF members (raw call)\n";
     neopdf_pdf_array_free(raw_pdfs);
 }

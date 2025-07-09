@@ -12,7 +12,7 @@ const double TOLERANCE= 1e-16;
 void test_single_pdf() {
     std::cout << "=== Test Loading a Single PDF Member ===\n";
 
-    NeoPDF* pdf = neopdf_pdf_load("NNPDF40_nnlo_as_01180", 0);
+    NeoPDFWrapper* pdf = neopdf_pdf_load("NNPDF40_nnlo_as_01180", 0);
 
     std::vector<std::tuple<int, double, double, double>> cases = {
         {1, 1e-9, 1.65 * 1.65, 1.4254154},
@@ -66,7 +66,7 @@ void test_single_pdf() {
 void test_all_pdf_members() {
     std::cout << "=== Test Loading all the PDF Members ===\n";
 
-    NeoPDFArray pdf_array = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
+    NeoPDFMembers pdf_array = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
 
     std::cout << "Loaded " << pdf_array.size << " PDF members\n";
 
@@ -87,7 +87,7 @@ void test_all_pdf_members() {
     // Evaluate the same point across all PDF members
     std::vector<double> results;
     for (size_t i = 0; i < pdf_array.size; ++i) {
-        NeoPDF* pdf = pdf_array.pdfs[i];
+        NeoPDFWrapper* pdf = pdf_array.pdfs[i];
         double result = neopdf_pdf_xfxq2(pdf, pid, x, q2);
         results.push_back(result);
 
