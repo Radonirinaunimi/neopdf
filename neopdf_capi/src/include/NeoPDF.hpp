@@ -4,6 +4,8 @@
 #include <neopdf_capi.h>
 #include <string>
 #include <sys/types.h>
+#include <vector>
+#include <memory>
 
 /** @brief Object Oriented interface to NeoPDF. */
 namespace neopdf {
@@ -39,6 +41,12 @@ class PDF {
             this->raw = neopdf_pdf_load(pdf_name.c_str(), member);
         }
 
+        // Needed for `PDFs` to call the protected constructor
+        // Static factory method to create PDF objects from NeoPDF*
+        static std::unique_ptr<PDF> from_raw(NeoPDF* pdf) {
+            return std::unique_ptr<PDF>(new PDF(pdf));
+        }
+
         /** @brief Get the minimum value of the x-grid for the PDF. */
         double x_min() const { return neopdf_pdf_x_min(this->raw); }
 
@@ -60,6 +68,40 @@ class PDF {
         double alphasQ2(double q2) const {
             return neopdf_pdf_alphas_q2(this->raw, q2);
         }
-    };
+};
+
+/** @brief Class to load and manage multiple PDF members. */
+class PDFs {
+    private:
+        std::vector<std::unique_ptr<PDF>> pdf_members;
+
+    public:
+        /**
+         * @brief Constructor that loads all PDF members for a given PDF set.
+         * @param pdf_name Name of the PDF set.
+         */
+        PDFs(const std::string& pdf_name) {
+            NeoPDFArray raw_pdfs = neopdf_pdf_load_all(pdf_name.c_str());
+
+            for (size_t i = 0; i < raw_pdfs.size; ++i) {
+                pdf_members.push_back(PDF::from_raw(raw_pdfs.pdfs[i]));
+            }
+        }
+
+        /** @brief Get the number of loaded PDF members. */
+        size_t size() const { return pdf_members.size(); }
+
+        /** @brief Access a specific PDF member by index. */
+        PDF& operator[](size_t index) { return *pdf_members[index]; }
+
+        /** @brief Access a specific PDF member by index (const version). */
+        const PDF& operator[](size_t index) const { return *pdf_members[index]; }
+
+        /** @brief Access a specific PDF member by index with bounds checking. */
+        PDF& at(size_t index) { return *pdf_members.at(index); }
+
+        /** @brief Access a specific PDF member by index with bounds checking (const version). */
+        const PDF& at(size_t index) const { return *pdf_members.at(index); }
+};
 
 } // namespace neopdf

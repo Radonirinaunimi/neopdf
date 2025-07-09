@@ -11,9 +11,12 @@
 using namespace neopdf;
 
 const double TOLERANCE= 1e-16;
-PDF XPDF("NNPDF40_nnlo_as_01180", 0);
 
 void test_xfxq2() {
+    std::cout << "=== Test xfxQ2 for single PDF member ===\n";
+
+    PDF xpdf("NNPDF40_nnlo_as_01180", 0);
+
     std::vector<std::tuple<int, double, double, double>> cases = {
         {1, 1e-9, 1.65 * 1.65, 1.4254154},
         {2, 1e-9, 1.65 * 1.65, 1.4257712},
@@ -41,7 +44,7 @@ void test_xfxq2() {
         double x, q2, expected;
 
         std::tie(pid, x, q2, expected) = test_case;
-        double result = XPDF.xfxQ2(pid, x, q2);
+        double result = xpdf.xfxQ2(pid, x, q2);
         double reldif = std::abs(result - expected) / expected;
 
         assert(std::abs(result - expected) < TOLERANCE);
@@ -60,6 +63,10 @@ void test_xfxq2() {
 }
 
 void test_alphas_q2() {
+    std::cout << "=== Test alphasQ2 for single PDF member ===\n";
+
+    PDF xpdf("NNPDF40_nnlo_as_01180", 0);
+
     std::vector<std::tuple<double, double>> cases ={
         {1e5 * 1e5, 0.057798546},
         {1.65 * 1.65, 0.33074891},
@@ -80,7 +87,7 @@ void test_alphas_q2() {
         double q2, expected;
 
         std::tie(q2, expected) = test_case;
-        double result = XPDF.alphasQ2(q2);
+        double result = xpdf.alphasQ2(q2);
         double reldif = std::abs(result - expected) / expected;
 
         assert(std::abs(result - expected) < TOLERANCE);
@@ -96,12 +103,76 @@ void test_alphas_q2() {
     }
 }
 
+void test_all_pdf_members() {
+    std::cout << "=== Test PDFs class (loading all members) ===\n";
+
+    PDFs all_pdfs("NNPDF40_nnlo_as_01180");
+
+    std::cout << "Loaded " << all_pdfs.size() << " PDF members\n";
+
+    // Test case: evaluate a simple point across all members
+    int pid = 1;
+    double x = 1e-9;
+    double q2 = 1.65 * 1.65;
+
+    std::cout << "\nEvaluating xfxQ2 for pid=" << pid
+              << ", x=" << std::scientific << x
+              << ", Q2=" << q2 << " across all members:\n";
+
+    std::cout << std::right
+        << std::setw(8) << "Member"
+        << std::setw(15) << "Result" << "\n";
+    std::cout << std::string(23, '-') << "\n";
+
+    // Evaluate the same point across all PDF members
+    std::vector<double> results;
+    for (size_t i = 0; i < all_pdfs.size(); ++i) {
+        double result = all_pdfs[i].xfxQ2(pid, x, q2);
+        results.push_back(result);
+
+        std::cout << std::right
+            << std::setw(8) << i
+            << std::scientific << std::setprecision(8)
+            << std::setw(15) << result << "\n";
+    }
+
+    // Calculate some statistics
+    double sum = 0.0;
+    for (double result : results) {
+        sum += result;
+    }
+    double mean = sum / results.size();
+
+    double variance = 0.0;
+    for (double result : results) {
+        variance += (result - mean) * (result - mean);
+    }
+    variance /= results.size();
+    double std_dev = std::sqrt(variance);
+
+    std::cout << "\nStatistics across all members:\n";
+    std::cout << "Mean: " << std::scientific << std::setprecision(8) << mean << "\n";
+    std::cout << "Std Dev: " << std_dev << "\n";
+    std::cout << "Relative Std Dev: " << std_dev / mean << "\n";
+}
+
+void test_raw_load_all() {
+    std::cout << "=== Test raw neopdf_pdf_load_all ===\n";
+    NeoPDFArray raw_pdfs = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
+    std::cout << "Loaded " << raw_pdfs.size << " PDF members (raw call)\n";
+    neopdf_pdf_array_free(raw_pdfs);
+}
+
+
 int main() {
     // Test the computation of the PDF interpolations
     test_xfxq2();
 
     // Test the computation of the `alphas` interpolations
     test_alphas_q2();
+
+    // Test the PDF interpolations by loading all the members
+    test_all_pdf_members();
 
     return EXIT_SUCCESS;
 }
