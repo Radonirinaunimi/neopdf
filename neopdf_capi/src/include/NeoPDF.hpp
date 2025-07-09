@@ -8,22 +8,23 @@
 /** @brief Object Oriented interface to NeoPDF. */
 namespace neopdf {
 
-/** @brief Base PDF struct that instantiates the PDF object. */
-struct PDF {
-    /** @brief Underlying raw object. */
-    NeoPDF* raw;
+/** @brief Base PDF class that instantiates the PDF object. */
+class PDF {
+    private:
+        /** @brief Underlying raw object. */
+        NeoPDF* raw;
 
-    /** @brief Constructor (protected to avoid direct instantiation). */
     protected:
-        PDF(NeoPDF * pdf): raw(pdf) {}
+        /** @brief Constructor (protected to avoid direct instantiation). */
+        PDF(NeoPDF* pdf) : raw(pdf) {}
 
         /** @brief Deleted copy/move semantics. */
         PDF() = delete;
-        PDF(const PDF &) = delete;
-        PDF(PDF &&) = delete;
+        PDF(const PDF&) = delete;
+        PDF(PDF&&) = delete;
 
-        PDF &operator=(const PDF &) = delete;
-        PDF &operator=(PDF &&) = delete;
+        PDF& operator=(const PDF&) = delete;
+        PDF& operator=(PDF&&) = delete;
 
     public:
         /** @brief Destructor. */
@@ -39,16 +40,16 @@ struct PDF {
         }
 
         /** @brief Get the minimum value of the x-grid for the PDF. */
-        double x_min() const { return neopdf_pdf_x_min(this->raw);}
+        double x_min() const { return neopdf_pdf_x_min(this->raw); }
 
         /** @brief Get the maximum value of the x-grid for the PDF. */
-        double x_max() const { return neopdf_pdf_x_max(this->raw);}
+        double x_max() const { return neopdf_pdf_x_max(this->raw); }
 
         /** @brief Get the minimum value of the Q2-grid for the PDF. */
-        double q2_min() const { return neopdf_pdf_q2_min(this->raw);}
+        double q2_min() const { return neopdf_pdf_q2_min(this->raw); }
 
         /** @brief Get the maximum value of the Q2-grid for the PDF. */
-        double q2_max() const { return neopdf_pdf_q2_max(this->raw);}
+        double q2_max() const { return neopdf_pdf_q2_max(this->raw); }
 
         /** @brief Compute the `xf` value for a given PID, x, and Q2. */
         double xfxQ2(int pid, double x, double q2) const {
@@ -59,6 +60,6 @@ struct PDF {
         double alphasQ2(double q2) const {
             return neopdf_pdf_alphas_q2(this->raw, q2);
         }
-};
+    };
 
 } // namespace neopdf
