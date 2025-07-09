@@ -27,7 +27,7 @@ void test_xfxq2() {
     };
 
     // Headers of the table to print the results
-    std::cout << std::left
+    std::cout << std::right
         << std::setw(6) << "pid"
         << std::setw(15) << "x"
         << std::setw(15) << "Q2"
@@ -48,7 +48,7 @@ void test_xfxq2() {
 
         // Print the results as a table
         std::cout << std::scientific << std::setprecision(8)
-            << std::left
+            << std::right
             << std::setw(6)  << pid
             << std::setw(15) << x
             << std::setw(15) << q2
@@ -69,7 +69,7 @@ void test_alphas_q2() {
     };
 
     // Headers of the table to print the results
-    std::cout << std::left
+    std::cout << std::right
         << std::setw(15) << "Q2"
         << std::setw(15) << "LHAPDF"
         << std::setw(15) << "NeoPDF"
@@ -87,7 +87,7 @@ void test_alphas_q2() {
 
         // Print the results as a table
         std::cout << std::scientific << std::setprecision(8)
-            << std::left
+            << std::right
             << std::setw(15) << q2
             << std::right
             << std::setw(15) << expected

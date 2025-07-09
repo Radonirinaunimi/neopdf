@@ -27,7 +27,7 @@ void test_single_pdf() {
     };
 
     // Headers of the table to print the results
-    std::cout << std::left
+    std::cout << std::right
         << std::setw(6) << "pid"
         << std::setw(15) << "x"
         << std::setw(15) << "Q2"
@@ -48,7 +48,7 @@ void test_single_pdf() {
 
         // Print the results as a table
         std::cout << std::scientific << std::setprecision(8)
-            << std::left
+            << std::right
             << std::setw(6)  << pid
             << std::setw(15) << x
             << std::setw(15) << q2
@@ -79,7 +79,7 @@ void test_all_pdf_members() {
               << ", x=" << std::scientific << x
               << ", Q2=" << q2 << " across all members:\n";
 
-    std::cout << std::left
+    std::cout << std::right
         << std::setw(8) << "Member"
         << std::setw(15) << "Result" << "\n";
     std::cout << std::string(23, '-') << "\n";
@@ -91,7 +91,7 @@ void test_all_pdf_members() {
         double result = neopdf_pdf_xfxq2(pdf, pid, x, q2);
         results.push_back(result);
 
-        std::cout << std::left
+        std::cout << std::right
             << std::setw(8) << i
             << std::scientific << std::setprecision(8)
             << std::setw(15) << result << "\n";
