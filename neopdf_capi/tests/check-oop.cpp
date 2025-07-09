@@ -106,9 +106,9 @@ void test_alphas_q2() {
 void test_all_pdf_members() {
     std::cout << "=== Test PDFs class (loading all members) ===\n";
 
-    NeoPDFs all_pdfs("NNPDF40_nnlo_as_01180");
+    NeoPDFs xpdfs("NNPDF40_nnlo_as_01180");
 
-    std::cout << "Loaded " << all_pdfs.size() << " PDF members\n";
+    std::cout << "Loaded " << xpdfs.size() << " PDF members\n";
 
     // Test case: evaluate a simple point across all members
     int pid = 1;
@@ -126,8 +126,8 @@ void test_all_pdf_members() {
 
     // Evaluate the same point across all PDF members
     std::vector<double> results;
-    for (size_t i = 0; i < all_pdfs.size(); ++i) {
-        double result = all_pdfs[i].xfxQ2(pid, x, q2);
+    for (size_t i = 0; i < xpdfs.size(); ++i) {
+        double result = xpdfs[i].xfxQ2(pid, x, q2);
         results.push_back(result);
 
         std::cout << std::right
