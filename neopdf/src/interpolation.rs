@@ -472,9 +472,7 @@ where
 /// Tricubic interpolation uses a 4x4x4 grid of points around the interpolation point
 /// and provides C1 continuity (continuous first derivatives).
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct LogTricubicInterpolation {
-    coeffs: Vec<f64>,
-}
+pub struct LogTricubicInterpolation;
 
 impl LogTricubicInterpolation {
     /// Find the interval for tricubic interpolation
@@ -602,43 +600,79 @@ impl LogTricubicInterpolation {
         }
     }
 
-    /// Corrected Hermite tricubic interpolation that properly handles the 3D nature
     fn hermite_tricubic_interpolate<D>(
         &self,
         data: &InterpData3D<D>,
         indices: (usize, usize, usize),
-        u: f64,
-        v: f64,
-        w: f64,
+        coords: (f64, f64, f64),
+        derivatives: (f64, f64, f64),
     ) -> f64
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
         let (ix, iq2, iz) = indices;
-        let values = &data.values;
+        let (u, v, w) = coords;
+        let (dx, dy, dz) = derivatives;
 
-        let get = |dx, dy, dz| values[[ix + dx, iq2 + dy, iz + dz]];
+        // Helper closures for cleaner indexing
+        let get = |dx, dy, dz| data.values[[ix + dx, iq2 + dy, iz + dz]];
         let ddx = |dx, dy, dz| Self::calculate_ddx(data, ix + dx, iq2 + dy, iz + dz);
         let ddy = |dx, dy, dz| Self::calculate_ddy(data, ix + dx, iq2 + dy, iz + dz);
         let ddz = |dx, dy, dz| Self::calculate_ddz(data, ix + dx, iq2 + dy, iz + dz);
 
-        let cx = [(0, 0), (0, 1), (1, 0), (1, 1)].map(|(dy, dz)| {
-            let f0 = get(0, dy, dz);
-            let f1 = get(1, dy, dz);
-            let d0 = ddx(0, dy, dz);
-            let d1 = ddx(1, dy, dz);
-            Self::cubic_interpolate(u, f0, d0, f1, d1)
-        });
+        // Step 1: X-interpolation for each (y, z) pair
+        let interp_y: [[f64; 2]; 4] = [0, 1]
+            .iter()
+            .flat_map(|&y_offset| {
+                [0, 1].iter().map(move |&z_offset| {
+                    let (f0, f1) = (get(0, y_offset, z_offset), get(1, y_offset, z_offset));
+                    let (d0, d1) = (
+                        ddx(0, y_offset, z_offset) * dx,
+                        ddx(1, y_offset, z_offset) * dx,
+                    );
+                    let interp_val = Self::cubic_interpolate(u, f0, d0, f1, d1);
 
-        let cy = [(0, 0), (0, 1), (1, 0), (1, 1)].map(|(dy, dz)| ddy(0, dy, dz));
+                    let (df0, df1) = (
+                        ddy(0, y_offset, z_offset) * dy,
+                        ddy(1, y_offset, z_offset) * dy,
+                    );
+                    let interp_deriv = (1.0 - u) * df0 + u * df1;
 
-        let c0 = Self::cubic_interpolate(v, cx[0], cy[0], cx[2], cy[2]);
-        let c1 = Self::cubic_interpolate(v, cx[1], cy[1], cx[3], cy[3]);
+                    [interp_val, interp_deriv]
+                })
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
 
-        let cz0 = ddz(0, 0, 0);
-        let cz1 = ddz(0, 0, 1);
+        // Step 2: Y-interpolation for each z
+        let interp_z: [[f64; 2]; 2] = [0, 1]
+            .iter()
+            .enumerate()
+            .map(|(iz_, &z_offset)| {
+                let (f0, f1) = (interp_y[iz_][0], interp_y[2 + iz_][0]);
+                let (d0, d1) = (interp_y[iz_][1], interp_y[2 + iz_][1]);
+                let interp_val = Self::cubic_interpolate(v, f0, d0, f1, d1);
 
-        Self::cubic_interpolate(w, c0, cz0, c1, cz1)
+                let calc_z_deriv = |y_offset| {
+                    let (df0, df1) = (
+                        ddz(0, y_offset, z_offset) * dz,
+                        ddz(1, y_offset, z_offset) * dz,
+                    );
+                    (1.0 - u) * df0 + u * df1
+                };
+
+                let interp_deriv = (1.0 - v) * calc_z_deriv(0) + v * calc_z_deriv(1);
+                [interp_val, interp_deriv]
+            })
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap();
+
+        // Step 3: Z-interpolation
+        let (f0, f1) = (interp_z[0][0], interp_z[1][0]);
+        let (d0, d1) = (interp_z[0][1], interp_z[1][1]);
+        Self::cubic_interpolate(w, f0, d0, f1, d1)
     }
 
     /// Hermite cubic interpolation with derivatives
@@ -685,7 +719,6 @@ where
 
         // Use the Hermite approach instead of coefficient precomputation
         // This is more straightforward and avoids the complex 64x64 matrix
-        self.coeffs = Vec::new(); // Not needed for Hermite approach
         Ok(())
     }
 
@@ -730,7 +763,7 @@ where
         let w = (log_z - log_z_grid[k]) / dz;
 
         // Use the corrected Hermite tricubic interpolation
-        let result = self.hermite_tricubic_interpolate(data, (i, j, k), u, v, w);
+        let result = self.hermite_tricubic_interpolate(data, (i, j, k), (u, v, w), (dx, dy, dz));
 
         Ok(result)
     }
@@ -1067,21 +1100,26 @@ mod tests {
             .cartesian_product(z_coords.iter())
             .map(|((&a, &b), &c)| a * b * c)
             .collect();
-        let interp_data = create_test_data_3d(
+
+        // We need to logarithmically scale the data for `exponential-like curves`
+        let values_ln: Vec<f64> = values.iter().map(|val| val.ln()).collect();
+        let interp_data_ln = create_test_data_3d(
             x_coords.clone(),
             y_coords.clone(),
             z_coords.clone(),
-            values.clone(),
+            values_ln.clone(),
         );
 
-        let mut interpolator = LogTricubicInterpolation::default();
-        interpolator.init(&interp_data).unwrap();
+        // Initi the interpolation strategy.
+        LogTricubicInterpolation.init(&interp_data_ln).unwrap();
 
         let point = [1e-4, 2e3, 25.0];
         let expected: f64 = point.iter().product();
-        let result = interpolator.interpolate(&interp_data, &point).unwrap();
-        // TODO: double-check why the interpolation is worse
-        assert_close(result, expected, 2e-1);
+        let result = LogTricubicInterpolation
+            .interpolate(&interp_data_ln, &point)
+            .unwrap()
+            .exp();
+        assert_close(result, expected, EPSILON);
 
         // Compare to general ND interpolation
         let interp_data_arr =
