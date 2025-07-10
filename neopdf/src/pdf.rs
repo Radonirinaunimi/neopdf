@@ -1,3 +1,4 @@
+use super::basisrotation::PidBasis;
 use super::gridpdf::{GridArray, GridPDF};
 use super::metadata::MetaData;
 use super::parser::LhapdfSet;
@@ -27,13 +28,13 @@ impl PDF {
     /// # Returns
     ///
     /// A `PDF` instance representing the loaded PDF member.
-    pub fn load(pdf_name: &str, member: usize) -> Self {
+    pub fn load(pdf_name: &str, member: usize, pid_basis: PidBasis) -> Self {
         let lhapdf_set = LhapdfSet::new(pdf_name);
         let (info, pdf_data) = lhapdf_set.member(member);
         let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
 
         Self {
-            grid_pdf: GridPDF::new(info, knot_array),
+            grid_pdf: GridPDF::new(info, knot_array, pid_basis),
         }
     }
 
@@ -50,7 +51,7 @@ impl PDF {
     /// # Returns
     ///
     /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
-    pub fn load_pdfs(pdf_name: &str) -> Vec<PDF> {
+    pub fn load_pdfs(pdf_name: &str, basis: PidBasis) -> Vec<PDF> {
         let lhapdf_set = LhapdfSet::new(pdf_name);
         lhapdf_set
             .members()
@@ -58,7 +59,7 @@ impl PDF {
             .map(|(info, pdf_data)| {
                 let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
                 PDF {
-                    grid_pdf: GridPDF::new(info, knot_array),
+                    grid_pdf: GridPDF::new(info, knot_array, basis),
                 }
             })
             .collect()

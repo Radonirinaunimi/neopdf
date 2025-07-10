@@ -2,6 +2,7 @@ use neopdf::pdf::PDF;
 use numpy::{IntoPyArray, PyArray3};
 use pyo3::prelude::*;
 
+use super::basisrotation::PyPidBasis;
 use super::metadata::PyMetaData;
 
 /// Python wrapper for the `neopdf::pdf::PDF` struct.
@@ -33,10 +34,10 @@ impl PyPDF {
     ///     A new `PDF` instance.
     #[new]
     #[must_use]
-    #[pyo3(signature = (pdf_name, member = 0))]
-    pub fn new(pdf_name: &str, member: usize) -> Self {
+    #[pyo3(signature = (pdf_name, member = 0, pid_basis = PyPidBasis::Pdg))]
+    pub fn new(pdf_name: &str, member: usize, pid_basis: PyPidBasis) -> Self {
         Self {
-            pdf: PDF::load(pdf_name, member),
+            pdf: PDF::load(pdf_name, member, pid_basis.into()),
         }
     }
 
@@ -59,9 +60,9 @@ impl PyPDF {
     #[must_use]
     #[staticmethod]
     #[pyo3(name = "mkPDF")]
-    #[pyo3(signature = (pdf_name, member = 0))]
-    pub fn mkpdf(pdf_name: &str, member: usize) -> Self {
-        Self::new(pdf_name, member)
+    #[pyo3(signature = (pdf_name, member = 0, pid_basis = PyPidBasis::Pdg))]
+    pub fn mkpdf(pdf_name: &str, member: usize, pid_basis: PyPidBasis) -> Self {
+        Self::new(pdf_name, member, pid_basis)
     }
 
     /// Loads all members of the PDF set.
@@ -81,8 +82,9 @@ impl PyPDF {
     #[must_use]
     #[staticmethod]
     #[pyo3(name = "mkPDFs")]
-    pub fn mkpdfs(pdf_name: &str) -> Vec<Self> {
-        PDF::load_pdfs(pdf_name)
+    #[pyo3(signature = (pdf_name, pid_basis = PyPidBasis::Pdg))]
+    pub fn mkpdfs(pdf_name: &str, pid_basis: PyPidBasis) -> Vec<Self> {
+        PDF::load_pdfs(pdf_name, pid_basis.into())
             .into_iter()
             .map(move |pdfobj| Self { pdf: pdfobj })
             .collect()

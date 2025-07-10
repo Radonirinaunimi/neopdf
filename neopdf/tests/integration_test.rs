@@ -1,4 +1,5 @@
 use ndarray::Array3;
+use neopdf::basisrotation::PidBasis;
 use neopdf::pdf::PDF;
 
 const PRECISION: f64 = 1e-16;
@@ -6,7 +7,7 @@ const LOW_PRECISION: f64 = 1e-12;
 
 #[test]
 fn test_xf_at_knots() {
-    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0, PidBasis::Pdg);
 
     let cases = vec![
         (0, 0, 1, 1.4254154), // at the (x, Q) boundaries
@@ -30,7 +31,7 @@ fn test_xf_at_knots() {
 
 #[test]
 fn test_xfxq2_at_knots() {
-    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0, PidBasis::Pdg);
 
     let cases = vec![
         (21, 1e-9, 1.65 * 1.65, 0.14844111), // at the (x, Q2) boundaries
@@ -55,7 +56,7 @@ fn test_xfxq2_at_knots() {
 
 #[test]
 fn test_xfxq2_interpolations() {
-    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0, PidBasis::Pdg);
 
     let cases = vec![
         (21, 1e-3, 4.0, 3.316316680794655),
@@ -81,14 +82,14 @@ fn test_xfxq2_interpolations() {
     expected = "called `Result::unwrap()` on an `Err` value: SubgridNotFound { x: 1.0, q2: 1e40 }"
 )]
 fn test_xfxq2_extrapolations() {
-    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0, PidBasis::Pdg);
 
     assert!((pdf.xfxq2(2, 1.0, 1e20 * 1e20) - 1e10).abs() < PRECISION);
 }
 
 #[test]
 fn test_alphas_q2_interpolations() {
-    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0, PidBasis::Pdg);
 
     let cases = vec![
         (1.65 * 1.65, 0.33074891), // at the lower Q2 boundary
@@ -207,7 +208,7 @@ pub fn test_xfxq2s() {
         0.00000000000000,
     ];
 
-    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0, PidBasis::Pdg);
 
     // Define the vectors of kinematics & flavours
     let ids = (-4..=4).filter(|&x| x != 0).collect();
@@ -224,7 +225,7 @@ pub fn test_xfxq2s() {
 
 #[test]
 pub fn test_boundary_extraction() {
-    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0, PidBasis::Pdg);
 
     assert!((pdf.x_min() - 1e-9).abs() < PRECISION);
     assert!((pdf.x_max() - 1.00).abs() < PRECISION);

@@ -1,10 +1,13 @@
+use itertools::Itertools;
 use ndarray::{s, Array1, Array3, Array5};
 use ninterp::interpolator::{Extrapolate, Interp2D};
 use ninterp::prelude::*;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use thiserror::Error;
 
+use super::basisrotation::{evol_to_pdg_mc_ids, PidBasis, EVOL_BASIS_IDS};
 use super::interpolation::{
     AlphaSCubicInterpolation, BilinearInterpolation, LogBicubicInterpolation,
     LogBilinearInterpolation,
@@ -192,11 +195,79 @@ impl GridPDF {
     ///
     /// * `info` - The `Info` struct containing metadata about the PDF set.
     /// * `knot_array` - The `KnotArray` containing the PDF grid data.
-    pub fn new(info: MetaData, knot_array: GridArray) -> Self {
+    pub fn new(info: MetaData, knot_array: GridArray, basis: PidBasis) -> Self {
+        let actual_knot_array = if basis == PidBasis::Evol {
+            let pdg_pids_map: HashMap<i32, usize> = knot_array
+                .pids
+                .iter()
+                .enumerate()
+                .map(|(i, &p)| (p, i))
+                .collect();
+
+            let evol_pids = EVOL_BASIS_IDS.to_vec();
+            let n_evol_flav = evol_pids.len();
+
+            let rotated_subgrids = knot_array
+                .subgrids
+                .into_iter()
+                .map(|subgrid| {
+                    let dims = (
+                        subgrid.nucleons.len(),
+                        subgrid.alphas.len(),
+                        subgrid.xs.len(),
+                        subgrid.q2s.len(),
+                    );
+
+                    let mut rotated_grid_data =
+                        vec![0.0; dims.0 * dims.1 * n_evol_flav * dims.2 * dims.3];
+
+                    for (i_evol_flav, &evol_pid) in EVOL_BASIS_IDS.iter().enumerate() {
+                        let flavor_components = evol_to_pdg_mc_ids(evol_pid);
+                        for (pdg_pid, factor) in flavor_components {
+                            if let Some(&pdg_idx) = pdg_pids_map.get(&pdg_pid) {
+                                for (i_nucleons, i_alphas, ix, iq2) in (0..dims.0)
+                                    .cartesian_product(0..dims.1)
+                                    .cartesian_product(0..dims.2)
+                                    .cartesian_product(0..dims.3)
+                                    .map(|(((a, b), c), d)| (a, b, c, d))
+                                {
+                                    let original_val =
+                                        subgrid.grid[[i_nucleons, i_alphas, pdg_idx, ix, iq2]];
+                                    let rotated_idx =
+                                        i_nucleons * dims.1 * n_evol_flav * dims.2 * dims.3
+                                            + i_alphas * n_evol_flav * dims.2 * dims.3
+                                            + i_evol_flav * dims.2 * dims.3
+                                            + ix * dims.3
+                                            + iq2;
+                                    rotated_grid_data[rotated_idx] += original_val * factor;
+                                }
+                            }
+                        }
+                    }
+
+                    SubGrid::new(
+                        subgrid.nucleons,
+                        subgrid.alphas,
+                        subgrid.xs.to_vec(),
+                        subgrid.q2s.to_vec(),
+                        n_evol_flav,
+                        rotated_grid_data,
+                    )
+                })
+                .collect();
+
+            GridArray {
+                pids: Array1::from_vec(evol_pids),
+                subgrids: rotated_subgrids,
+            }
+        } else {
+            knot_array
+        };
+
         let mut interpolators: Vec<Vec<Box<dyn DynInterpolator>>> = Vec::new();
-        for subgrid in &knot_array.subgrids {
+        for subgrid in &actual_knot_array.subgrids {
             let mut subgrid_interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
-            for i in 0..knot_array.pids.len() {
+            for i in 0..actual_knot_array.pids.len() {
                 // TODO: Currently, always ignoring the extra-alphas/nucleon information
                 let grid_slice = subgrid.grid.slice(s![0, 0, i, .., ..]);
 
@@ -251,7 +322,7 @@ impl GridPDF {
 
         Self {
             info,
-            knot_array,
+            knot_array: actual_knot_array,
             interpolators,
             alphas_interpolator,
         }

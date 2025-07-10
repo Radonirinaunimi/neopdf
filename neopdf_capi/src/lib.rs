@@ -1,5 +1,6 @@
 //! The C-language interface for `NeoPDF`
 
+use neopdf::basisrotation::PidBasis;
 use neopdf::pdf::PDF;
 use std::ffi::CStr;
 use std::os::raw::c_char;
@@ -29,10 +30,11 @@ pub struct NeoPDFMembers {
 pub unsafe extern "C" fn neopdf_pdf_load(
     pdf_name: *const c_char,
     member: usize,
+    basis_representation: PidBasis,
 ) -> *mut NeoPDFWrapper {
     let c_str = unsafe { CStr::from_ptr(pdf_name) };
     let pdf_name = c_str.to_str().expect("Invalid UTF-8 string");
-    let pdf = PDF::load(pdf_name, member);
+    let pdf = PDF::load(pdf_name, member, basis_representation);
     Box::into_raw(Box::new(NeoPDFWrapper(pdf)))
 }
 
@@ -49,11 +51,14 @@ pub unsafe extern "C" fn neopdf_pdf_load(
 ///
 /// The `pdf_name` C string must be null-terminated and valid UTF-8.
 #[no_mangle]
-pub unsafe extern "C" fn neopdf_pdf_load_all(pdf_name: *const c_char) -> NeoPDFMembers {
+pub unsafe extern "C" fn neopdf_pdf_load_all(
+    pdf_name: *const c_char,
+    basis_representation: PidBasis,
+) -> NeoPDFMembers {
     let c_str = unsafe { CStr::from_ptr(pdf_name) };
     let pdf_name = c_str.to_str().expect("Invalid UTF-8 string");
 
-    let pdfs = PDF::load_pdfs(pdf_name);
+    let pdfs = PDF::load_pdfs(pdf_name, basis_representation);
     let length = pdfs.len();
 
     let mut pdf_pointers: Vec<*mut NeoPDFWrapper> = pdfs
