@@ -1,0 +1,7 @@
+body {
+  font-size: 0.9rem;
+}
+
+.md-content__inner {
+  max-width: 90ch;
+}
