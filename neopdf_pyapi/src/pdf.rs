@@ -2,6 +2,8 @@ use neopdf::pdf::PDF;
 use numpy::{IntoPyArray, PyArray3};
 use pyo3::prelude::*;
 
+use super::metadata::PyMetaData;
+
 /// Python wrapper for the `neopdf::pdf::PDF` struct.
 ///
 /// This class provides a Python-friendly interface to the core PDF
@@ -195,6 +197,15 @@ impl PyPDF {
     #[pyo3(name = "alphasQ2")]
     pub fn alphas_q2(&self, q2: f64) -> f64 {
         self.pdf.alphas_q2(q2)
+    }
+
+    /// TODO
+    #[must_use]
+    #[pyo3(name = "metadata")]
+    pub fn metadata(&self) -> PyMetaData {
+        PyMetaData {
+            meta: self.pdf.info(),
+        }
     }
 }
 
