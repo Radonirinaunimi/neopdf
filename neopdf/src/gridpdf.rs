@@ -216,6 +216,49 @@ where
     }
 }
 
+// Helper types to make the code more self-documenting
+#[derive(Debug)]
+struct SubgridDimensions {
+    n_nucleons: usize,
+    n_alphas: usize,
+    nx: usize,
+    nq2: usize,
+}
+
+impl From<&SubGrid> for SubgridDimensions {
+    fn from(subgrid: &SubGrid) -> Self {
+        Self {
+            n_nucleons: subgrid.nucleons.len(),
+            n_alphas: subgrid.alphas.len(),
+            nx: subgrid.xs.len(),
+            nq2: subgrid.q2s.len(),
+        }
+    }
+}
+
+#[derive(Debug)]
+enum InterpolationDims {
+    TwoD,
+    ThreeD { varying_nucleons: bool },
+    FourD,
+}
+
+impl SubgridDimensions {
+    fn classification(&self) -> InterpolationDims {
+        match (self.n_nucleons, self.n_alphas) {
+            (1, 1) => InterpolationDims::TwoD,
+            (n, 1) if n > 1 => InterpolationDims::ThreeD {
+                varying_nucleons: true,
+            },
+            (1, n) if n > 1 => InterpolationDims::ThreeD {
+                varying_nucleons: false,
+            },
+            (n, a) if n > 1 && a > 1 => InterpolationDims::FourD,
+            _ => panic!("Unsupported subgrid dimensions: {:?}", self),
+        }
+    }
+}
+
 /// Represents a Parton Distribution Function (PDF) grid, containing the PDF info, knot array,
 /// and interpolators.
 pub struct GridPDF {
@@ -236,140 +279,177 @@ impl GridPDF {
     /// * `info` - The `Info` struct containing metadata about the PDF set.
     /// * `knot_array` - The `KnotArray` containing the PDF grid data.
     pub fn new(info: MetaData, knot_array: GridArray) -> Self {
-        let mut interpolators: Vec<Vec<Box<dyn DynInterpolator>>> = Vec::new();
-        for subgrid in &knot_array.subgrids {
-            let mut subgrid_interpolators: Vec<Box<dyn DynInterpolator>> = Vec::new();
-            for i in 0..knot_array.pids.len() {
-                // TODO: Currently, always ignoring the extra-alphas/nucleon information
-                let n_nucleons = subgrid.nucleons.len();
-                let n_alphas = subgrid.alphas.len();
-                let nx = subgrid.xs.len();
-                let nq2 = subgrid.q2s.len();
-
-                let interp: Box<dyn DynInterpolator> = if n_nucleons == 1 && n_alphas == 1 {
-                    // 2D interpolation (x, Q2)
-                    let grid_slice = subgrid.grid.slice(s![0, 0, i, .., ..]);
-                    match info.interpolator_type {
-                        InterpolatorType::LogBilinear => Box::new(
-                            Interp2D::new(
-                                subgrid.xs.to_owned(),
-                                subgrid.q2s.to_owned(),
-                                grid_slice.to_owned(),
-                                LogBilinearInterpolation,
-                                Extrapolate::Error,
-                            )
-                            .unwrap(),
-                        ),
-                        InterpolatorType::Bilinear => Box::new(
-                            Interp2D::new(
-                                subgrid.xs.to_owned(),
-                                subgrid.q2s.to_owned(),
-                                grid_slice.to_owned(),
-                                BilinearInterpolation,
-                                Extrapolate::Error,
-                            )
-                            .unwrap(),
-                        ),
-                        InterpolatorType::LogBicubic => Box::new(
-                            Interp2D::new(
-                                subgrid.xs.to_owned(),
-                                subgrid.q2s.to_owned(),
-                                grid_slice.to_owned(),
-                                LogBicubicInterpolation::default(),
-                                Extrapolate::Error,
-                            )
-                            .unwrap(),
-                        ),
-                        _ => panic!("Unknown 2D interpolator type."),
-                    }
-                } else if (n_nucleons > 1 && n_alphas == 1) || (n_nucleons == 1 && n_alphas > 1) {
-                    // 3D interpolation (nucleons/alphas, x, Q2)
-                    let grid_data = subgrid.grid.slice(s![.., .., i, .., ..]).to_owned();
-                    let (coords, reshaped_grid_data) = if n_nucleons > 1 {
-                        // Varying nucleons, fixed alpha
-                        (
-                            subgrid
-                                .nucleons
-                                .iter()
-                                .map(|&n| n as f64)
-                                .collect::<Array1<f64>>(),
-                            grid_data
-                                .into_shape_with_order((n_nucleons, nx, nq2))
-                                .unwrap(),
-                        )
-                    } else {
-                        // Fixed nucleon, varying alphas
-                        (
-                            Array1::from(subgrid.alphas.to_owned()),
-                            grid_data
-                                .into_shape_with_order((n_alphas, nx, nq2))
-                                .unwrap(),
-                        )
-                    };
-                    match info.interpolator_type {
-                        InterpolatorType::LogTricubic => Box::new(
-                            Interp3D::new(
-                                coords.to_owned(),
-                                subgrid.xs.to_owned(),
-                                subgrid.q2s.to_owned(),
-                                reshaped_grid_data.to_owned(),
-                                LogTricubicInterpolation,
-                                Extrapolate::Error,
-                            )
-                            .unwrap(),
-                        ),
-                        _ => panic!("Unknown 3D interpolator type."),
-                    }
-                } else if n_nucleons > 1 && n_alphas > 1 {
-                    // 4D interpolation (nucleons, alphas, x, Q2)
-                    let grid_data = subgrid.grid.slice(s![.., .., i, .., ..]).to_owned();
-                    let coords = vec![
-                        subgrid
-                            .nucleons
-                            .iter()
-                            .map(|&n| n as f64)
-                            .collect::<Array1<f64>>(),
-                        Array1::from(subgrid.alphas.to_owned()),
-                        subgrid.xs.to_owned(),
-                        subgrid.q2s.to_owned(),
-                    ];
-                    let reshaped_grid_data = grid_data
-                        .into_shape_with_order((n_nucleons, n_alphas, nx, nq2))
-                        .unwrap();
-                    match info.interpolator_type {
-                        InterpolatorType::InterpNDLinear => Box::new(
-                            InterpND::new(
-                                coords,
-                                reshaped_grid_data.into_dyn(),
-                                Linear,
-                                Extrapolate::Error,
-                            )
-                            .unwrap(),
-                        ),
-                        _ => panic!("Unknown 4D interpolator type."),
-                    }
-                } else {
-                    panic!("Unsupported subgrid dimensions.");
-                };
-                subgrid_interpolators.push(interp);
-            }
-            interpolators.push(subgrid_interpolators);
-        }
-
-        let alphas_q2s: Vec<f64> = info.alphas_q_values.iter().map(|&q| q * q).collect();
-        let alphas_interpolator = Interp1D::new(
-            alphas_q2s.into(),
-            info.alphas_vals.clone().into(),
-            AlphaSCubicInterpolation,
-            Extrapolate::Error,
-        )
-        .unwrap();
+        let interpolators = Self::build_interpolators(&info, &knot_array);
+        let alphas_interpolator = Self::build_alphas_interpolator(&info);
 
         Self {
             info,
             knot_array,
             interpolators,
             alphas_interpolator,
+        }
+    }
+
+    fn build_interpolators(
+        info: &MetaData,
+        knot_array: &GridArray,
+    ) -> Vec<Vec<Box<dyn DynInterpolator>>> {
+        knot_array
+            .subgrids
+            .iter()
+            .map(|subgrid| {
+                (0..knot_array.pids.len())
+                    .map(|i| Self::create_interpolator(info, subgrid, i))
+                    .collect()
+            })
+            .collect()
+    }
+
+    fn build_alphas_interpolator(info: &MetaData) -> Interp1DOwned<f64, AlphaSCubicInterpolation> {
+        let alphas_q2s: Vec<f64> = info.alphas_q_values.iter().map(|&q| q * q).collect();
+
+        Interp1D::new(
+            alphas_q2s.into(),
+            info.alphas_vals.clone().into(),
+            AlphaSCubicInterpolation,
+            Extrapolate::Error,
+        )
+        .expect("Failed to create alphas interpolator")
+    }
+
+    fn create_interpolator(
+        info: &MetaData,
+        subgrid: &SubGrid,
+        pid_index: usize,
+    ) -> Box<dyn DynInterpolator> {
+        let dims = SubgridDimensions::from(subgrid);
+
+        match dims.classification() {
+            InterpolationDims::TwoD => Self::create_2d_interpolator(info, subgrid, pid_index),
+            InterpolationDims::ThreeD { varying_nucleons } => {
+                Self::create_3d_interpolator(info, subgrid, pid_index, varying_nucleons)
+            }
+            InterpolationDims::FourD => Self::create_4d_interpolator(info, subgrid, pid_index),
+        }
+    }
+
+    fn create_2d_interpolator(
+        info: &MetaData,
+        subgrid: &SubGrid,
+        pid_index: usize,
+    ) -> Box<dyn DynInterpolator> {
+        let grid_slice = subgrid.grid.slice(s![0, 0, pid_index, .., ..]);
+
+        match info.interpolator_type {
+            InterpolatorType::Bilinear => Box::new(
+                Interp2D::new(
+                    subgrid.xs.clone(),
+                    subgrid.q2s.clone(),
+                    grid_slice.to_owned(),
+                    BilinearInterpolation,
+                    Extrapolate::Error,
+                )
+                .expect("Failed to create 2D interpolator"),
+            ),
+            InterpolatorType::LogBilinear => Box::new(
+                Interp2D::new(
+                    subgrid.xs.clone(),
+                    subgrid.q2s.clone(),
+                    grid_slice.to_owned(),
+                    LogBilinearInterpolation,
+                    Extrapolate::Error,
+                )
+                .expect("Failed to create 2D interpolator"),
+            ),
+            InterpolatorType::LogBicubic => Box::new(
+                Interp2D::new(
+                    subgrid.xs.clone(),
+                    subgrid.q2s.clone(),
+                    grid_slice.to_owned(),
+                    LogBicubicInterpolation::default(),
+                    Extrapolate::Error,
+                )
+                .expect("Failed to create 2D interpolator"),
+            ),
+            _ => panic!(
+                "Unsupported 2D interpolator type: {:?}",
+                info.interpolator_type
+            ),
+        }
+    }
+
+    fn create_3d_interpolator(
+        info: &MetaData,
+        subgrid: &SubGrid,
+        pid_index: usize,
+        varying_nucleons: bool,
+    ) -> Box<dyn DynInterpolator> {
+        let grid_data = subgrid.grid.slice(s![.., .., pid_index, .., ..]).to_owned();
+        let dims = SubgridDimensions::from(subgrid);
+
+        let (coords, reshaped_data) = if varying_nucleons {
+            (
+                subgrid.nucleons.iter().map(|&n| n as f64).collect(),
+                grid_data
+                    .into_shape_with_order((dims.n_nucleons, dims.nx, dims.nq2))
+                    .expect("Failed to reshape 3D grid data"),
+            )
+        } else {
+            (
+                Array1::from(subgrid.alphas.clone()),
+                grid_data
+                    .into_shape_with_order((dims.n_alphas, dims.nx, dims.nq2))
+                    .expect("Failed to reshape 3D grid data"),
+            )
+        };
+
+        match info.interpolator_type {
+            InterpolatorType::LogTricubic => Box::new(
+                Interp3D::new(
+                    coords,
+                    subgrid.xs.clone(),
+                    subgrid.q2s.clone(),
+                    reshaped_data,
+                    LogTricubicInterpolation,
+                    Extrapolate::Error,
+                )
+                .expect("Failed to create 3D interpolator"),
+            ),
+            _ => panic!(
+                "Unsupported 3D interpolator type: {:?}",
+                info.interpolator_type
+            ),
+        }
+    }
+
+    fn create_4d_interpolator(
+        info: &MetaData,
+        subgrid: &SubGrid,
+        pid_index: usize,
+    ) -> Box<dyn DynInterpolator> {
+        let grid_data = subgrid.grid.slice(s![.., .., pid_index, .., ..]).to_owned();
+        let dims = SubgridDimensions::from(subgrid);
+
+        let coords = vec![
+            subgrid.nucleons.iter().map(|&n| n as f64).collect(),
+            Array1::from(subgrid.alphas.clone()),
+            subgrid.xs.clone(),
+            subgrid.q2s.clone(),
+        ];
+
+        let reshaped_data = grid_data
+            .into_shape_with_order((dims.n_nucleons, dims.n_alphas, dims.nx, dims.nq2))
+            .expect("Failed to reshape 4D grid data");
+
+        match info.interpolator_type {
+            InterpolatorType::InterpNDLinear => Box::new(
+                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Error)
+                    .expect("Failed to create 4D interpolator"),
+            ),
+            _ => panic!(
+                "Unsupported 4D interpolator type: {:?}",
+                info.interpolator_type
+            ),
         }
     }
 
