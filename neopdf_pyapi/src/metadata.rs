@@ -32,6 +32,8 @@ pub enum PyInterpolatorType {
     LogBicubic,
     /// Tricubic logarithmic interpolation strategy.
     LogTricubic,
+    /// Linear interpolation for N-dimensional data.
+    NDLinear,
 }
 
 impl From<&InterpolatorType> for PyInterpolatorType {
@@ -41,6 +43,7 @@ impl From<&InterpolatorType> for PyInterpolatorType {
             InterpolatorType::LogBilinear => Self::LogBilinear,
             InterpolatorType::LogBicubic => Self::LogBicubic,
             InterpolatorType::LogTricubic => Self::LogTricubic,
+            InterpolatorType::InterpNDLinear => Self::NDLinear,
         }
     }
 }

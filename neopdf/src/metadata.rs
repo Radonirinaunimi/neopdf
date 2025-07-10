@@ -17,6 +17,7 @@ pub enum InterpolatorType {
     #[default]
     LogBicubic,
     LogTricubic,
+    InterpNDLinear,
 }
 
 /// Represents the information block of a PDF set, typically found in an `.info` file.
