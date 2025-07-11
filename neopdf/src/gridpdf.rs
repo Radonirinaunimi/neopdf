@@ -3,9 +3,11 @@
 //! It provides a clean, modular interface for accessing and interpolating PDF data through
 //! the `GridPDF` struct, with support for multiple interpolation strategies and dimensions.
 
-use ndarray::{s, Array1, Array3, Array5, ArrayView2};
+use ndarray::{s, Array1, Array3, Array5, ArrayView2, OwnedRepr};
+use ninterp::error::InterpolateError;
 use ninterp::interpolator::{Extrapolate, Interp2D, InterpND};
 use ninterp::prelude::*;
+use ninterp::strategy::traits::{Strategy2D, Strategy3D, StrategyND};
 use ninterp::strategy::Linear;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -87,51 +89,39 @@ impl RangeParameters {
 
 /// A trait for dynamic interpolation across different dimensions.
 pub trait DynInterpolator: Send + Sync {
-    fn interpolate_point(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError>;
+    fn interpolate_point(&self, point: &[f64]) -> Result<f64, InterpolateError>;
 }
 
 // Implement DynInterpolator for all interpolator types
 impl<S> DynInterpolator for Interp2DOwned<f64, S>
 where
-    S: ninterp::strategy::traits::Strategy2D<ndarray::OwnedRepr<f64>>
-        + 'static
-        + Clone
-        + Send
-        + Sync,
+    S: Strategy2D<OwnedRepr<f64>> + 'static + Clone + Send + Sync,
 {
-    fn interpolate_point(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError> {
-        let [x, y] = point.try_into().map_err(|_| {
-            ninterp::error::InterpolateError::Other("Expected 2D point".to_string())
-        })?;
+    fn interpolate_point(&self, point: &[f64]) -> Result<f64, InterpolateError> {
+        let [x, y] = point
+            .try_into()
+            .map_err(|_| InterpolateError::Other("Expected 2D point".to_string()))?;
         self.interpolate(&[x, y])
     }
 }
 
 impl<S> DynInterpolator for Interp3DOwned<f64, S>
 where
-    S: ninterp::strategy::traits::Strategy3D<ndarray::OwnedRepr<f64>>
-        + 'static
-        + Clone
-        + Send
-        + Sync,
+    S: Strategy3D<OwnedRepr<f64>> + 'static + Clone + Send + Sync,
 {
-    fn interpolate_point(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError> {
-        let [x, y, z] = point.try_into().map_err(|_| {
-            ninterp::error::InterpolateError::Other("Expected 3D point".to_string())
-        })?;
+    fn interpolate_point(&self, point: &[f64]) -> Result<f64, InterpolateError> {
+        let [x, y, z] = point
+            .try_into()
+            .map_err(|_| InterpolateError::Other("Expected 3D point".to_string()))?;
         self.interpolate(&[x, y, z])
     }
 }
 
 impl<S> DynInterpolator for InterpNDOwned<f64, S>
 where
-    S: ninterp::strategy::traits::StrategyND<ndarray::OwnedRepr<f64>>
-        + 'static
-        + Clone
-        + Send
-        + Sync,
+    S: StrategyND<OwnedRepr<f64>> + 'static + Clone + Send + Sync,
 {
-    fn interpolate_point(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError> {
+    fn interpolate_point(&self, point: &[f64]) -> Result<f64, InterpolateError> {
         self.interpolate(point)
     }
 }
