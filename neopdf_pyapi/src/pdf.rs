@@ -1,5 +1,5 @@
 use neopdf::pdf::PDF;
-use numpy::{IntoPyArray, PyArray3};
+use numpy::{IntoPyArray, PyArray2};
 use pyo3::prelude::*;
 
 use super::metadata::PyMetaData;
@@ -96,7 +96,7 @@ impl PyPDF {
     ///     The minimum x-value.
     #[must_use]
     pub fn x_min(&self) -> f64 {
-        self.pdf.x_min()
+        self.pdf.param_ranges().x.min
     }
 
     /// Retrieves the maximum x-value for this PDF set.
@@ -107,7 +107,7 @@ impl PyPDF {
     ///     The maximum x-value.
     #[must_use]
     pub fn x_max(&self) -> f64 {
-        self.pdf.x_max()
+        self.pdf.param_ranges().x.max
     }
 
     /// Retrieves the minimum Q2-value for this PDF set.
@@ -118,7 +118,7 @@ impl PyPDF {
     ///     The minimum Q2-value.
     #[must_use]
     pub fn q2_min(&self) -> f64 {
-        self.pdf.q2_min()
+        self.pdf.param_ranges().q2.min
     }
 
     /// Retrieves the maximum Q2-value for this PDF set.
@@ -129,7 +129,7 @@ impl PyPDF {
     ///     The maximum Q2-value.
     #[must_use]
     pub fn q2_max(&self) -> f64 {
-        self.pdf.q2_max()
+        self.pdf.param_ranges().q2.max
     }
 
     /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.
@@ -151,7 +151,7 @@ impl PyPDF {
     #[must_use]
     #[pyo3(name = "xfxQ2")]
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
-        self.pdf.xfxq2(id, x, q2)
+        self.pdf.xfxq2(id, &[x, q2])
     }
 
     /// Interpolates the PDF value (xf) for lists of flavors, x-values,
@@ -161,25 +161,32 @@ impl PyPDF {
     /// ----------
     /// id : list[int]
     ///     A list of flavor IDs.
-    /// x : list[float]
+    /// xs : list[float]
     ///     A list of momentum fractions.
-    /// q2 : list[float]
+    /// q2s : list[float]
     ///     A list of energy scales squared.
     ///
     /// Returns
     /// -------
     /// numpy.ndarray
-    ///     A 3D NumPy array containing the interpolated PDF values.
+    ///     A 2D NumPy array containing the interpolated PDF values.
     #[must_use]
     #[pyo3(name = "xfxQ2s")]
     pub fn xfxq2s<'py>(
         &self,
-        id: Vec<i32>,
-        x: Vec<f64>,
-        q2: Vec<f64>,
+        pids: Vec<i32>,
+        xs: Vec<f64>,
+        q2s: Vec<f64>,
         py: Python<'py>,
-    ) -> Bound<'py, PyArray3<f64>> {
-        self.pdf.xfxq2s(id, x, q2).into_pyarray(py)
+    ) -> Bound<'py, PyArray2<f64>> {
+        let flatten_points: Vec<Vec<f64>> = xs
+            .iter()
+            .flat_map(|&x| q2s.iter().map(move |&q2| vec![x, q2]))
+            .collect();
+        let points_interp: Vec<&[f64]> = flatten_points.iter().map(Vec::as_slice).collect();
+        let slice_points: &[&[f64]] = &points_interp;
+
+        self.pdf.xfxq2s(pids, slice_points).into_pyarray(py)
     }
 
     /// Computes the alpha_s value at a given Q2.
@@ -204,7 +211,7 @@ impl PyPDF {
     #[pyo3(name = "metadata")]
     pub fn metadata(&self) -> PyMetaData {
         PyMetaData {
-            meta: self.pdf.info(),
+            meta: self.pdf.info().clone(),
         }
     }
 }

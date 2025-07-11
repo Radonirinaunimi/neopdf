@@ -1,7 +1,7 @@
-use super::gridpdf::{GridArray, GridPDF};
+use super::gridpdf::{GridArray, GridPDF, RangeParameters};
 use super::metadata::MetaData;
 use super::parser::LhapdfSet;
-use ndarray::Array3;
+use ndarray::Array2;
 use rayon::prelude::*;
 
 /// Represents a Parton Distribution Function (PDF) set.
@@ -64,39 +64,37 @@ impl PDF {
             .collect()
     }
 
-    /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.
+    /// Interpolates the PDF value (xf) for a given nucleon, alphas, flavor, x, and Q2.
     ///
     /// Abstraction to the `GridPDF::xfxq2` method.
     ///
     /// # Arguments
     ///
     /// * `id` - The flavor ID (PDG ID).
-    /// * `x` - The momentum fraction.
-    /// * `q2` - The squared energy scale.
+    /// * `points` - A slice containing the collection of points to interpolate on.
     ///
     /// # Returns
     ///
-    /// The interpolated PDF value `xf(x, Q^2)`. Returns 0.0 if extrapolation is
-    /// attempted and not configured.
-    pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
-        self.grid_pdf.xfxq2(id, x, q2)
+    /// The interpolated PDF value `xf(nuclone, alphas, flavor, x, Q^2)`.
+    pub fn xfxq2(&self, pid: i32, points: &[f64]) -> f64 {
+        self.grid_pdf.xfxq2(pid, points).unwrap()
     }
 
-    /// Interpolates the PDF value (xf) for multiple flavors, xs, and Q2s.
+    /// Interpolates the PDF value (xf) for multiple nucleons, alphas, flavors, xs, and Q2s.
     ///
     /// Abstraction to the `GridPDF::xfxq2s` method.
     ///
     /// # Arguments
     ///
     /// * `ids` - A vector of flavor IDs.
-    /// * `xs` - A vector of x-values.
-    /// * `q2s` - A vector of Q2-values.
+    /// * `slice_points` - A slice containing the collection of knots to interpolate on.
+    ///   A knot is a collection of points containing `(nucleon, alphas, x, Q2)`.
     ///
     /// # Returns
     ///
-    /// A 3D array of interpolated PDF values, with dimensions `(ids.len(), xs.len(), q2s.len())`.
-    pub fn xfxq2s(&self, ids: Vec<i32>, xs: Vec<f64>, q2s: Vec<f64>) -> Array3<f64> {
-        self.grid_pdf.xfxq2s(ids, xs, q2s)
+    /// A 2D array of interpolated PDF values with shape `[flavors, N_knots]`.
+    pub fn xfxq2s(&self, pids: Vec<i32>, slice_points: &[&[f64]]) -> Array2<f64> {
+        self.grid_pdf.xfxq2s(pids, slice_points)
     }
 
     /// Interpolates the strong coupling constant `alpha_s` for a given Q2.
@@ -121,8 +119,8 @@ impl PDF {
     /// # Returns
     ///
     /// A `MetaData` struct containing information about the PDF set.
-    pub fn info(&self) -> MetaData {
-        self.grid_pdf.info()
+    pub fn info(&self) -> &MetaData {
+        self.grid_pdf.metadata()
     }
 
     /// Retrieves the PDF value (xf) at a specific knot point in the grid.
@@ -142,7 +140,7 @@ impl PDF {
     /// # Returns
     ///
     /// The PDF value at the specified knot.
-    pub fn xf(
+    pub fn xf_from_index(
         &self,
         i_nucleons: usize,
         i_alphas: usize,
@@ -156,47 +154,14 @@ impl PDF {
             .xf_from_index(i_nucleons, i_alphas, ix, iq2, id, subgrid_id)
     }
 
-    /// Retrieves the minimum `x` value from the entire PDF grid.
+    /// Retrieves the ranges for the parameters.
     ///
-    /// Abstraction to the `GridPDF::x_min` method.
-    ///
-    /// # Returns
-    ///
-    /// The minimum `x` value.
-    pub fn x_min(&self) -> f64 {
-        self.grid_pdf.x_min()
-    }
-
-    /// Retrieves the maximum `x` value from the entire PDF grid.
-    ///
-    /// Abstraction to the `GridPDF::x_max` method.
+    /// Abstraction to the `GridPDF::param_ranges` method.
     ///
     /// # Returns
     ///
-    /// The maximum `x` value.
-    pub fn x_max(&self) -> f64 {
-        self.grid_pdf.x_max()
-    }
-
-    /// Retrieves the minimum `Q2` value from the entire PDF grid.
-    ///
-    /// Abstraction to the `GridPDF::q2_min` method.
-    ///
-    /// # Returns
-    ///
-    /// The minimum `Q2` value.
-    pub fn q2_min(&self) -> f64 {
-        self.grid_pdf.q2_min()
-    }
-
-    /// Retrieves the maximum `Q2` value from the entire PDF grid.
-    ///
-    /// Abstraction to the `GridPDF::q2_max` method.
-    ///
-    /// # Returns
-    ///
-    /// The maximum `Q2` value.
-    pub fn q2_max(&self) -> f64 {
-        self.grid_pdf.q2_max()
+    /// The minimum and maximum values for the parameters (x, q2, ...).
+    pub fn param_ranges(&self) -> RangeParameters {
+        self.grid_pdf.param_ranges()
     }
 }
