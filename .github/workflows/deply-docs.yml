@@ -19,10 +19,9 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies 📦
-        run: pip install mkdocs mkdocs-material
+        run: pip install mkdocs mkdocs-material mkdocs-mermaid2-plugin
 
       - name: Deploy to GitHub Pages 🚀
         run: |
-          cd docs
           mkdocs build
           mkdocs gh-deploy --force
