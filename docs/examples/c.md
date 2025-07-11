@@ -1,24 +1,32 @@
-# C++ OOP API Example
+# C API Example
+
+This example demonstrates how to use the NeoPDF C API to load PDF sets, evaluate parton distributions, and perform statistical analysis across PDF members.
+
+## Prerequisites
+
+Build and install the C API as described in the [installation guide](../installation.md).
+- Include the NeoPDF C headers and link against the shared library.
+
+## Example: Loading and Evaluating a Single PDF Member
+
+The following function loads a single PDF member and evaluates the PDF for various partons, $x$, and $Q^2$ values. It compares the results to reference values and prints a table of results.
 
 ```cpp
 #include <neopdf_capi.h>
-#include <NeoPDF.hpp>
 #include <cassert>
 #include <cmath>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include <string>
 #include <tuple>
 #include <vector>
 
-using namespace neopdf;
-
 const double TOLERANCE= 1e-16;
 
-void test_xfxq2() {
-    std::cout << "=== Test xfxQ2 for single PDF member ===\n";
+void test_single_pdf() {
+    std::cout << "=== Test Loading a Single PDF Member ===\n";
 
-    NeoPDF xpdf("NNPDF40_nnlo_as_01180", 0);
+    NeoPDFWrapper* pdf = neopdf_pdf_load("NNPDF40_nnlo_as_01180", 0);
 
     std::vector<std::tuple<int, double, double, double>> cases = {
         {1, 1e-9, 1.65 * 1.65, 1.4254154},
@@ -40,14 +48,14 @@ void test_xfxq2() {
         << std::setw(15) << "LHAPDF"
         << std::setw(15) << "NeoPDF"
         << std::setw(15) << "Rel. Diff." << "\n";
-    std::cout << std::string(71, '-') << "\n";
+    std::cout << std::string(81, '-') << "\n";
 
-    for (const auto& test_case : cases) {
+    for (size_t i = 0; i < cases.size(); ++i) {
         int pid;
         double x, q2, expected;
 
-        std::tie(pid, x, q2, expected) = test_case;
-        double result = xpdf.xfxQ2(pid, x, q2);
+        std::tie(pid, x, q2, expected) = cases[i];
+        double result = neopdf_pdf_xfxq2(pdf, pid, x, q2);
         double reldif = std::abs(result - expected) / expected;
 
         assert(std::abs(result - expected) < TOLERANCE);
@@ -62,56 +70,35 @@ void test_xfxq2() {
             << std::setw(15) << expected
             << std::setw(15) << result
             << std::setw(15) << reldif << "\n";
+
     }
+
+    // Delete PDF object from memory
+    neopdf_pdf_free(pdf);
 }
 
-void test_alphas_q2() {
-    std::cout << "=== Test alphasQ2 for single PDF member ===\n";
+## Example: Working with All PDF Members
 
-    NeoPDF xpdf("NNPDF40_nnlo_as_01180", 0);
+You can load all members of a PDF set and evaluate the same point across all members. This is useful for uncertainty estimation and statistical analysis.
 
-    std::vector<std::tuple<double, double>> cases ={
-        {1e5 * 1e5, 0.057798546},
-        {1.65 * 1.65, 0.33074891},
-        {4.0, 0.30095312523656437},
-        {2.75, 0.32992260049326716},
-        {100.0, 0.17812270669689784}
-    };
+```cpp
+#include <neopdf_capi.h>
+#include <cassert>
+#include <cmath>
+#include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <tuple>
+#include <vector>
 
-    // Headers of the table to print the results
-    std::cout << std::right
-        << std::setw(15) << "Q2"
-        << std::setw(15) << "LHAPDF"
-        << std::setw(15) << "NeoPDF"
-        << std::setw(15) << "Rel. Diff." << "\n";
-    std::cout << std::string(60, '-') << "\n";
-
-    for (const auto& test_case: cases) {
-        double q2, expected;
-
-        std::tie(q2, expected) = test_case;
-        double result = xpdf.alphasQ2(q2);
-        double reldif = std::abs(result - expected) / expected;
-
-        assert(std::abs(result - expected) < TOLERANCE);
-
-        // Print the results as a table
-        std::cout << std::scientific << std::setprecision(8)
-            << std::right
-            << std::setw(15) << q2
-            << std::right
-            << std::setw(15) << expected
-            << std::setw(15) << result
-            << std::setw(15) << reldif << "\n";
-    }
-}
+const double TOLERANCE= 1e-16;
 
 void test_all_pdf_members() {
-    std::cout << "=== Test PDFs class (loading all members) ===\n";
+    std::cout << "=== Test Loading all the PDF Members ===\n";
 
-    NeoPDFs xpdfs("NNPDF40_nnlo_as_01180");
+    NeoPDFMembers pdf_array = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
 
-    std::cout << "Loaded " << xpdfs.size() << " PDF members\n";
+    std::cout << "Loaded " << pdf_array.size << " PDF members\n";
 
     // Test case: evaluate a simple point across all members
     int pid = 1;
@@ -129,8 +116,9 @@ void test_all_pdf_members() {
 
     // Evaluate the same point across all PDF members
     std::vector<double> results;
-    for (size_t i = 0; i < xpdfs.size(); ++i) {
-        double result = xpdfs[i].xfxQ2(pid, x, q2);
+    for (size_t i = 0; i < pdf_array.size; ++i) {
+        NeoPDFWrapper* pdf = pdf_array.pdfs[i];
+        double result = neopdf_pdf_xfxq2(pdf, pid, x, q2);
         results.push_back(result);
 
         std::cout << std::right
@@ -157,28 +145,42 @@ void test_all_pdf_members() {
     std::cout << "Mean: " << std::scientific << std::setprecision(8) << mean << "\n";
     std::cout << "Std Dev: " << std_dev << "\n";
     std::cout << "Relative Std Dev: " << std_dev / mean << "\n";
+
+    // Delete objects from memory.
+    neopdf_pdf_array_free(pdf_array);
 }
 
-void test_raw_load_all() {
-    std::cout << "=== Test raw neopdf_pdf_load_all ===\n";
-    NeoPDFMembers raw_pdfs = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
-    std::cout << "Loaded " << raw_pdfs.size << " PDF members (raw call)\n";
-    neopdf_pdf_array_free(raw_pdfs);
-}
+## Main Function
 
+The main function runs all the above tests:
+
+```cpp
+#include <neopdf_capi.h>
+#include <cassert>
+#include <cmath>
+#include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <tuple>
+#include <vector>
+
+const double TOLERANCE= 1e-16;
 
 int main() {
-    // Test the computation of the PDF interpolations
-    test_xfxq2();
+    // Test loading single PDF member
+    test_single_pdf();
 
-    // Test the computation of the `alphas` interpolations
-    test_alphas_q2();
-
-    // Test the PDF interpolations by loading all the members
+    // Test loading all the PDF members
     test_all_pdf_members();
 
     return EXIT_SUCCESS;
 }
 ```
 
-```
+## Summary
+
+- Load and evaluate single or multiple PDF members
+- Compute $x f(x, Q^2)$ for different partons
+- Perform statistical analysis across PDF members
+
+API reference documentation is coming soon.
