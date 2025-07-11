@@ -112,6 +112,10 @@ impl ParamRange {
 
 /// Represents the parameter ranges for `x` and `q2`.
 pub struct RangeParameters {
+    /// The range for the nucleon numbers `A`.
+    pub nucleons: ParamRange,
+    /// The range for the AlphaS values `as`.
+    pub alphas: ParamRange,
     /// The range for the momentum fraction `x`.
     pub x: ParamRange,
     /// The range for the energy scale squared `q2`.
@@ -123,10 +127,17 @@ impl RangeParameters {
     ///
     /// # Arguments
     ///
-    /// * `x` - The `ParamRange` for `x`.
-    /// * `q2` - The `ParamRange` for `q2`.
-    pub fn new(x: ParamRange, q2: ParamRange) -> Self {
-        Self { x, q2 }
+    /// * `nucleons` - The `ParamRange` for the nuleon numbers `A`.
+    /// * `alphas` - The `ParamRange` for the strong coupling `as`.
+    /// * `x` - The `ParamRange` for the momentum fraction `x`.
+    /// * `q2` - The `ParamRange` for the energy scale `q2`.
+    pub fn new(nucleons: ParamRange, alphas: ParamRange, x: ParamRange, q2: ParamRange) -> Self {
+        Self {
+            nucleons,
+            alphas,
+            x,
+            q2,
+        }
     }
 }
 
@@ -199,6 +210,10 @@ pub struct SubGrid {
     pub nucleons: Array1<f64>,
     /// Array of alpha_s values.
     pub alphas: Array1<f64>,
+    /// The valid range for the `nucleons` parameter in this subgrid.
+    nucleons_range: ParamRange,
+    /// The valid range for the `AlphaS` parameter in this subgrid.
+    alphas_range: ParamRange,
     /// The valid range for the `x` parameter in this subgrid.
     x_range: ParamRange,
     /// The valid range for the `q2` parameter in this subgrid.
@@ -223,20 +238,28 @@ impl SubGrid {
     pub fn new(
         nucleon_numbers: Vec<f64>,
         alphas_values: Vec<f64>,
-        xs: Vec<f64>,
-        q2s: Vec<f64>,
+        x_subgrid: Vec<f64>,
+        q2_subgrid: Vec<f64>,
         nflav: usize,
         grid_data: Vec<f64>,
     ) -> Self {
-        let x_range = ParamRange::new(*xs.first().unwrap(), *xs.last().unwrap());
-        let q2_range = ParamRange::new(*q2s.first().unwrap(), *q2s.last().unwrap());
+        let xsub_range = ParamRange::new(*x_subgrid.first().unwrap(), *x_subgrid.last().unwrap());
+        let qq_range = ParamRange::new(*q2_subgrid.first().unwrap(), *q2_subgrid.last().unwrap());
+        let nc_range = ParamRange::new(
+            *nucleon_numbers.first().unwrap(),
+            *nucleon_numbers.last().unwrap(),
+        );
+        let as_range = ParamRange::new(
+            *alphas_values.first().unwrap(),
+            *alphas_values.last().unwrap(),
+        );
 
-        let grid = Array5::from_shape_vec(
+        let subgrid = Array5::from_shape_vec(
             (
                 nucleon_numbers.len(),
                 alphas_values.len(),
-                xs.len(),
-                q2s.len(),
+                x_subgrid.len(),
+                q2_subgrid.len(),
                 nflav,
             ),
             grid_data,
@@ -247,13 +270,15 @@ impl SubGrid {
         .to_owned();
 
         Self {
-            xs: Array1::from_vec(xs),
-            q2s: Array1::from_vec(q2s),
-            grid,
+            xs: Array1::from_vec(x_subgrid),
+            q2s: Array1::from_vec(q2_subgrid),
+            grid: subgrid,
             nucleons: Array1::from_vec(nucleon_numbers),
             alphas: Array1::from_vec(alphas_values),
-            x_range,
-            q2_range,
+            nucleons_range: nc_range,
+            alphas_range: as_range,
+            x_range: xsub_range,
+            q2_range: qq_range,
         }
     }
 
@@ -278,7 +303,12 @@ impl SubGrid {
 
     /// Gets the parameter ranges for this subgrid.
     pub fn ranges(&self) -> RangeParameters {
-        RangeParameters::new(self.x_range, self.q2_range)
+        RangeParameters::new(
+            self.nucleons_range,
+            self.alphas_range,
+            self.x_range,
+            self.q2_range,
+        )
     }
 
     /// Gets a 2D slice of the grid for interpolation.
@@ -551,37 +581,34 @@ impl GridArray {
 
     /// Gets the overall parameter ranges across all subgrids.
     ///
-    /// This method calculates the minimum and maximum values for `x` and `q2`
-    /// across all subgrids to determine the global parameter space.
+    /// This method calculates the minimum and maximum values for the nucleon numbers `A`,
+    /// the AlphaS values `as`, the momentum fraction `x` and the energy scale `q2` across
+    /// all subgrids to determine the global parameter space.
     ///
     /// # Returns
     ///
-    /// A `RangeParameters` struct containing the global `x` and `q2` ranges.
+    /// A `RangeParameters` struct containing the global parameter ranges.
     pub fn global_ranges(&self) -> RangeParameters {
-        let x_min = self
-            .subgrids
-            .iter()
-            .map(|sg| sg.x_range.min)
-            .fold(f64::INFINITY, f64::min);
-        let x_max = self
-            .subgrids
-            .iter()
-            .map(|sg| sg.x_range.max)
-            .fold(f64::NEG_INFINITY, f64::max);
-        let q2_min = self
-            .subgrids
-            .iter()
-            .map(|sg| sg.q2_range.min)
-            .fold(f64::INFINITY, f64::min);
-        let q2_max = self
-            .subgrids
-            .iter()
-            .map(|sg| sg.q2_range.max)
-            .fold(f64::NEG_INFINITY, f64::max);
+        fn global_range<F>(subgrids: &[SubGrid], extractor: F) -> ParamRange
+        where
+            F: Fn(&SubGrid) -> &ParamRange,
+        {
+            let min = subgrids
+                .iter()
+                .map(|sg| extractor(sg).min)
+                .fold(f64::INFINITY, f64::min);
+            let max = subgrids
+                .iter()
+                .map(|sg| extractor(sg).max)
+                .fold(f64::NEG_INFINITY, f64::max);
+            ParamRange::new(min, max)
+        }
 
         RangeParameters::new(
-            ParamRange::new(x_min, x_max),
-            ParamRange::new(q2_min, q2_max),
+            global_range(&self.subgrids, |sg| &sg.nucleons_range),
+            global_range(&self.subgrids, |sg| &sg.alphas_range),
+            global_range(&self.subgrids, |sg| &sg.x_range),
+            global_range(&self.subgrids, |sg| &sg.q2_range),
         )
     }
 }

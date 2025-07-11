@@ -160,7 +160,7 @@ impl PDF {
     ///
     /// # Returns
     ///
-    /// The minimum `x` value.
+    /// The minimum and maximum values for the parameters (x, q2, ...).
     pub fn param_ranges(&self) -> RangeParameters {
         self.grid_pdf.param_ranges()
     }
