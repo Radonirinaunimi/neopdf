@@ -76,13 +76,21 @@ fn test_xfxq2_interpolations() {
 }
 
 #[test]
-#[should_panic(
-    expected = "called `Result::unwrap()` on an `Err` value: SubgridNotFound { x: 1.0, q2: 1e40 }"
-)]
+#[should_panic(expected = "SubgridNotFound { x: 1.0, q2: 1e40 }")]
 fn test_xfxq2_extrapolations() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 
-    assert!((pdf.xfxq2(2, &[1.0, 1e20 * 1e20]) - 1e10).abs() < PRECISION);
+    // Attempts to interpolate outside of the subgrids
+    _ = pdf.xfxq2(2, &[1.0, 1e20 * 1e20]);
+}
+
+#[test]
+#[should_panic(expected = "Expected 2D point")]
+fn test_inconsistent_inputs() {
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+
+    // Attempts to interpolation on the nucleon number
+    _ = pdf.xfxq2(2, &[208.0, 1e-2, 1e2]);
 }
 
 #[test]
