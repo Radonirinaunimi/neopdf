@@ -1,4 +1,4 @@
-use super::gridpdf::{GridArray, GridPDF};
+use super::gridpdf::{GridArray, GridPDF, RangeParameters};
 use super::metadata::MetaData;
 use super::parser::LhapdfSet;
 use ndarray::Array3;
@@ -79,7 +79,7 @@ impl PDF {
     /// The interpolated PDF value `xf(x, Q^2)`. Returns 0.0 if extrapolation is
     /// attempted and not configured.
     pub fn xfxq2(&self, id: i32, x: f64, q2: f64) -> f64 {
-        self.grid_pdf.xfxq2(id, x, q2)
+        self.grid_pdf.xfxq2(id, x, q2).unwrap()
     }
 
     /// Interpolates the PDF value (xf) for multiple flavors, xs, and Q2s.
@@ -121,7 +121,7 @@ impl PDF {
     /// # Returns
     ///
     /// A `MetaData` struct containing information about the PDF set.
-    pub fn info(&self) -> MetaData {
+    pub fn info(&self) -> &MetaData {
         self.grid_pdf.info()
     }
 
@@ -142,7 +142,7 @@ impl PDF {
     /// # Returns
     ///
     /// The PDF value at the specified knot.
-    pub fn xf(
+    pub fn xf_from_index(
         &self,
         i_nucleons: usize,
         i_alphas: usize,
@@ -156,47 +156,14 @@ impl PDF {
             .xf_from_index(i_nucleons, i_alphas, ix, iq2, id, subgrid_id)
     }
 
-    /// Retrieves the minimum `x` value from the entire PDF grid.
+    /// Retrieves the ranges for the parameters.
     ///
-    /// Abstraction to the `GridPDF::x_min` method.
+    /// Abstraction to the `GridPDF::param_ranges` method.
     ///
     /// # Returns
     ///
     /// The minimum `x` value.
-    pub fn x_min(&self) -> f64 {
-        self.grid_pdf.x_min()
-    }
-
-    /// Retrieves the maximum `x` value from the entire PDF grid.
-    ///
-    /// Abstraction to the `GridPDF::x_max` method.
-    ///
-    /// # Returns
-    ///
-    /// The maximum `x` value.
-    pub fn x_max(&self) -> f64 {
-        self.grid_pdf.x_max()
-    }
-
-    /// Retrieves the minimum `Q2` value from the entire PDF grid.
-    ///
-    /// Abstraction to the `GridPDF::q2_min` method.
-    ///
-    /// # Returns
-    ///
-    /// The minimum `Q2` value.
-    pub fn q2_min(&self) -> f64 {
-        self.grid_pdf.q2_min()
-    }
-
-    /// Retrieves the maximum `Q2` value from the entire PDF grid.
-    ///
-    /// Abstraction to the `GridPDF::q2_max` method.
-    ///
-    /// # Returns
-    ///
-    /// The maximum `Q2` value.
-    pub fn q2_max(&self) -> f64 {
-        self.grid_pdf.q2_max()
+    pub fn param_ranges(&self) -> RangeParameters {
+        self.grid_pdf.param_ranges()
     }
 }

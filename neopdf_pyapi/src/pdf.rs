@@ -96,7 +96,7 @@ impl PyPDF {
     ///     The minimum x-value.
     #[must_use]
     pub fn x_min(&self) -> f64 {
-        self.pdf.x_min()
+        self.pdf.param_ranges().x.min
     }
 
     /// Retrieves the maximum x-value for this PDF set.
@@ -107,7 +107,7 @@ impl PyPDF {
     ///     The maximum x-value.
     #[must_use]
     pub fn x_max(&self) -> f64 {
-        self.pdf.x_max()
+        self.pdf.param_ranges().x.max
     }
 
     /// Retrieves the minimum Q2-value for this PDF set.
@@ -118,7 +118,7 @@ impl PyPDF {
     ///     The minimum Q2-value.
     #[must_use]
     pub fn q2_min(&self) -> f64 {
-        self.pdf.q2_min()
+        self.pdf.param_ranges().q2.min
     }
 
     /// Retrieves the maximum Q2-value for this PDF set.
@@ -129,7 +129,7 @@ impl PyPDF {
     ///     The maximum Q2-value.
     #[must_use]
     pub fn q2_max(&self) -> f64 {
-        self.pdf.q2_max()
+        self.pdf.param_ranges().q2.max
     }
 
     /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.
@@ -204,7 +204,7 @@ impl PyPDF {
     #[pyo3(name = "metadata")]
     pub fn metadata(&self) -> PyMetaData {
         PyMetaData {
-            meta: self.pdf.info(),
+            meta: self.pdf.info().clone(),
         }
     }
 }

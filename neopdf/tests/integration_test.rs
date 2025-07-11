@@ -22,7 +22,7 @@ fn test_xf_at_knots() {
 
     for (x_id, q_id, pid, expected) in cases {
         assert!(
-            (pdf.xf(0, 0, x_id, q_id, pid, 0) - expected).abs() < PRECISION,
+            (pdf.xf_from_index(0, 0, x_id, q_id, pid, 0) - expected).abs() < PRECISION,
             "Failed on knot (x, Q, pid)=({x_id}, {q_id}, {pid})"
         );
     }
@@ -226,8 +226,8 @@ pub fn test_xfxq2s() {
 pub fn test_boundary_extraction() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 
-    assert!((pdf.x_min() - 1e-9).abs() < PRECISION);
-    assert!((pdf.x_max() - 1.00).abs() < PRECISION);
-    assert!((pdf.q2_min() - 1.65 * 1.65).abs() < PRECISION);
-    assert!((pdf.q2_max() - 1e5 * 1.0e5).abs() < PRECISION);
+    assert!((pdf.param_ranges().x.min - 1e-9).abs() < PRECISION);
+    assert!((pdf.param_ranges().x.max - 1.00).abs() < PRECISION);
+    assert!((pdf.param_ranges().q2.min - 1.65 * 1.65).abs() < PRECISION);
+    assert!((pdf.param_ranges().q2.max - 1e5 * 1.0e5).abs() < PRECISION);
 }

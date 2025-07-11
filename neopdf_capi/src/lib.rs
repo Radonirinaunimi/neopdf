@@ -123,7 +123,7 @@ pub unsafe extern "C" fn neopdf_pdf_array_free(array: NeoPDFMembers) {
 pub unsafe extern "C" fn neopdf_pdf_x_min(pdf: *mut NeoPDFWrapper) -> f64 {
     assert!(!pdf.is_null());
     let pdf_obj = unsafe { &(*pdf).0 };
-    pdf_obj.x_min()
+    pdf_obj.param_ranges().x.min
 }
 
 /// Retrieves the `x_max` for this PDF set.
@@ -139,7 +139,7 @@ pub unsafe extern "C" fn neopdf_pdf_x_min(pdf: *mut NeoPDFWrapper) -> f64 {
 pub unsafe extern "C" fn neopdf_pdf_x_max(pdf: *mut NeoPDFWrapper) -> f64 {
     assert!(!pdf.is_null());
     let pdf_obj = unsafe { &(*pdf).0 };
-    pdf_obj.x_max()
+    pdf_obj.param_ranges().x.max
 }
 
 /// Retrieves the `q2_min` for this PDF set.
@@ -155,7 +155,7 @@ pub unsafe extern "C" fn neopdf_pdf_x_max(pdf: *mut NeoPDFWrapper) -> f64 {
 pub unsafe extern "C" fn neopdf_pdf_q2_min(pdf: *mut NeoPDFWrapper) -> f64 {
     assert!(!pdf.is_null());
     let pdf_obj = unsafe { &(*pdf).0 };
-    pdf_obj.q2_min()
+    pdf_obj.param_ranges().q2.min
 }
 
 /// Retrieves the `q2_max` for this PDF set.
@@ -171,7 +171,7 @@ pub unsafe extern "C" fn neopdf_pdf_q2_min(pdf: *mut NeoPDFWrapper) -> f64 {
 pub unsafe extern "C" fn neopdf_pdf_q2_max(pdf: *mut NeoPDFWrapper) -> f64 {
     assert!(!pdf.is_null());
     let pdf_obj = unsafe { &(*pdf).0 };
-    pdf_obj.q2_max()
+    pdf_obj.param_ranges().q2.max
 }
 
 /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.
