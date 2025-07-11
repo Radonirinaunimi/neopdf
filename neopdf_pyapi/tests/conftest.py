@@ -4,22 +4,33 @@ import numpy as np
 
 from neopdf.pdf import PDF
 
-NB_POINTS = 100
-PDFSET_NAME = "NNPDF40_nnlo_as_01180"
+
+@pytest.fixture(scope="session")
+def neo_pdf():
+    cached_pdf = {}
+
+    def _init_pdf(pdfname: str) -> PDF:
+        if pdfname not in cached_pdf:
+            cached_pdf[pdfname] = PDF(pdfname)
+        return cached_pdf[pdfname]
+
+    return _init_pdf
 
 
 @pytest.fixture(scope="session")
-def neo_pdf() -> PDF:
-    return PDF(PDFSET_NAME)
+def lha_pdf():
+    cached_pdf = {}
+
+    def _init_pdf(pdfname: str) -> PDF:
+        if pdfname not in cached_pdf:
+            cached_pdf[pdfname] = lhapdf.mkPDF(pdfname)
+        return cached_pdf[pdfname]
+
+    return _init_pdf
 
 
 @pytest.fixture(scope="session")
 def xq2_points() -> tuple[float, float]:
-    xs = np.logspace(-9, 0, NB_POINTS)
-    q2s = np.logspace(1, 8, NB_POINTS)
+    xs = np.logspace(-9, 0, 200)
+    q2s = np.logspace(1, 8, 200)
     return xs, q2s
-
-
-@pytest.fixture(scope="session")
-def lha_pdf() -> lhapdf:
-    return lhapdf.mkPDF(PDFSET_NAME)
