@@ -1,3 +1,9 @@
+//! This module defines the structures and methods for handling PDF grid data and interpolation.
+//!
+//! It includes the `GridPDF` struct, which is the main entry point for accessing and
+//! interpolating PDF data. The module also defines the `SubGrid` and `GridArray`
+//! structs, which store the PDF grid data in a structured way.
+
 use ndarray::{s, Array1, Array3, Array5};
 use ninterp::interpolator::{Extrapolate, Interp2D, InterpND};
 use ninterp::prelude::*;
@@ -13,13 +19,18 @@ use super::interpolation::{
 use super::metadata::{InterpolatorType, MetaData};
 use super::parser::SubgridData;
 
+/// Errors that can occur during PDF grid operations.
 #[derive(Debug, Error)]
 pub enum Error {
+    /// Error indicating that no subgrid was found for a given (x, Q2) point.
     #[error("No subgrid found for x={x}, q2={q2}")]
     SubgridNotFound { x: f64, q2: f64 },
 }
 
 /// Stores the PDF grid data for a single subgrid.
+///
+/// Each subgrid represents a region of the phase space with a specific
+/// set of x and Q2 values.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SubGrid {
     /// Array of x-values (momentum fraction).
@@ -32,18 +43,31 @@ pub struct SubGrid {
     pub nucleons: Vec<u32>,
     /// Values of alphas contained in the PDF.
     pub alphas: Vec<f64>,
-    /// Minimum value of the `x` subgrid
+    /// Minimum value of the `x` subgrid.
     x_min: f64,
-    /// Maximum value of the `x` subgrid
+    /// Maximum value of the `x` subgrid.
     x_max: f64,
-    /// Minimum value of the `Q2` subgrid
+    /// Minimum value of the `Q2` subgrid.
     q2_min: f64,
-    /// Maximum value of the `Q2` subgrid
+    /// Maximum value of the `Q2` subgrid.
     q2_max: f64,
 }
 
 impl SubGrid {
     /// Creates a new `Subgrid` from raw data.
+    ///
+    /// # Arguments
+    ///
+    /// * `nucleon_numbers` - A vector of nucleon numbers.
+    /// * `alphas_values` - A vector of alpha_s values.
+    /// * `xs` - A vector of x-values.
+    /// * `q2s` - A vector of Q2-values.
+    /// * `nflav` - The number of flavors.
+    /// * `grid_data` - A flat vector of PDF grid data.
+    ///
+    /// # Returns
+    ///
+    /// A new `SubGrid` instance.
     pub fn new(
         nucleon_numbers: Vec<u32>,
         alphas_values: Vec<f64>,
@@ -86,6 +110,15 @@ impl SubGrid {
     }
 
     /// Checks if a given (x, q2) point is within the boundaries of this subgrid.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The x-value to check.
+    /// * `q2` - The Q2-value to check.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the point is within the subgrid, `false` otherwise.
     pub fn is_in_subgrid(&self, x: f64, q2: f64) -> bool {
         x >= self.x_min && x <= self.x_max && q2 >= self.q2_min && q2 <= self.q2_max
     }
@@ -101,12 +134,16 @@ pub struct GridArray {
 }
 
 impl GridArray {
-    /// Creates a new `KnotArray` from raw data.
+    /// Creates a new `GridArray` from raw data.
     ///
     /// # Arguments
     ///
     /// * `subgrid_data` - A vector of tuples, where each tuple contains the data for a subgrid.
     /// * `pids` - A vector of flavor IDs.
+    ///
+    /// # Returns
+    ///
+    /// A new `GridArray` instance.
     pub fn new(subgrid_data: Vec<SubgridData>, pids: Vec<i32>) -> Self {
         let nflav = pids.len();
         let pids = Array1::from_vec(pids);
@@ -132,10 +169,16 @@ impl GridArray {
     ///
     /// # Arguments
     ///
+    /// * `i_nucleons` - The index of the nucleon.
+    /// * `i_alphas` - The index of the alpha_s value.
     /// * `ix` - The index of the x-value.
     /// * `iq2` - The index of the Q2-value.
     /// * `id` - The flavor ID.
     /// * `subgrid_id` - The subgrid to be used.
+    ///
+    /// # Returns
+    ///
+    /// The PDF value at the specified knot.
     pub fn xf_from_index(
         &self,
         i_nucleons: usize,
@@ -157,7 +200,11 @@ pub trait DynInterpolator: Send + Sync {
     ///
     /// # Arguments
     ///
-    /// * `point` - A 2-element array `[x, y]` representing the coordinates to interpolate at.
+    /// * `point` - A slice of `f64` representing the coordinates to interpolate at.
+    ///
+    /// # Returns
+    ///
+    /// The interpolated value as a `Result`.
     fn interpolate_point(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError>;
 }
 
@@ -169,6 +216,15 @@ where
         + Send
         + Sync,
 {
+    /// Interpolates a 2D point.
+    ///
+    /// # Arguments
+    ///
+    /// * `point` - A slice of `f64` with 2 elements representing the coordinates to interpolate at.
+    ///
+    /// # Returns
+    ///
+    /// The interpolated value as a `Result`.
     fn interpolate_point(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError> {
         // Interp2D expects a [f64; 2] array, so we need to convert the slice.
         // This assumes that for Interp2D, the point will always have 2 elements.
@@ -190,15 +246,24 @@ where
         + Send
         + Sync,
 {
+    /// Interpolates a 3D point.
+    ///
+    /// # Arguments
+    ///
+    /// * `point` - A slice of `f64` with 3 elements representing the coordinates to interpolate at.
+    ///
+    /// # Returns
+    ///
+    /// The interpolated value as a `Result`.
     fn interpolate_point(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError> {
         // Interp2D expects a [f64; 2] array, so we need to convert the slice.
         // This assumes that for Interp2D, the point will always have 2 elements.
-        if point.len() != 2 {
+        if point.len() != 3 {
             return Err(ninterp::error::InterpolateError::Other(
-                "Expected a 2-element array for 2D interpolation".to_string(),
+                "Expected a 3-element array for 3D interpolation".to_string(),
             ));
         }
-        let point_array: [f64; 3] = [point[0], point[1], point[3]];
+        let point_array: [f64; 3] = [point[0], point[1], point[2]];
         self.interpolate(&point_array)
     }
 }
@@ -211,12 +276,22 @@ where
         + Send
         + Sync,
 {
+    /// Interpolates an N-dimensional point.
+    ///
+    /// # Arguments
+    ///
+    /// * `point` - A slice of `f64` representing the coordinates to interpolate at.
+    ///
+    /// # Returns
+    ///
+    /// The interpolated value as a `Result`.
     fn interpolate_point(&self, point: &[f64]) -> Result<f64, ninterp::error::InterpolateError> {
         self.interpolate(point)
     }
 }
 
 // Helper types to make the code more self-documenting
+/// Helper struct to store the dimensions of a subgrid.
 #[derive(Debug)]
 struct SubgridDimensions {
     n_nucleons: usize,
@@ -226,6 +301,7 @@ struct SubgridDimensions {
 }
 
 impl From<&SubGrid> for SubgridDimensions {
+    /// Creates `SubgridDimensions` from a `SubGrid`.
     fn from(subgrid: &SubGrid) -> Self {
         Self {
             n_nucleons: subgrid.nucleons.len(),
@@ -236,6 +312,7 @@ impl From<&SubGrid> for SubgridDimensions {
     }
 }
 
+/// Enum to classify the interpolation dimensions based on the subgrid dimensions.
 #[derive(Debug)]
 enum InterpolationDims {
     TwoD,
@@ -244,6 +321,7 @@ enum InterpolationDims {
 }
 
 impl SubgridDimensions {
+    /// Classifies the interpolation dimensions based on the number of nucleons and alpha_s values.
     fn classification(&self) -> InterpolationDims {
         match (self.n_nucleons, self.n_alphas) {
             (1, 1) => InterpolationDims::TwoD,
@@ -262,10 +340,13 @@ impl SubgridDimensions {
 /// Represents a Parton Distribution Function (PDF) grid, containing the PDF info, knot array,
 /// and interpolators.
 pub struct GridPDF {
+    /// Metadata about the PDF set.
     info: MetaData,
     /// The underlying knot array containing the PDF grid data.
     pub knot_array: GridArray,
+    /// A vector of interpolators for each subgrid and flavor.
     interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
+    /// An interpolator for alpha_s values.
     alphas_interpolator: Interp1DOwned<f64, AlphaSCubicInterpolation>,
 }
 
@@ -276,8 +357,12 @@ impl GridPDF {
     ///
     /// # Arguments
     ///
-    /// * `info` - The `Info` struct containing metadata about the PDF set.
-    /// * `knot_array` - The `KnotArray` containing the PDF grid data.
+    /// * `info` - The `MetaData` struct containing metadata about the PDF set.
+    /// * `knot_array` - The `GridArray` containing the PDF grid data.
+    ///
+    /// # Returns
+    ///
+    /// A new `GridPDF` instance.
     pub fn new(info: MetaData, knot_array: GridArray) -> Self {
         let interpolators = Self::build_interpolators(&info, &knot_array);
         let alphas_interpolator = Self::build_alphas_interpolator(&info);
@@ -290,6 +375,7 @@ impl GridPDF {
         }
     }
 
+    /// Builds the interpolators for each subgrid and flavor.
     fn build_interpolators(
         info: &MetaData,
         knot_array: &GridArray,
@@ -305,6 +391,7 @@ impl GridPDF {
             .collect()
     }
 
+    /// Builds the interpolator for alpha_s values.
     fn build_alphas_interpolator(info: &MetaData) -> Interp1DOwned<f64, AlphaSCubicInterpolation> {
         let alphas_q2s: Vec<f64> = info.alphas_q_values.iter().map(|&q| q * q).collect();
 
@@ -317,6 +404,7 @@ impl GridPDF {
         .expect("Failed to create alphas interpolator")
     }
 
+    /// Creates an interpolator for a given subgrid and flavor.
     fn create_interpolator(
         info: &MetaData,
         subgrid: &SubGrid,
@@ -333,6 +421,7 @@ impl GridPDF {
         }
     }
 
+    /// Creates a 2D interpolator.
     fn create_2d_interpolator(
         info: &MetaData,
         subgrid: &SubGrid,
@@ -378,6 +467,7 @@ impl GridPDF {
         }
     }
 
+    /// Creates a 3D interpolator.
     fn create_3d_interpolator(
         info: &MetaData,
         subgrid: &SubGrid,
@@ -422,6 +512,7 @@ impl GridPDF {
         }
     }
 
+    /// Creates a 4D interpolator.
     fn create_4d_interpolator(
         info: &MetaData,
         subgrid: &SubGrid,
@@ -454,6 +545,15 @@ impl GridPDF {
     }
 
     /// Finds the index of the subgrid that contains the given (x, q2) point.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The x-value.
+    /// * `q2` - The Q2-value.
+    ///
+    /// # Returns
+    ///
+    /// The index of the subgrid as a `Result`, or an error if not found.
     fn find_subgrid_index(&self, x: f64, q2: f64) -> Result<usize, Error> {
         // TODO: This does not allow for any extrapolation
         self.knot_array
@@ -483,6 +583,16 @@ impl GridPDF {
     }
 
     /// Interpolates the PDF value (xf) for some lists of flavors, xs, and Q2s.
+    ///
+    /// # Arguments
+    ///
+    /// * `ids` - A vector of flavor IDs.
+    /// * `xs` - A vector of x-values.
+    /// * `q2s` - A vector of Q2-values.
+    ///
+    /// # Returns
+    ///
+    /// A 3D array of interpolated PDF values, with dimensions `[ids, xs, q2s]`.
     pub fn xfxq2s(&self, ids: Vec<i32>, xs: Vec<f64>, q2s: Vec<f64>) -> Array3<f64> {
         let shape = [ids.len(), xs.len(), q2s.len()];
         let flatten_len = shape.iter().product();
@@ -517,11 +627,19 @@ impl GridPDF {
     }
 
     /// Returns the metadata info of the PDF.
+    ///
+    /// # Returns
+    ///
+    /// A clone of the `MetaData` struct.
     pub fn info(&self) -> MetaData {
         self.info.clone()
     }
 
     /// Get `x_min` from the complete PDF grid.
+    ///
+    /// # Returns
+    ///
+    /// The minimum x-value in the grid.
     pub fn x_min(&self) -> f64 {
         self.knot_array
             .subgrids
@@ -532,6 +650,10 @@ impl GridPDF {
     }
 
     /// Get `x_max` from the complete PDF grid.
+    ///
+    /// # Returns
+    ///
+    /// The maximum x-value in the grid.
     pub fn x_max(&self) -> f64 {
         self.knot_array
             .subgrids
@@ -542,6 +664,10 @@ impl GridPDF {
     }
 
     /// Get `Q2_min` from the complete PDF grid.
+    ///
+    /// # Returns
+    ///
+    /// The minimum Q2-value in the grid.
     pub fn q2_min(&self) -> f64 {
         self.knot_array
             .subgrids
@@ -552,6 +678,10 @@ impl GridPDF {
     }
 
     /// Get `Q2_max` from the complete PDF grid.
+    ///
+    /// # Returns
+    ///
+    /// The maximum Q2-value in the grid.
     pub fn q2_max(&self) -> f64 {
         self.knot_array
             .subgrids

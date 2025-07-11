@@ -1,5 +1,18 @@
-//! The interpolation strategies.
-//! TODO: Move the taking of the logs of the input data outside.
+//! This module defines various interpolation strategies used within the `neopdf` library.
+//!
+//! It provides implementations for 1D, 2D, and 3D interpolation, including:
+//! - `BilinearInterpolation`: Standard bilinear interpolation for 2D data.
+//! - `LogBilinearInterpolation`: Bilinear interpolation performed in logarithmic space for both
+//!   coordinates, suitable for data that exhibits linear behavior in log-log plots.
+//! - `LogBicubicInterpolation`: Bicubic interpolation with logarithmic coordinate scaling,
+//!   providing C1 continuity and higher accuracy for 2D data.
+//! - `LogTricubicInterpolation`: Tricubic interpolation with logarithmic coordinate scaling,
+//!   extending bicubic interpolation to 3D data with C1 continuity.
+//! - `AlphaSCubicInterpolation`: A specialized 1D cubic interpolation strategy for alpha_s values,
+//!   incorporating specific extrapolation rules as defined in LHAPDF.
+//!
+//! All interpolation strategies are designed to work with `ninterp`'s data structures and traits,
+//! ensuring compatibility and extensibility.
 
 use ndarray::{Data, RawDataClone};
 use ninterp::data::{InterpData1D, InterpData2D, InterpData3D};
@@ -10,6 +23,10 @@ use serde::{Deserialize, Serialize};
 use super::utils;
 
 /// Implements bilinear interpolation for 2D data.
+///
+/// This strategy performs linear interpolation sequentially along two dimensions.
+/// It is suitable for smooth, continuous 2D datasets where a simple linear
+/// approximation between grid points is sufficient.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct BilinearInterpolation;
 
@@ -48,6 +65,10 @@ where
     ///
     /// * `data` - The interpolation data containing grid coordinates and values.
     /// * `point` - A 2-element array `[x, y]` representing the coordinates to interpolate at.
+    ///
+    /// # Returns
+    ///
+    /// The interpolated value as a `Result`.
     fn interpolate(
         &self,
         data: &InterpData2D<D>,
@@ -96,7 +117,9 @@ where
 ///
 /// This strategy transforms the input coordinates to their natural logarithms
 /// before performing bilinear interpolation, which is suitable for data
-/// that is linear in log-log space.
+/// that is linear in log-log space. It is particularly useful for physical
+/// quantities that span several orders of magnitude, such as momentum transfer
+/// squared (Q²) or Bjorken x.
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct LogBilinearInterpolation;
 
@@ -135,6 +158,10 @@ where
     ///
     /// * `data` - The interpolation data containing grid coordinates and values.
     /// * `point` - A 2-element array `[x, y]` representing the coordinates to interpolate at.
+    ///
+    /// # Returns
+    ///
+    /// The interpolated value as a `Result`.
     fn interpolate(
         &self,
         data: &InterpData2D<D>,
@@ -197,23 +224,39 @@ where
     }
 }
 
-/// LogBicubic interpolation strategy for PDF-like data
+/// LogBicubic interpolation strategy for PDF-like data.
 ///
-/// This strategy implements bicubic interpolation with logarithmic coordinate scaling:
-/// - x-coordinates are logarithmically spaced (e.g., 1e-9 to 1)
-/// - y-coordinates are logarithmically spaced (e.g., Q² values)
-/// - z-values (PDF values) are interpolated using bicubic splines
+/// This strategy implements bicubic interpolation with logarithmic coordinate scaling.
+/// It is designed for interpolating Parton Distribution Functions (PDFs) where:
+/// - x-coordinates (e.g., Bjorken x) are logarithmically spaced.
+/// - y-coordinates (e.g., Q² values) are logarithmically spaced.
+/// - z-values (PDF values) are interpolated using bicubic splines.
 ///
 /// Bicubic interpolation uses a 4x4 grid of points around the interpolation point
-/// and provides C1 continuity (continuous first derivatives).
+/// and provides C1 continuity (continuous first derivatives), resulting in a
+/// smoother and more accurate interpolation compared to bilinear methods.
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
 pub struct LogBicubicInterpolation {
     coeffs: Vec<f64>,
 }
 
 impl LogBicubicInterpolation {
-    /// Find the interval for bicubic interpolation
-    /// Returns the index i such that we can use points [i-1, i, i+1, i+2] for interpolation
+    /// Find the interval for bicubic interpolation.
+    ///
+    /// This function determines the appropriate interval index `i` within a set of
+    /// coordinates `coords` such that `coords[i] <= x < coords[i+1]`. For bicubic
+    /// interpolation, this index `i` is used to select the 4x4 grid of points
+    /// `[i-1, i, i+1, i+2]` that are relevant for the interpolation.
+    ///
+    /// # Arguments
+    ///
+    /// * `coords` - A slice of `f64` representing the sorted coordinate values.
+    /// * `x` - The `f64` value for which to find the interval.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the `usize` index of the lower bound of the interval
+    /// if successful, or an `InterpolateError` if `x` is out of bounds.
     fn find_bicubic_interval(coords: &[f64], x: f64) -> Result<usize, InterpolateError> {
         // Find the interval [i, i+1] such that coords[i] <= x < coords[i+1]
         let i = utils::find_interval_index(coords, x)?;
