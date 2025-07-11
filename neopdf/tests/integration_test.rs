@@ -1,4 +1,4 @@
-use ndarray::Array3;
+use ndarray::Array2;
 use neopdf::pdf::PDF;
 
 const PRECISION: f64 = 1e-16;
@@ -22,7 +22,7 @@ fn test_xf_at_knots() {
 
     for (x_id, q_id, pid, expected) in cases {
         assert!(
-            (pdf.xf(0, 0, x_id, q_id, pid, 0) - expected).abs() < PRECISION,
+            (pdf.xf_from_index(0, 0, x_id, q_id, pid, 0) - expected).abs() < PRECISION,
             "Failed on knot (x, Q, pid)=({x_id}, {q_id}, {pid})"
         );
     }
@@ -45,10 +45,9 @@ fn test_xfxq2_at_knots() {
     ];
 
     for (pid, x, q2, expected) in cases {
-        let res = pdf.xfxq2(pid, x, q2);
         assert!(
-            (pdf.xfxq2(pid, x, q2) - expected).abs() < PRECISION,
-            "Failed on knot (pid, x, Q2)=({pid}, {x}, {q2})={res}"
+            (pdf.xfxq2(pid, &[x, q2]) - expected).abs() < PRECISION,
+            "Failed on knot (pid, x, Q2)=({pid}, {x}, {q2})"
         );
     }
 }
@@ -70,20 +69,28 @@ fn test_xfxq2_interpolations() {
 
     for (pid, x, q2, expected) in cases {
         assert!(
-            (pdf.xfxq2(pid, x, q2) - expected).abs() < PRECISION,
+            (pdf.xfxq2(pid, &[x, q2]) - expected).abs() < PRECISION,
             "Failed on knot (pid, x, Q2)=({pid}, {x}, {q2})"
         );
     }
 }
 
 #[test]
-#[should_panic(
-    expected = "called `Result::unwrap()` on an `Err` value: SubgridNotFound { x: 1.0, q2: 1e40 }"
-)]
+#[should_panic(expected = "SubgridNotFound { x: 1.0, q2: 1e40 }")]
 fn test_xfxq2_extrapolations() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 
-    assert!((pdf.xfxq2(2, 1.0, 1e20 * 1e20) - 1e10).abs() < PRECISION);
+    // Attempts to interpolate outside of the subgrids
+    _ = pdf.xfxq2(2, &[1.0, 1e20 * 1e20]);
+}
+
+#[test]
+#[should_panic(expected = "Expected 2D point")]
+fn test_inconsistent_inputs() {
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+
+    // Attempts to interpolation on the nucleon number
+    _ = pdf.xfxq2(2, &[208.0, 1e-2, 1e2]);
 }
 
 #[test]
@@ -211,14 +218,21 @@ pub fn test_xfxq2s() {
 
     // Define the vectors of kinematics & flavours
     let ids = (-4..=4).filter(|&x| x != 0).collect();
-    let xs = vec![1e-5, 1e-3, 1e-3, 1.0];
-    let q2s = vec![5.0, 10.0, 100.0];
+    let xs = [1e-5, 1e-3, 1e-3, 1.0];
+    let q2s = [5.0, 10.0, 100.0];
 
-    let results = pdf.xfxq2s(ids, xs, q2s);
-    let expected_res = Array3::from_shape_vec(results.raw_dim(), expected).unwrap();
+    let flatten_points: Vec<Vec<f64>> = xs
+        .iter()
+        .flat_map(|&x| q2s.iter().map(move |&q2| vec![x, q2]))
+        .collect();
+    let points_interp: Vec<&[f64]> = flatten_points.iter().map(Vec::as_slice).collect();
+    let slice_points: &[&[f64]] = &points_interp;
 
-    for ((i, j, k), elems) in results.indexed_iter() {
-        assert!((*elems - expected_res[[i, j, k]]).abs() < LOW_PRECISION);
+    let results = pdf.xfxq2s(ids, slice_points);
+    let expected_res = Array2::from_shape_vec(results.raw_dim(), expected).unwrap();
+
+    for ((i, j), elems) in results.indexed_iter() {
+        assert!((*elems - expected_res[[i, j]]).abs() < LOW_PRECISION);
     }
 }
 
@@ -226,8 +240,8 @@ pub fn test_xfxq2s() {
 pub fn test_boundary_extraction() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 
-    assert!((pdf.x_min() - 1e-9).abs() < PRECISION);
-    assert!((pdf.x_max() - 1.00).abs() < PRECISION);
-    assert!((pdf.q2_min() - 1.65 * 1.65).abs() < PRECISION);
-    assert!((pdf.q2_max() - 1e5 * 1.0e5).abs() < PRECISION);
+    assert!((pdf.param_ranges().x.min - 1e-9).abs() < PRECISION);
+    assert!((pdf.param_ranges().x.max - 1.00).abs() < PRECISION);
+    assert!((pdf.param_ranges().q2.min - 1.65 * 1.65).abs() < PRECISION);
+    assert!((pdf.param_ranges().q2.max - 1e5 * 1.0e5).abs() < PRECISION);
 }
