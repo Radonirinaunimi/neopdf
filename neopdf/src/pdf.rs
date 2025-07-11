@@ -122,7 +122,7 @@ impl PDF {
     ///
     /// A `MetaData` struct containing information about the PDF set.
     pub fn info(&self) -> &MetaData {
-        self.grid_pdf.info()
+        self.grid_pdf.metadata()
     }
 
     /// Retrieves the PDF value (xf) at a specific knot point in the grid.

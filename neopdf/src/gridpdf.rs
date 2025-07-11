@@ -23,27 +23,43 @@ use super::parser::SubgridData;
 /// Errors that can occur during PDF grid operations.
 #[derive(Debug, Error)]
 pub enum Error {
+    /// Error indicating that no suitable subgrid was found for the given `x` and `q2` values.
     #[error("No subgrid found for x={x}, q2={q2}")]
-    SubgridNotFound { x: f64, q2: f64 },
+    SubgridNotFound {
+        /// The momentum fraction `x` value.
+        x: f64,
+        /// The energy scale squared `q2` value.
+        q2: f64,
+    },
+    /// Error indicating invalid interpolation parameters, with a descriptive message.
     #[error("Invalid interpolation parameters: {0}")]
     InterpolationError(String),
 }
 
 /// Represents the dimensionality and structure of interpolation needed.
+///
+/// This enum is used to select the appropriate interpolation strategy based on the
+/// dimensions of the PDF grid data.
 #[derive(Debug, Clone, Copy)]
 pub enum InterpolationConfig {
-    /// 2D interpolation (x, Q²)
+    /// 2D interpolation, typically in `x` (momentum fraction) and `Q²` (energy scale).
     TwoD,
-    /// 3D interpolation with varying nucleons (nucleons, x, Q²).
+    /// 3D interpolation, including a dimension for varying nucleon numbers,
+    /// in addition to `x` and `Q²`.
     ThreeDNucleons,
-    /// 3D interpolation with varying alphas (alphas, x, Q²).
+    /// 3D interpolation, including a dimension for varying alpha_s values,
+    /// in addition to `x` and `Q²`.
     ThreeDAlphas,
-    /// 4D interpolation (nucleons, alphas, x, Q²).
+    /// 4D interpolation, covering nucleons, alpha_s, `x`, and `Q²`.
     FourD,
 }
 
 impl InterpolationConfig {
-    /// Determines interpolation configuration from dimensions.
+    /// Determines the interpolation configuration from the number of nucleons and alpha_s values.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the combination of `n_nucleons` and `n_alphas` is not supported.
     fn from_dimensions(n_nucleons: usize, n_alphas: usize) -> Self {
         match (n_nucleons, n_alphas) {
             (1, 1) => Self::TwoD,
@@ -58,41 +74,78 @@ impl InterpolationConfig {
     }
 }
 
-/// Represents the valid range of a parameter.
+/// Represents the valid range of a parameter, with a minimum and maximum value.
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 pub struct ParamRange {
+    /// The minimum value of the parameter.
     pub min: f64,
+    /// The maximum value of the parameter.
     pub max: f64,
 }
 
 impl ParamRange {
+    /// Creates a new `ParamRange`.
+    ///
+    /// # Arguments
+    ///
+    /// * `min` - The minimum value.
+    /// * `max` - The maximum value.
     pub fn new(min: f64, max: f64) -> Self {
         Self { min, max }
     }
 
+    /// Checks if a given value is within the parameter range (inclusive).
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The value to check.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the value is within the range, `false` otherwise.
     pub fn contains(&self, value: f64) -> bool {
         value >= self.min && value <= self.max
     }
 }
 
-/// Represents the `Paramrange` ranges for all the parameters
+/// Represents the parameter ranges for `x` and `q2`.
 pub struct RangeParameters {
+    /// The range for the momentum fraction `x`.
     pub x: ParamRange,
+    /// The range for the energy scale squared `q2`.
     pub q2: ParamRange,
 }
 
 impl RangeParameters {
+    /// Creates a new `RangeParameters`.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The `ParamRange` for `x`.
+    /// * `q2` - The `ParamRange` for `q2`.
     pub fn new(x: ParamRange, q2: ParamRange) -> Self {
         Self { x, q2 }
     }
 }
 
 /// A trait for dynamic interpolation across different dimensions.
+///
+/// This trait provides a common interface for different interpolator types,
+/// allowing them to be used interchangeably.
 pub trait DynInterpolator: Send + Sync {
+    /// Interpolates a value at a given multi-dimensional point.
+    ///
+    /// # Arguments
+    ///
+    /// * `point` - A slice of `f64` representing the coordinates of the point.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the interpolated value or an `InterpolateError`.
     fn interpolate_point(&self, point: &[f64]) -> Result<f64, InterpolateError>;
 }
 
-// Implement DynInterpolator for all interpolator types
+// Implement `DynInterpolator` for 2D interpolators.
 impl<S> DynInterpolator for Interp2DOwned<f64, S>
 where
     S: Strategy2D<OwnedRepr<f64>> + 'static + Clone + Send + Sync,
@@ -105,6 +158,7 @@ where
     }
 }
 
+// Implement `DynInterpolator` for 3D interpolators.
 impl<S> DynInterpolator for Interp3DOwned<f64, S>
 where
     S: Strategy3D<OwnedRepr<f64>> + 'static + Clone + Send + Sync,
@@ -117,6 +171,7 @@ where
     }
 }
 
+// Implement `DynInterpolator` for N-dimensional interpolators.
 impl<S> DynInterpolator for InterpNDOwned<f64, S>
 where
     S: StrategyND<OwnedRepr<f64>> + 'static + Clone + Send + Sync,
@@ -127,25 +182,42 @@ where
 }
 
 /// Stores the PDF grid data for a single subgrid.
+///
+/// A subgrid represents a region of the phase space with a consistent
+/// grid of `x` and `Q²` values.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SubGrid {
-    /// Array of x-values (momentum fraction)
+    /// Array of `x` values (momentum fraction).
     pub xs: Array1<f64>,
-    /// Array of Q²-values (energy scale squared)
+    /// Array of `Q²` values (energy scale squared).
     pub q2s: Array1<f64>,
-    /// 5D grid: [nucleons, alphas, pids, x, Q²]
+    /// 5-dimensional grid data: [nucleons, alphas, pids, x, Q²].
     pub grid: Array5<f64>,
-    /// Nucleon numbers
+    /// A vector of nucleon numbers.
     pub nucleons: Vec<u32>,
-    /// Alpha_s values
+    /// A vector of alpha_s values.
     pub alphas: Vec<f64>,
-    /// Valid parameter ranges
+    /// The valid range for the `x` parameter in this subgrid.
     x_range: ParamRange,
+    /// The valid range for the `q2` parameter in this subgrid.
     q2_range: ParamRange,
 }
 
 impl SubGrid {
-    /// Creates a new SubGrid from raw data.
+    /// Creates a new `SubGrid` from raw data.
+    ///
+    /// # Arguments
+    ///
+    /// * `nucleon_numbers` - A vector of nucleon numbers.
+    /// * `alphas_values` - A vector of alpha_s values.
+    /// * `xs` - A vector of `x` values.
+    /// * `q2s` - A vector of `q2` values.
+    /// * `nflav` - The number of quark flavors.
+    /// * `grid_data` - A flat vector of grid data points.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the grid data cannot be reshaped to the expected dimensions.
     pub fn new(
         nucleon_numbers: Vec<u32>,
         alphas_values: Vec<f64>,
@@ -183,7 +255,16 @@ impl SubGrid {
         }
     }
 
-    /// Checks if a point is within this subgrid's boundaries.
+    /// Checks if a point (`x`, `q2`) is within the boundaries of this subgrid.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The momentum fraction `x`.
+    /// * `q2` - The energy scale squared `q2`.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the point is within the subgrid, `false` otherwise.
     pub fn contains_point(&self, x: f64, q2: f64) -> bool {
         self.x_range.contains(x) && self.q2_range.contains(q2)
     }
@@ -193,12 +274,22 @@ impl SubGrid {
         InterpolationConfig::from_dimensions(self.nucleons.len(), self.alphas.len())
     }
 
-    /// Gets the ranges for this subgrid.
+    /// Gets the parameter ranges for this subgrid.
     pub fn ranges(&self) -> RangeParameters {
         RangeParameters::new(self.x_range, self.q2_range)
     }
 
     /// Gets a 2D slice of the grid for interpolation.
+    ///
+    /// This method is only valid for 2D interpolation configurations.
+    ///
+    /// # Arguments
+    ///
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Panics
+    ///
+    /// Panics if called on a subgrid that is not 2D.
     pub fn grid_slice(&self, pid_index: usize) -> ArrayView2<f64> {
         match self.interpolation_config() {
             InterpolationConfig::TwoD => self.grid.slice(s![0, 0, pid_index, .., ..]),
@@ -207,29 +298,40 @@ impl SubGrid {
     }
 }
 
-/// Factory for creating interpolators based on type and dimensions.
+/// A factory for creating interpolators based on the interpolation type and grid dimensions.
 pub struct InterpolatorFactory;
 
 impl InterpolatorFactory {
-    /// Creates an interpolator for the given subgrid and flavor.
+    /// Creates a dynamic interpolator for a given subgrid and flavor.
+    ///
+    /// # Arguments
+    ///
+    /// * `interp_type` - The type of interpolation to use.
+    /// * `subgrid` - A reference to the `SubGrid`.
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Returns
+    ///
+    /// A `Box<dyn DynInterpolator>` that can be used for interpolation.
     pub fn create(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,
         pid_index: usize,
     ) -> Box<dyn DynInterpolator> {
         match subgrid.interpolation_config() {
-            InterpolationConfig::TwoD => Self::create_2d(interp_type, subgrid, pid_index),
+            InterpolationConfig::TwoD => Self::interpolator_xfxq2(interp_type, subgrid, pid_index),
             InterpolationConfig::ThreeDNucleons => {
-                Self::create_3d_nucleons(interp_type, subgrid, pid_index)
+                Self::interpolator_xfxq2_nucleons(interp_type, subgrid, pid_index)
             }
             InterpolationConfig::ThreeDAlphas => {
-                Self::create_3d_alphas(interp_type, subgrid, pid_index)
+                Self::interpolator_xfxq2_alphas(interp_type, subgrid, pid_index)
             }
-            InterpolationConfig::FourD => Self::create_4d(interp_type, subgrid, pid_index),
+            InterpolationConfig::FourD => Self::interpolator_ndim(interp_type, subgrid, pid_index),
         }
     }
 
-    fn create_2d(
+    /// Creates a 2D interpolator for `x` and `q2`.
+    fn interpolator_xfxq2(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,
         pid_index: usize,
@@ -271,7 +373,8 @@ impl InterpolatorFactory {
         }
     }
 
-    fn create_3d_nucleons(
+    /// Creates a 3D interpolator for nucleons, `x`, and `q2`.
+    fn interpolator_xfxq2_nucleons(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,
         pid_index: usize,
@@ -298,7 +401,8 @@ impl InterpolatorFactory {
         }
     }
 
-    fn create_3d_alphas(
+    /// Creates a 3D interpolator for alpha_s, `x`, and `q2`.
+    fn interpolator_xfxq2_alphas(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,
         pid_index: usize,
@@ -325,7 +429,8 @@ impl InterpolatorFactory {
         }
     }
 
-    fn create_4d(
+    /// Creates an N-dimensional interpolator.
+    fn interpolator_ndim(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,
         pid_index: usize,
@@ -356,17 +461,22 @@ impl InterpolatorFactory {
     }
 }
 
-/// Stores the complete PDF grid data and provides access methods.
+/// Stores the complete PDF grid data, including all subgrids and flavor information.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GridArray {
-    /// Flavor IDs
+    /// An array of particle flavor IDs (PIDs).
     pub pids: Array1<i32>,
-    /// Collection of subgrids
+    /// A collection of `SubGrid` instances that make up the full grid.
     pub subgrids: Vec<SubGrid>,
 }
 
 impl GridArray {
-    /// Creates a new GridArray from subgrid data.
+    /// Creates a new `GridArray` from a vector of `SubgridData`.
+    ///
+    /// # Arguments
+    ///
+    /// * `subgrid_data` - A vector of `SubgridData` parsed from the PDF data file.
+    /// * `pids` - A vector of particle flavor IDs.
     pub fn new(subgrid_data: Vec<SubgridData>, pids: Vec<i32>) -> Self {
         let nflav = pids.len();
         let subgrids = subgrid_data
@@ -389,7 +499,24 @@ impl GridArray {
         }
     }
 
-    /// Gets PDF value at a specific knot point.
+    /// Gets the PDF value at a specific knot point in the grid.
+    ///
+    /// # Arguments
+    ///
+    /// * `nucleon_idx` - The index of the nucleon.
+    /// * `alpha_idx` - The index of the alpha_s value.
+    /// * `x_idx` - The index of the `x` value.
+    /// * `q2_idx` - The index of the `q2` value.
+    /// * `flavor_id` - The particle flavor ID.
+    /// * `subgrid_idx` - The index of the subgrid.
+    ///
+    /// # Returns
+    ///
+    /// The PDF value `f64` at the specified grid point.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `flavor_id` is invalid.
     pub fn xf_from_index(
         &self,
         nucleon_idx: usize,
@@ -403,17 +530,33 @@ impl GridArray {
         self.subgrids[subgrid_idx].grid[[nucleon_idx, alpha_idx, pid_idx, x_idx, q2_idx]]
     }
 
-    /// Finds the subgrid containing the given point.
+    /// Finds the index of the subgrid that contains the given `(x, q2)` point.
+    ///
+    /// # Arguments
+    ///
+    /// * `x` - The momentum fraction `x`.
+    /// * `q2` - The energy scale squared `q2`.
+    ///
+    /// # Returns
+    ///
+    /// An `Option<usize>` containing the index of the subgrid if found, otherwise `None`.
     pub fn find_subgrid(&self, x: f64, q2: f64) -> Option<usize> {
         self.subgrids.iter().position(|sg| sg.contains_point(x, q2))
     }
 
-    /// Gets the index of a flavor ID.
+    /// Gets the index corresponding to a given flavor ID.
     fn pid_index(&self, flavor_id: i32) -> Option<usize> {
         self.pids.iter().position(|&pid| pid == flavor_id)
     }
 
     /// Gets the overall parameter ranges across all subgrids.
+    ///
+    /// This method calculates the minimum and maximum values for `x` and `q2`
+    /// across all subgrids to determine the global parameter space.
+    ///
+    /// # Returns
+    ///
+    /// A `RangeParameters` struct containing the global `x` and `q2` ranges.
     pub fn global_ranges(&self) -> RangeParameters {
         let x_min = self
             .subgrids
@@ -443,20 +586,25 @@ impl GridArray {
     }
 }
 
-/// The main PDF grid interface providing interpolation capabilities.
+/// The main PDF grid interface, providing high-level methods for interpolation.
 pub struct GridPDF {
-    /// PDF metadata
+    /// The metadata associated with the PDF set.
     info: MetaData,
-    /// The underlying grid data
+    /// The underlying grid data stored in a `GridArray`.
     pub knot_array: GridArray,
-    /// Interpolators for each subgrid and flavor
+    /// A nested vector of interpolators for each subgrid and flavor.
     interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
-    /// Alpha_s interpolator
+    /// An interpolator for the running of alpha_s.
     alphas_interpolator: Interp1DOwned<f64, AlphaSCubicInterpolation>,
 }
 
 impl GridPDF {
-    /// Creates a new GridPDF instance.
+    /// Creates a new `GridPDF` instance.
+    ///
+    /// # Arguments
+    ///
+    /// * `info` - The `MetaData` for the PDF set.
+    /// * `knot_array` - The `GridArray` containing the grid data.
     pub fn new(info: MetaData, knot_array: GridArray) -> Self {
         let interpolators = Self::build_interpolators(&info, &knot_array);
         let alphas_interpolator = Self::build_alphas_interpolator(&info);
@@ -469,7 +617,7 @@ impl GridPDF {
         }
     }
 
-    /// Builds all interpolators for the grid.
+    /// Builds the interpolators for all subgrids and flavors.
     fn build_interpolators(
         info: &MetaData,
         knot_array: &GridArray,
@@ -491,7 +639,7 @@ impl GridPDF {
             .collect()
     }
 
-    /// Builds the alpha_s interpolator.
+    /// Builds the interpolator for alpha_s.
     fn build_alphas_interpolator(info: &MetaData) -> Interp1DOwned<f64, AlphaSCubicInterpolation> {
         let q2_values: Vec<f64> = info.alphas_q_values.iter().map(|&q| q * q).collect();
         Interp1D::new(
@@ -503,7 +651,17 @@ impl GridPDF {
         .expect("Failed to create alpha_s interpolator")
     }
 
-    /// Interpolates PDF value for a single point.
+    /// Interpolates the PDF value for a single point `(x, q2)` and a given flavor.
+    ///
+    /// # Arguments
+    ///
+    /// * `flavor_id` - The particle flavor ID.
+    /// * `x` - The momentum fraction `x`.
+    /// * `q2` - The energy scale squared `q2`.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing the interpolated PDF value or an `Error`.
     pub fn xfxq2(&self, flavor_id: i32, x: f64, q2: f64) -> Result<f64, Error> {
         let subgrid_idx = self
             .knot_array
@@ -520,6 +678,16 @@ impl GridPDF {
     }
 
     /// Interpolates PDF values for multiple points in parallel.
+    ///
+    /// # Arguments
+    ///
+    /// * `flavors` - A vector of flavor IDs.
+    /// * `xs` - A vector of `x` values.
+    /// * `q2s` - A vector of `q2` values.
+    ///
+    /// # Returns
+    ///
+    /// A 3D array of interpolated PDF values with shape `[flavors, xs, q2s]`.
     pub fn xfxq2s(&self, flavors: Vec<i32>, xs: Vec<f64>, q2s: Vec<f64>) -> Array3<f64> {
         let shape = [flavors.len(), xs.len(), q2s.len()];
         let total_len = shape.iter().product();
@@ -535,7 +703,7 @@ impl GridPDF {
         Array3::from_shape_vec(shape, data).expect("Failed to create result array")
     }
 
-    /// Converts linear index to 3D coordinates.
+    /// Converts a linear index into 3D coordinates `(i, j, k)`.
     fn unravel_index(&self, idx: usize, shape: &[usize; 3]) -> (usize, usize, usize) {
         let k = idx % shape[2];
         let j = (idx / shape[2]) % shape[1];
@@ -543,17 +711,25 @@ impl GridPDF {
         (i, j, k)
     }
 
-    /// Gets alpha_s value at given Q².
+    /// Gets the alpha_s value at a given `Q²`.
+    ///
+    /// # Arguments
+    ///
+    /// * `q2` - The energy scale squared `q2`.
+    ///
+    /// # Returns
+    ///
+    /// The interpolated alpha_s value.
     pub fn alphas_q2(&self, q2: f64) -> f64 {
         self.alphas_interpolator.interpolate(&[q2]).unwrap_or(0.0)
     }
 
-    /// Returns PDF metadata.
-    pub fn info(&self) -> &MetaData {
+    /// Returns a reference to the PDF metadata.
+    pub fn metadata(&self) -> &MetaData {
         &self.info
     }
 
-    /// Gets the global parameter ranges.
+    /// Gets the global parameter ranges for the entire PDF set.
     pub fn param_ranges(&self) -> RangeParameters {
         self.knot_array.global_ranges()
     }
