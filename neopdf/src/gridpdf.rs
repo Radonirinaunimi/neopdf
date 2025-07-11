@@ -193,10 +193,10 @@ pub struct SubGrid {
     pub q2s: Array1<f64>,
     /// 5-dimensional grid data: [nucleons, alphas, pids, x, Q²].
     pub grid: Array5<f64>,
-    /// A vector of nucleon numbers.
-    pub nucleons: Vec<u32>,
-    /// A vector of alpha_s values.
-    pub alphas: Vec<f64>,
+    /// Array of nucleon number values.
+    pub nucleons: Array1<f64>,
+    /// Array of alpha_s values.
+    pub alphas: Array1<f64>,
     /// The valid range for the `x` parameter in this subgrid.
     x_range: ParamRange,
     /// The valid range for the `q2` parameter in this subgrid.
@@ -219,7 +219,7 @@ impl SubGrid {
     ///
     /// Panics if the grid data cannot be reshaped to the expected dimensions.
     pub fn new(
-        nucleon_numbers: Vec<u32>,
+        nucleon_numbers: Vec<f64>,
         alphas_values: Vec<f64>,
         xs: Vec<f64>,
         q2s: Vec<f64>,
@@ -248,8 +248,8 @@ impl SubGrid {
             xs: Array1::from_vec(xs),
             q2s: Array1::from_vec(q2s),
             grid,
-            nucleons: nucleon_numbers,
-            alphas: alphas_values,
+            nucleons: Array1::from_vec(nucleon_numbers),
+            alphas: Array1::from_vec(alphas_values),
             x_range,
             q2_range,
         }
@@ -341,8 +341,8 @@ impl InterpolatorFactory {
         match interp_type {
             InterpolatorType::Bilinear => Box::new(
                 Interp2D::new(
-                    subgrid.xs.clone(),
-                    subgrid.q2s.clone(),
+                    subgrid.xs.to_owned(),
+                    subgrid.q2s.to_owned(),
                     grid_slice,
                     BilinearInterpolation,
                     Extrapolate::Error,
@@ -351,8 +351,8 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogBilinear => Box::new(
                 Interp2D::new(
-                    subgrid.xs.clone(),
-                    subgrid.q2s.clone(),
+                    subgrid.xs.to_owned(),
+                    subgrid.q2s.to_owned(),
                     grid_slice,
                     LogBilinearInterpolation,
                     Extrapolate::Error,
@@ -361,8 +361,8 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogBicubic => Box::new(
                 Interp2D::new(
-                    subgrid.xs.clone(),
-                    subgrid.q2s.clone(),
+                    subgrid.xs.to_owned(),
+                    subgrid.q2s.to_owned(),
                     grid_slice,
                     LogBicubicInterpolation::default(),
                     Extrapolate::Error,
@@ -380,7 +380,6 @@ impl InterpolatorFactory {
         pid_index: usize,
     ) -> Box<dyn DynInterpolator> {
         let grid_data = subgrid.grid.slice(s![.., .., pid_index, .., ..]).to_owned();
-        let nucleon_coords = subgrid.nucleons.iter().map(|&n| n as f64).collect();
         let reshaped_data = grid_data
             .into_shape_with_order((subgrid.nucleons.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
@@ -388,9 +387,9 @@ impl InterpolatorFactory {
         match interp_type {
             InterpolatorType::LogTricubic => Box::new(
                 Interp3D::new(
-                    nucleon_coords,
-                    subgrid.xs.clone(),
-                    subgrid.q2s.clone(),
+                    subgrid.nucleons.to_owned(),
+                    subgrid.xs.to_owned(),
+                    subgrid.q2s.to_owned(),
                     reshaped_data,
                     LogTricubicInterpolation,
                     Extrapolate::Error,
@@ -408,7 +407,6 @@ impl InterpolatorFactory {
         pid_index: usize,
     ) -> Box<dyn DynInterpolator> {
         let grid_data = subgrid.grid.slice(s![.., .., pid_index, .., ..]).to_owned();
-        let alpha_coords = Array1::from(subgrid.alphas.clone());
         let reshaped_data = grid_data
             .into_shape_with_order((subgrid.alphas.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
@@ -416,9 +414,9 @@ impl InterpolatorFactory {
         match interp_type {
             InterpolatorType::LogTricubic => Box::new(
                 Interp3D::new(
-                    alpha_coords,
-                    subgrid.xs.clone(),
-                    subgrid.q2s.clone(),
+                    subgrid.alphas.to_owned(),
+                    subgrid.xs.to_owned(),
+                    subgrid.q2s.to_owned(),
                     reshaped_data,
                     LogTricubicInterpolation,
                     Extrapolate::Error,
@@ -437,10 +435,10 @@ impl InterpolatorFactory {
     ) -> Box<dyn DynInterpolator> {
         let grid_data = subgrid.grid.slice(s![.., .., pid_index, .., ..]).to_owned();
         let coords = vec![
-            subgrid.nucleons.iter().map(|&n| n as f64).collect(),
-            Array1::from(subgrid.alphas.clone()),
-            subgrid.xs.clone(),
-            subgrid.q2s.clone(),
+            subgrid.nucleons.to_owned(),
+            subgrid.alphas.to_owned(),
+            subgrid.xs.to_owned(),
+            subgrid.q2s.to_owned(),
         ];
         let reshaped_data = grid_data
             .into_shape_with_order((
@@ -629,7 +627,7 @@ impl GridPDF {
                 (0..knot_array.pids.len())
                     .map(|pid_idx| {
                         InterpolatorFactory::create(
-                            info.interpolator_type.clone(),
+                            info.interpolator_type.to_owned(),
                             subgrid,
                             pid_idx,
                         )
@@ -644,7 +642,7 @@ impl GridPDF {
         let q2_values: Vec<f64> = info.alphas_q_values.iter().map(|&q| q * q).collect();
         Interp1D::new(
             q2_values.into(),
-            info.alphas_vals.clone().into(),
+            info.alphas_vals.to_owned().into(),
             AlphaSCubicInterpolation,
             Extrapolate::Error,
         )
@@ -769,7 +767,7 @@ mod tests {
     #[test]
     fn test_grid_array_creation() {
         let subgrid_data = vec![SubgridData {
-            nucleons: vec![1],
+            nucleons: vec![1.0],
             alphas: vec![0.118],
             xs: vec![1.0, 2.0, 3.0],
             q2s: vec![4.0, 5.0],
