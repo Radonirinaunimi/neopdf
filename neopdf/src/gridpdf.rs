@@ -3,7 +3,9 @@
 //! It provides a clean, modular interface for accessing and interpolating PDF data through
 //! the `GridPDF` struct, with support for multiple interpolation strategies and dimensions.
 
-use ndarray::{s, Array1, Array3, Array5, ArrayView2, OwnedRepr};
+use core::panic;
+
+use ndarray::{s, Array1, Array2, Array5, ArrayView2, OwnedRepr};
 use ninterp::error::InterpolateError;
 use ninterp::interpolator::{Extrapolate, Interp2D, InterpND};
 use ninterp::prelude::*;
@@ -649,18 +651,18 @@ impl GridPDF {
         .expect("Failed to create alpha_s interpolator")
     }
 
-    /// Interpolates the PDF value for a single point `(x, q2)` and a given flavor.
+    /// Interpolates the PDF value for `(nucleons, alphas, x, q2)` and a given flavor.
     ///
     /// # Arguments
     ///
     /// * `flavor_id` - The particle flavor ID.
-    /// * `x` - The momentum fraction `x`.
-    /// * `q2` - The energy scale squared `q2`.
+    /// * `points` - A slice containing the collection of points to interpolate on.
     ///
     /// # Returns
     ///
     /// A `Result` containing the interpolated PDF value or an `Error`.
-    pub fn xfxq2(&self, flavor_id: i32, x: f64, q2: f64) -> Result<f64, Error> {
+    pub fn xfxq2(&self, flavor_id: i32, points: &[f64]) -> Result<f64, Error> {
+        let (x, q2) = self.get_x_q2(points);
         let subgrid_idx = self
             .knot_array
             .find_subgrid(x, q2)
@@ -671,7 +673,7 @@ impl GridPDF {
         })?;
 
         self.interpolators[subgrid_idx][pid_idx]
-            .interpolate_point(&[x, q2])
+            .interpolate_point(points)
             .map_err(|e| Error::InterpolationError(e.to_string()))
     }
 
@@ -680,33 +682,42 @@ impl GridPDF {
     /// # Arguments
     ///
     /// * `flavors` - A vector of flavor IDs.
-    /// * `xs` - A vector of `x` values.
-    /// * `q2s` - A vector of `q2` values.
+    /// * `slice_points` - A slice containing the collection of knots to interpolate on.
+    ///   A knot is a collection of points containing `(nucleon, alphas, x, Q2)`.
     ///
     /// # Returns
     ///
-    /// A 3D array of interpolated PDF values with shape `[flavors, xs, q2s]`.
-    pub fn xfxq2s(&self, flavors: Vec<i32>, xs: Vec<f64>, q2s: Vec<f64>) -> Array3<f64> {
-        let shape = [flavors.len(), xs.len(), q2s.len()];
-        let total_len = shape.iter().product();
+    /// A 2D array of interpolated PDF values with shape `[flavors, N_knots]`.
+    pub fn xfxq2s(&self, flavors: Vec<i32>, slice_points: &[&[f64]]) -> Array2<f64> {
+        let grid_shape = [flavors.len(), slice_points.len()];
+        let flatten_len = grid_shape.iter().product();
 
-        let data: Vec<f64> = (0..total_len)
+        let data: Vec<f64> = (0..flatten_len)
             .into_par_iter()
             .map(|idx| {
-                let (i, j, k) = self.unravel_index(idx, &shape);
-                self.xfxq2(flavors[i], xs[j], q2s[k]).unwrap_or(0.0)
+                let num_cols = slice_points.len();
+                let (fl_idx, s_idx) = (idx / num_cols, idx % num_cols);
+                self.xfxq2(flavors[fl_idx], slice_points[s_idx]).unwrap()
             })
             .collect();
 
-        Array3::from_shape_vec(shape, data).expect("Failed to create result array")
+        Array2::from_shape_vec(grid_shape, data).unwrap()
     }
 
-    /// Converts a linear index into 3D coordinates `(i, j, k)`.
-    fn unravel_index(&self, idx: usize, shape: &[usize; 3]) -> (usize, usize, usize) {
-        let k = idx % shape[2];
-        let j = (idx / shape[2]) % shape[1];
-        let i = idx / (shape[1] * shape[2]);
-        (i, j, k)
+    /// Get the values of the momentum fraction `x` and momentum scale `Q2`.
+    ///
+    /// # Arguments
+    ///
+    /// TODO
+    ///
+    /// # Returns
+    ///
+    /// TODO
+    pub fn get_x_q2(&self, points: &[f64]) -> (f64, f64) {
+        match points {
+            [.., x, q2] => (*x, *q2),
+            _ => panic!("The inputs must at least be x and Q2.",),
+        }
     }
 
     /// Gets the alpha_s value at a given `Q²`.

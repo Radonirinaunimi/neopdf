@@ -192,7 +192,7 @@ pub unsafe extern "C" fn neopdf_pdf_xfxq2(
 ) -> f64 {
     assert!(!pdf.is_null());
     let pdf_obj = unsafe { &(*pdf).0 };
-    pdf_obj.xfxq2(id, x, q2)
+    pdf_obj.xfxq2(id, &[x, q2])
 }
 
 /// Computes the `alpha_s` value at a given Q2.

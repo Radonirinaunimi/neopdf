@@ -1,4 +1,4 @@
-use ndarray::Array3;
+use ndarray::Array2;
 use neopdf::pdf::PDF;
 
 const PRECISION: f64 = 1e-16;
@@ -45,10 +45,9 @@ fn test_xfxq2_at_knots() {
     ];
 
     for (pid, x, q2, expected) in cases {
-        let res = pdf.xfxq2(pid, x, q2);
         assert!(
-            (pdf.xfxq2(pid, x, q2) - expected).abs() < PRECISION,
-            "Failed on knot (pid, x, Q2)=({pid}, {x}, {q2})={res}"
+            (pdf.xfxq2(pid, &[x, q2]) - expected).abs() < PRECISION,
+            "Failed on knot (pid, x, Q2)=({pid}, {x}, {q2})"
         );
     }
 }
@@ -70,7 +69,7 @@ fn test_xfxq2_interpolations() {
 
     for (pid, x, q2, expected) in cases {
         assert!(
-            (pdf.xfxq2(pid, x, q2) - expected).abs() < PRECISION,
+            (pdf.xfxq2(pid, &[x, q2]) - expected).abs() < PRECISION,
             "Failed on knot (pid, x, Q2)=({pid}, {x}, {q2})"
         );
     }
@@ -83,7 +82,7 @@ fn test_xfxq2_interpolations() {
 fn test_xfxq2_extrapolations() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 
-    assert!((pdf.xfxq2(2, 1.0, 1e20 * 1e20) - 1e10).abs() < PRECISION);
+    assert!((pdf.xfxq2(2, &[1.0, 1e20 * 1e20]) - 1e10).abs() < PRECISION);
 }
 
 #[test]
@@ -211,14 +210,21 @@ pub fn test_xfxq2s() {
 
     // Define the vectors of kinematics & flavours
     let ids = (-4..=4).filter(|&x| x != 0).collect();
-    let xs = vec![1e-5, 1e-3, 1e-3, 1.0];
-    let q2s = vec![5.0, 10.0, 100.0];
+    let xs = [1e-5, 1e-3, 1e-3, 1.0];
+    let q2s = [5.0, 10.0, 100.0];
 
-    let results = pdf.xfxq2s(ids, xs, q2s);
-    let expected_res = Array3::from_shape_vec(results.raw_dim(), expected).unwrap();
+    let flatten_points: Vec<Vec<f64>> = xs
+        .iter()
+        .flat_map(|&x| q2s.iter().map(move |&q2| vec![x, q2]))
+        .collect();
+    let points_interp: Vec<&[f64]> = flatten_points.iter().map(Vec::as_slice).collect();
+    let slice_points: &[&[f64]] = &points_interp;
 
-    for ((i, j, k), elems) in results.indexed_iter() {
-        assert!((*elems - expected_res[[i, j, k]]).abs() < LOW_PRECISION);
+    let results = pdf.xfxq2s(ids, slice_points);
+    let expected_res = Array2::from_shape_vec(results.raw_dim(), expected).unwrap();
+
+    for ((i, j), elems) in results.indexed_iter() {
+        assert!((*elems - expected_res[[i, j]]).abs() < LOW_PRECISION);
     }
 }
 
