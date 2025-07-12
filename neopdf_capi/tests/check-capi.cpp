@@ -116,8 +116,8 @@ void test_all_pdf_members() {
 
         double expected = lha_pdf->xfxQ2(pid, x, q2);
         double result = neopdf_pdf_xfxq2(pdf, pid, x, q2);
-        double reldif = std::abs(result - expected) / expected;
 
+        double reldif = std::abs(result - expected) / expected;
         assert(std::abs(result - expected) < TOLERANCE);
         results.push_back(result);
 
