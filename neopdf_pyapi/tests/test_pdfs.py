@@ -49,7 +49,8 @@ class TestPDFInterpolations:
         neopdf = neo_pdf(pdfname)
         lhapdf = lha_pdf(pdfname)
         qs = neopdf.metadata().alphas_q()
-        q2_points = [q * q for q in np.geomspace(qs[0], qs[-1], num=150)]
+        # Currently, `neopdf.alphasQ2` fails with logarithmically spaced Q2
+        q2_points = [q * q for q in np.linspace(qs[0], qs[-1], num=300)]
 
         for q2_point in q2_points:
             ref = lhapdf.alphasQ2(q2_point)

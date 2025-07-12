@@ -34,8 +34,8 @@ def xq2_points():
     def _xq2_points(
         xmin: float, xmax: float, q2min: float, q2max: float
     ) -> tuple[float, float]:
-        xs = np.geomspace(xmin, xmax, num=150)
-        q2s = np.geomspace(q2min, q2max, num=150)
+        xs = np.geomspace(xmin, xmax, num=200)
+        q2s = np.geomspace(q2min, q2max, num=200)
         return xs, q2s
 
     return _xq2_points
