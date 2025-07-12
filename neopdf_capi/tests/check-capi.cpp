@@ -1,30 +1,47 @@
+#include <LHAPDF/PDF.h>
 #include <neopdf_capi.h>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
-#include <tuple>
 #include <vector>
 
 const double TOLERANCE= 1e-16;
 
+template<typename T>
+std::vector<T> geomspace(T start, T stop, int num, bool endpoint = false) {
+    std::vector<T> result(num);
+
+    if (num == 1) {
+        result[0] = start;
+        return result;
+    }
+
+    T log_start = std::log(start);
+    T log_stop = std::log(stop);
+    T step = (log_stop - log_start) / (endpoint ? (num - 1) : num);
+
+    for (int i = 0; i < num; ++i) {
+        result[i] = std::exp(log_start + i * step);
+    }
+
+    return result;
+}
+
 void test_single_pdf() {
     std::cout << "=== Test Loading a Single PDF Member ===\n";
 
-    NeoPDFWrapper* pdf = neopdf_pdf_load("NNPDF40_nnlo_as_01180", 0);
+    // disable LHAPDF banners to guarantee deterministic output
+    LHAPDF::setVerbosity(0);
 
-    std::vector<std::tuple<int, double, double, double>> cases = {
-        {1, 1e-9, 1.65 * 1.65, 1.4254154},
-        {2, 1e-9, 1.65 * 1.65, 1.4257712},
-        {21, 1e-9, 1.65 * 1.65, 0.14844111},
-        {1, 1.2970848e-9, 1.65 * 1.65, 1.3883271},
-        {2, 1.2970848e-9, 1.65 * 1.65, 1.3887002},
-        {21, 1.2970848e-9, 1.65 * 1.65, 0.15395356},
-        {1, 1.2970848e-9, 1.9429053 * 1.9429053, 1.9235433},
-        {2, 1.2970848e-9, 1.9429053 * 1.9429053, 1.9239212},
-        {21, 1.2970848e-9, 1.9429053 * 1.9429053, -3.164867}
-    };
+    std::string pdfname = "NNPDF40_nnlo_as_01180";
+    NeoPDFWrapper* neo_pdf = neopdf_pdf_load(pdfname.c_str(), 0);
+    auto lha_pdf = std::unique_ptr<LHAPDF::PDF>(LHAPDF::mkPDF(pdfname, 0));
+
+    std::vector<int> pids = {-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5};
+    std::vector<double> xs = geomspace(lha_pdf->xMin(), lha_pdf->xMax(), 200);
+    std::vector<double> q2s = geomspace(lha_pdf->q2Min(), lha_pdf->q2Max(), 200);
 
     // Headers of the table to print the results
     std::cout << std::right
@@ -36,39 +53,44 @@ void test_single_pdf() {
         << std::setw(15) << "Rel. Diff." << "\n";
     std::cout << std::string(81, '-') << "\n";
 
-    for (size_t i = 0; i < cases.size(); ++i) {
-        int pid;
-        double x, q2, expected;
+    for (const auto &pid: pids) {
+        for (const auto &x: xs) {
+            for (const auto &q2: q2s) {
+                double expected = lha_pdf->xfxQ2(pid, x, q2);
+                double result = neopdf_pdf_xfxq2(neo_pdf, pid, x, q2);
+                double reldif = std::abs(result - expected) / expected;
 
-        std::tie(pid, x, q2, expected) = cases[i];
-        double result = neopdf_pdf_xfxq2(pdf, pid, x, q2);
-        double reldif = std::abs(result - expected) / expected;
+                assert(std::abs(result - expected) < TOLERANCE);
 
-        assert(std::abs(result - expected) < TOLERANCE);
-
-        // Print the results as a table
-        std::cout << std::scientific << std::setprecision(8)
-            << std::right
-            << std::setw(6)  << pid
-            << std::setw(15) << x
-            << std::setw(15) << q2
-            << std::right
-            << std::setw(15) << expected
-            << std::setw(15) << result
-            << std::setw(15) << reldif << "\n";
+                // Print the results as a table
+                std::cout << std::scientific << std::setprecision(8)
+                    << std::right
+                    << std::setw(6)  << pid
+                    << std::setw(15) << x
+                    << std::setw(15) << q2
+                    << std::right
+                    << std::setw(15) << expected
+                    << std::setw(15) << result
+                    << std::setw(15) << reldif << "\n";
+                }
+            }
 
     }
 
     // Delete PDF object from memory
-    neopdf_pdf_free(pdf);
+    neopdf_pdf_free(neo_pdf);
 }
 
 void test_all_pdf_members() {
     std::cout << "=== Test Loading all the PDF Members ===\n";
 
-    NeoPDFMembers pdf_array = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
+    // disable LHAPDF banners to guarantee deterministic output
+    LHAPDF::setVerbosity(0);
 
-    std::cout << "Loaded " << pdf_array.size << " PDF members\n";
+    std::string pdfname = "NNPDF40_nnlo_as_01180";
+    NeoPDFMembers neo_pdfs = neopdf_pdf_load_all(pdfname.c_str());
+
+    std::cout << "Loaded " << neo_pdfs.size << " PDF members\n";
 
     // Test case: evaluate a simple point across all members
     int pid = 1;
@@ -81,20 +103,30 @@ void test_all_pdf_members() {
 
     std::cout << std::right
         << std::setw(8) << "Member"
-        << std::setw(15) << "Result" << "\n";
-    std::cout << std::string(23, '-') << "\n";
+        << std::setw(15) << "LHAPDF"
+        << std::setw(15) << "NeoPDF"
+        << std::setw(15) << "Rel. Diff." << "\n";
+    std::cout << std::string(53, '-') << "\n";
 
     // Evaluate the same point across all PDF members
     std::vector<double> results;
-    for (size_t i = 0; i < pdf_array.size; ++i) {
-        NeoPDFWrapper* pdf = pdf_array.pdfs[i];
+    for (size_t i = 0; i < neo_pdfs.size; ++i) {
+        NeoPDFWrapper* pdf = neo_pdfs.pdfs[i];
+        auto lha_pdf = std::unique_ptr<LHAPDF::PDF>(LHAPDF::mkPDF(pdfname, i));
+
+        double expected = lha_pdf->xfxQ2(pid, x, q2);
         double result = neopdf_pdf_xfxq2(pdf, pid, x, q2);
+        double reldif = std::abs(result - expected) / expected;
+
+        assert(std::abs(result - expected) < TOLERANCE);
         results.push_back(result);
 
         std::cout << std::right
             << std::setw(8) << i
             << std::scientific << std::setprecision(8)
-            << std::setw(15) << result << "\n";
+            << std::setw(15) << expected
+            << std::setw(15) << result
+            << std::setw(15) << reldif << "\n";
     }
 
     // Calculate some statistics
@@ -117,7 +149,7 @@ void test_all_pdf_members() {
     std::cout << "Relative Std Dev: " << std_dev / mean << "\n";
 
     // Delete objects from memory.
-    neopdf_pdf_array_free(pdf_array);
+    neopdf_pdf_array_free(neo_pdfs);
 }
 
 
