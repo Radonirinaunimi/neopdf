@@ -7,7 +7,6 @@
 #include <iomanip>
 #include <iostream>
 #include <string>
-#include <tuple>
 #include <vector>
 
 using namespace neopdf;
@@ -29,6 +28,24 @@ std::vector<T> geomspace(T start, T stop, int num, bool endpoint = false) {
 
     for (int i = 0; i < num; ++i) {
         result[i] = std::exp(log_start + i * step);
+    }
+
+    return result;
+}
+
+template<typename T>
+std::vector<T> linspace(T start, T stop, int num, bool endpoint = true) {
+    std::vector<T> result(num);
+
+    if (num == 1) {
+        result[0] = start;
+        return result;
+    }
+
+    T step = (stop - start) / (endpoint ? (num - 1) : num);
+
+    for (int i = 0; i < num; ++i) {
+        result[i] = start + i * step;
     }
 
     return result;
@@ -87,15 +104,15 @@ void test_xfxq2() {
 void test_alphas_q2() {
     std::cout << "=== Test alphasQ2 for single PDF member ===\n";
 
-    NeoPDF xpdf("NNPDF40_nnlo_as_01180", 0);
+    // disable LHAPDF banners to guarantee deterministic output
+    LHAPDF::setVerbosity(0);
 
-    std::vector<std::tuple<double, double>> cases ={
-        {1e5 * 1e5, 0.057798546},
-        {1.65 * 1.65, 0.33074891},
-        {4.0, 0.30095312523656437},
-        {2.75, 0.32992260049326716},
-        {100.0, 0.17812270669689784}
-    };
+    std::string pdfname = "NNPDF40_nnlo_as_01180";
+    NeoPDF neo_pdf(pdfname.c_str(), 0);
+    const LHAPDF::PDF* basepdf = LHAPDF::mkPDF(pdfname);
+    const LHAPDF::GridPDF& lha_pdf = * dynamic_cast<const LHAPDF::GridPDF*>(basepdf);
+
+    std::vector<double> q2_points = linspace(4.0, 1e5, 400);
 
     // Headers of the table to print the results
     std::cout << std::right
@@ -105,11 +122,9 @@ void test_alphas_q2() {
         << std::setw(15) << "Rel. Diff." << "\n";
     std::cout << std::string(60, '-') << "\n";
 
-    for (const auto& test_case: cases) {
-        double q2, expected;
-
-        std::tie(q2, expected) = test_case;
-        double result = xpdf.alphasQ2(q2);
+    for (const auto& q2: q2_points) {
+        double expected = lha_pdf.alphasQ2(q2);
+        double result = neo_pdf.alphasQ2(q2);
         double reldif = std::abs(result - expected) / expected;
 
         assert(std::abs(result - expected) < TOLERANCE);
@@ -147,11 +162,6 @@ void test_all_pdf_members() {
         << std::setw(15) << "NeoPDF"
         << std::setw(15) << "Rel. Diff." << "\n";
     std::cout << std::string(53, '-') << "\n";
-
-    std::cout << std::right
-        << std::setw(8) << "Member"
-        << std::setw(15) << "Result" << "\n";
-    std::cout << std::string(23, '-') << "\n";
 
     // Evaluate the same point across all PDF members
     std::vector<double> results;
