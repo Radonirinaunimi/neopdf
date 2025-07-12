@@ -30,7 +30,12 @@ def lha_pdf():
 
 
 @pytest.fixture(scope="session")
-def xq2_points() -> tuple[float, float]:
-    xs = np.logspace(-9, 0, 200)
-    q2s = np.logspace(1, 8, 200)
-    return xs, q2s
+def xq2_points():
+    def _xq2_points(
+        xmin: float, xmax: float, q2min: float, q2max: float
+    ) -> tuple[float, float]:
+        xs = np.geomspace(xmin, xmax, num=150)
+        q2s = np.geomspace(q2min, q2max, num=150)
+        return xs, q2s
+
+    return _xq2_points

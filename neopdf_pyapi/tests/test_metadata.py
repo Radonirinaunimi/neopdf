@@ -4,7 +4,7 @@ from math import sqrt
 
 
 class TestMetaData:
-    @pytest.mark.parametrize("pdfname", ["NNPDF40_nnlo_as_01180"])
+    @pytest.mark.parametrize("pdfname", ["NNPDF40_nnlo_as_01180", "MSHT20qed_an3lo"])
     def test_metadata_fields(self, neo_pdf, lha_pdf, pdfname):
         neopdf = neo_pdf(pdfname)
         lhapdf = lha_pdf(pdfname)
