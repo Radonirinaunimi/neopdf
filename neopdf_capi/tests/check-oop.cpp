@@ -112,7 +112,7 @@ void test_alphas_q2() {
     const LHAPDF::PDF* basepdf = LHAPDF::mkPDF(pdfname);
     const LHAPDF::GridPDF& lha_pdf = * dynamic_cast<const LHAPDF::GridPDF*>(basepdf);
 
-    std::vector<double> q2_points = linspace(4.0, 1e5, 400);
+    std::vector<double> q2_points = linspace(4.0, 1e10, 500);
 
     // Headers of the table to print the results
     std::cout << std::right
