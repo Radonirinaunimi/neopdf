@@ -1,4 +1,4 @@
-name: Run the C-API tests 📦
+name: Run the C/C++-API tests 📦
 
 on: [push]
 
@@ -9,7 +9,7 @@ defaults:
 jobs:
   capi:
     runs-on: ubuntu-latest
-    container: ghcr.io/${{ github.repository_owner }}/neopdf-container:latest
+    container: ghcr.io/radonirinaunimi/neopdf-container:latest
 
     steps:
       - uses: actions/checkout@v4
@@ -23,7 +23,7 @@ jobs:
           cargo cinstall --release --prefix=/usr/local/ --libdir=/usr/local/lib
           ldconfig
 
-      - name: Test C++ examples 🚀
+      - name: Test C/C++ examples 🚀
         run: |
           cd neopdf_capi/tests
           # if `make` is too old, it doesn't support the `!=` operator

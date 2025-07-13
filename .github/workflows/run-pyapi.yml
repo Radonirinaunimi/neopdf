@@ -6,7 +6,7 @@ jobs:
   pyapi:
     # `ubuntu-24.04` doesn't support Python 3.7 anymore
     runs-on: ubuntu-22.04
-    container: ghcr.io/${{ github.repository_owner }}/neopdf-container:latest
+    container: ghcr.io/radonirinaunimi/neopdf-container:latest
 
     strategy:
       matrix:
