@@ -6,8 +6,7 @@ ARG CARGOC_V=0.10.3
 ARG LHAPDF_V=6.5.4
 
 # the last version is the default Rust version used in the container
-# as long as we're using `persist-doctests` in the `Rust` workflow we need nightly as default
-ARG RUST_V="1.70.0 1.80.1 1.83.0 nightly-2025-01-15"
+ARG RUST_V="1.83.0 1.84.0 1.86.0 1.87.0"
 
 ENV CARGO_HOME="/usr/local/cargo"
 ENV PATH="/usr/local/cargo/bin:${PATH}"
