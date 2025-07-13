@@ -19,9 +19,6 @@ jobs:
           RUSTFLAGS: '-Cinstrument-coverage -Clink-dead-code'
         run: |
           cd neopdf_pyapi
-          python3 -m venv env
-          . env/bin/activate
-          python3 -m ensurepip --upgrade
           pip install maturin
           maturin develop --release --extras test
           # Use the PDF sets downloaded in the container
