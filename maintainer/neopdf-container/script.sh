@@ -62,6 +62,7 @@ make -j V=1
 make install
 ldconfig
 # Verify the Python module was installed
+bash -c "lhapdf-config --datadir"
 python3 -c "import sys; print(sys.path)"
 python3 -c "import lhapdf; print('LHAPDF imported successfully')"
 cd ..

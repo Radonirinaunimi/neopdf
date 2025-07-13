@@ -13,6 +13,8 @@ ENV CARGO_HOME="/usr/local/cargo"
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 ENV RUSTUP_HOME="/usr/local/rustup"
 ENV PYTHONPATH="/usr/lib/python3.11/site-packages"
+ENV LD_LIBRARY_PATH="/usr/lib:${LD_LIBRARY_PATH}"
+ENV LHAPDF_DATA_PATH="/usr/share/LHAPDF"
 
 COPY script.sh /tmp/
 
