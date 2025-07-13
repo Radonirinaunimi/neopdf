@@ -26,6 +26,8 @@ jobs:
       - name: Test C/C++ examples 🚀
         run: |
           cd neopdf_capi/tests
+          # Use the PDF sets downloaded in the container
+          export NEOPDF_DATA_PATH=/usr/share/LHAPDF
           # if `make` is too old, it doesn't support the `!=` operator
           sed -i "s/\([a-zA-Z_]\+\) != \(.*\)$/echo \1 = \$(\2)/e" Makefile
           # run tests with sanitizer

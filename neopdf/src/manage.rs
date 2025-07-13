@@ -28,8 +28,19 @@ impl ManageData {
         manager
     }
 
-    /// Get the XDG data directory path for storing PDF sets.
     pub fn get_data_path() -> PathBuf {
+        // Check for NEOPDF_DATA_PATH environment variable first
+        if let Ok(neopdf_data_path) = std::env::var("NEOPDF_DATA_PATH") {
+            let neopdf_dir = PathBuf::from(neopdf_data_path);
+
+            if !neopdf_dir.exists() {
+                std::fs::create_dir_all(&neopdf_dir).unwrap();
+            }
+
+            return neopdf_dir;
+        }
+
+        // Falls back to the XDG data directory if the env. variable is not set.
         // TODO: Make this more robust and not platform-dependent
         let home = std::env::var("HOME")
             .map_err(|_| {
@@ -42,7 +53,6 @@ impl ManageData {
         let data_dir = PathBuf::from(home).join(".local").join("share");
         let neopdf_dir = data_dir.join("neopdf");
 
-        // Create the directory if it doesn't exist
         if !neopdf_dir.exists() {
             std::fs::create_dir_all(&neopdf_dir).unwrap();
         }
