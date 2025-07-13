@@ -12,6 +12,7 @@ pkgs=(
     pkg-config
     python3
     python3-dev
+    python3-venv
     autoconf
     automake
     libtool
