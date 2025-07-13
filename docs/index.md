@@ -16,7 +16,7 @@ high-performance alternative to LHAPDF, focusing on:
 
 The need for a fast and reliable PDF interpolation is critical in high-energy physics, especially
 for precision calculations at hadron colliders. Existing solutions like LHAPDF, while widely used,
-have limitations in terms of extensibility and features. NeoPDF addresses these by:
+have limitations in terms of extensibility and features. `NeoPDF` addresses these by:
 
 - Providing a modern, modular codebase.
 - Enabling easy integration into new and existing workflows.
@@ -29,7 +29,7 @@ have limitations in terms of extensibility and features. NeoPDF addresses these 
 - **CLI Tools**: (Planned) Command-line utilities for PDF inspection and conversion.
 
 ```mermaid
-graph TD;
+graph TD
     A[User Code (Rust/Python/C/C++)] --> B[NeoPDF API];
     B --> C[Core Interpolation Engine (Rust)];
     C --> D[PDF Grid Data & Metadata];

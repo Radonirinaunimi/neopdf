@@ -11,7 +11,7 @@ To use `neopdf` in your Rust project, simply add the following to your `Cargo.to
 
 ```toml
 [dependencies]
-neopdf = "0.1.0"
+neopdf = "0.1.0" # select the version
 ```
 
 Cargo will automatically fetch and compile the dependency the next time you build your project with:
@@ -19,8 +19,6 @@ Cargo will automatically fetch and compile the dependency the next time you buil
 ```bash
 cargo build
 ```
-
-You can find the latest version of `neopdf` on [crates.io](https://crates.io/crates/neopdf).
 
 ---
 
@@ -33,8 +31,9 @@ installed, go into the `neopdf_pyapi` directory, and then simply run:
 maturin develop --release
 ```
 
-This will build and install the `NeoPDF` Python extension in your current environment. `neopdf` is
-also available on ...
+This will build and install the `NeoPDF` Python extension in your current environment. Alternatively,
+`neopdf` is  also available on the Python Package Index (PyPI) and therefore can be installed with
+your favourite Python's package manager. For example, using [pipx](https://pipx.pypa.io/stable/):
 
 ```bash
 pipx install neopdf
@@ -57,7 +56,8 @@ export CARGO_C_INSTALL_PREFIX=${prefix} # Needed if you want the OOP C++ header
 cargo cinstall --release --prefix=${prefix}
 ```
 
-This will install the library in the `${prefix}` path. This path can then be added to the `PKG_CONFIG_PATH` and `LD_LIBRARY_PATH` environment variables by running:
+This will install the library in the `${prefix}` path. This path can then be added to the `PKG_CONFIG_PATH`
+and `LD_LIBRARY_PATH` environment variables by running:
 
 ```bash
 export LD_LIBRARY_PATH=${prefix}/lib:$LD_LIBRARY_PATH
@@ -65,3 +65,9 @@ export PKG_CONFIG_PATH=${prefix}/lib/pkgconfig:$PKG_CONFIG_PATH
 ```
 
 Remember to source your shell configuration or restart your terminal for the changes to take effect.
+
+!!! note "Note on where to store PDF sets"
+
+    By default, `NeoPDF` stores PDF sets in `${HOME}/.local/share/NeoPDF`, however this can be
+    overwritten via the environment variable `NEOPDF_DATA_PATH` to point to the LHAPDF path for
+    example.

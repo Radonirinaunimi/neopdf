@@ -1,6 +1,7 @@
 # C++ OOP API Example
 
-This example demonstrates how to use the NeoPDF C++ OOP API to load PDF sets, evaluate parton distributions, and perform statistical analysis across PDF members.
+This example demonstrates how to use the NeoPDF C++ OOP API to load PDF sets, evaluate parton
+distributions, and perform statistical analysis across PDF members.
 
 ## Prerequisites
 
@@ -9,9 +10,10 @@ Build and install the C++ API as described in the [installation guide](../instal
 
 ## Example: Loading and Evaluating a Single PDF Member
 
-The following function loads a single PDF member and evaluates the PDF for various partons, $x$, and $Q^2$ values. It compares the results to reference values and prints a table of results.
+The following function loads a single PDF member and evaluates the PDF for various partons, $x$,
+and $Q^2$ values. It compares the results to reference values and prints a table of results.
 
-```cpp
+```cpp linenums="1"
 #include <neopdf_capi.h>
 #include <NeoPDF.hpp>
 #include <cassert>
@@ -78,9 +80,10 @@ void test_xfxq2() {
 
 ## Example: Evaluating $\alpha_s(Q^2)$
 
-This function demonstrates how to evaluate the strong coupling $\alpha_s$ at different $Q^2$ values for a given PDF member.
+This function demonstrates how to evaluate the strong coupling $\alpha_s$ at different $Q^2$
+values for a given PDF member.
 
-```cpp
+```cpp linenums="1"
 void test_alphas_q2() {
     std::cout << "=== Test alphasQ2 for single PDF member ===\n";
 
@@ -124,9 +127,10 @@ void test_alphas_q2() {
 
 ## Example: Working with All PDF Members
 
-You can load all members of a PDF set and evaluate the same point across all members. This is useful for uncertainty estimation and statistical analysis.
+You can load all members of a PDF set and evaluate the same point across all members.
+This is useful for uncertainty estimation and statistical analysis.
 
-```cpp
+```cpp linenums="1"
 void test_all_pdf_members() {
     std::cout << "=== Test PDFs class (loading all members) ===\n";
 
@@ -209,15 +213,4 @@ int main() {
 
     return EXIT_SUCCESS;
 }
-```
-
-## Summary
-
-- Load and evaluate single or multiple PDF members
-- Compute $x f(x, Q^2)$ and $\alpha_s(Q^2)$
-- Perform statistical analysis across PDF members
-- Interoperate with the raw C API if needed
-
-API reference documentation is coming soon.
-
 ```

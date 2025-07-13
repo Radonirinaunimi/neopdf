@@ -1,6 +1,7 @@
 # C API Example
 
-This example demonstrates how to use the NeoPDF C API to load PDF sets, evaluate parton distributions, and perform statistical analysis across PDF members.
+This example demonstrates how to use the NeoPDF C API to load PDF sets, evaluate parton distributions,
+and perform statistical analysis across PDF members.
 
 ## Prerequisites
 
@@ -9,9 +10,10 @@ Build and install the C API as described in the [installation guide](../installa
 
 ## Example: Loading and Evaluating a Single PDF Member
 
-The following function loads a single PDF member and evaluates the PDF for various partons, $x$, and $Q^2$ values. It compares the results to reference values and prints a table of results.
+The following function loads a single PDF member and evaluates the PDF for various partons, $x$, and $Q^2$
+values. It compares the results to reference values and prints a table of results.
 
-```cpp
+```cpp linenums="1"
 #include <neopdf_capi.h>
 #include <cassert>
 #include <cmath>
@@ -79,9 +81,10 @@ void test_single_pdf() {
 
 ## Example: Working with All PDF Members
 
-You can load all members of a PDF set and evaluate the same point across all members. This is useful for uncertainty estimation and statistical analysis.
+You can load all members of a PDF set and evaluate the same point across all members. This is useful
+for uncertainty estimation and statistical analysis.
 
-```cpp
+```cpp linenums="1"
 #include <neopdf_capi.h>
 #include <cassert>
 #include <cmath>
@@ -176,11 +179,3 @@ int main() {
     return EXIT_SUCCESS;
 }
 ```
-
-## Summary
-
-- Load and evaluate single or multiple PDF members
-- Compute $x f(x, Q^2)$ for different partons
-- Perform statistical analysis across PDF members
-
-API reference documentation is coming soon.

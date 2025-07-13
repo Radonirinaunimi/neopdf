@@ -8,7 +8,7 @@ Ensure you have built and installed the Python API as described in the [installa
 
 ## Basic Usage
 
-```python
+```python linenums="1"
 from neopdf.pdf import PDF
 
 # Load a PDF set (e.g., NNPDF40_nnlo_as_01180, member 0)
@@ -28,7 +28,7 @@ print(f"alpha_s(Q2={Q2}) = {alphas}")
 
 ## Looping Over All Members
 
-```python
+```python linenums="1"
 from neopdf.pdf import PDFs
 
 # Load all members of a PDF set
@@ -39,16 +39,3 @@ print(f"Loaded {len(pdfs)} PDF members")
 results = [pdf.xfxQ2(pid, x, Q2) for pdf in pdfs]
 print("Results across all members:", results)
 ```
-
-## Error Handling
-
-```python
-try:
-    pdf = PDF("NonExistentSet", member=0)
-except Exception as e:
-    print("Failed to load PDF set:", e)
-```
-
-## Advanced: Custom Interpolation (Planned)
-
-NeoPDF will support custom interpolation strategies in future releases. Stay tuned!
