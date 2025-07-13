@@ -1,0 +1,13 @@
+body {
+  font-size: 0.85rem;
+}
+
+.md-content__inner {
+  max-width: 80ch;
+}
+
+/* Justify all paragraphs and list items globally */
+.md-content__inner p,
+.md-content__inner li {
+  text-align: justify;
+}
