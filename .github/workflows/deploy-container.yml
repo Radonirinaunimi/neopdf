@@ -1,6 +1,7 @@
 name: Build NeoPDF Container
 
 on:
+  push:
   workflow_dispatch:
 
 permissions:
