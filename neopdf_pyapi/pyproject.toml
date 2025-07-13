@@ -24,13 +24,6 @@ dependencies = ["numpy>=1.16.0"]
 dynamic = ["version"]
 
 [project.optional-dependencies]
-docs = [
-  "sphinx>=7.0.0",
-  "sphinx_rtd_theme>=1.2.2",
-  "nbsphinx>=0.8.8",
-  "ipykernel>=6.13.0",
-  "polars>=1.8.0"
-]
 test = ["pytest", "pytest-cov"]
 
 [project.urls]
