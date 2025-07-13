@@ -1,0 +1,21 @@
+# with debian:10 Rust has linking problems, see this description:
+# https://github.com/rust-lang/rust/issues/79946#issuecomment-1693289299
+FROM debian:12-slim
+
+ARG CARGOC_V=0.10.3
+ARG LHAPDF_V=6.5.4
+
+# the last version is the default Rust version used in the container
+# as long as we're using `persist-doctests` in the `Rust` workflow we need nightly as default
+ARG RUST_V="1.70.0 1.80.1 nightly-2024-09-04"
+
+ENV CARGO_HOME="/usr/local/cargo"
+ENV PATH="/usr/local/cargo/bin:${PATH}"
+ENV RUSTUP_HOME="/usr/local/rustup"
+ENV PYTHONPATH="/usr/lib/python3.11/site-packages"
+
+COPY script.sh /tmp/
+
+RUN chmod +x /tmp/script.sh
+
+RUN mkdir /build && cd build && /tmp/script.sh && rm /tmp/script.sh && cd / && rm -r /build
