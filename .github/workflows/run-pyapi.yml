@@ -1,0 +1,29 @@
+name: Run the Python-API tests 🐍
+
+on:
+  workflow_dispatch:
+
+jobs:
+  pyapi:
+    # `ubuntu-24.04` doesn't support Python 3.7 anymore
+    runs-on: ubuntu-22.04
+    container: ghcr.io/radonirinaunimi/neopdf-container:latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Rust 🦀
+        run: |
+          rustup component add llvm-tools
+      - name: Run the Python tests 🚀
+        env:
+          # `-C link-dead-code` is needed to prevent 'warning: XX functions have mismatched data' warnings
+          RUSTFLAGS: '-Cinstrument-coverage -Clink-dead-code'
+        run: |
+          cd neopdf_pyapi
+          python3 -m venv --system-site-packages myenv
+          source myenv/bin/activate
+          pip install maturin
+          maturin develop --release --extras test
+          # Use the PDF sets downloaded in the container
+          export NEOPDF_DATA_PATH=/usr/share/LHAPDF
+          pytest

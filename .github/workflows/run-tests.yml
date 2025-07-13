@@ -1,4 +1,4 @@
-name: Rust
+name: Run the Rust tests 🦀
 
 on:
   push:
@@ -17,7 +17,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Build
+    - name: Build NeoPDF crate 🦀
       run: cargo build --release
-    - name: Run tests
+    - name: Run tests 🚀
       run: cargo test --release --no-fail-fast -p neopdf
