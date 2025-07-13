@@ -1,14 +1,13 @@
 # Installation
 
-This guide provides detailed instructions for installing NeoPDF and its APIs for Rust, Python, and C/C++.
-
-Below is a summary of the installation process for each supported language. For troubleshooting and advanced options, see the notes in each section.
+This guide provides detailed instructions for installing `NeoPDF `and its APIs for Rust, Python,
+Fortran, and C/C++.
 
 ---
 
 ## Rust Crate
 
-To use `neopdf` in your Rust project, add the following to your `Cargo.toml`:
+To use `neopdf` in your Rust project, simply add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
@@ -27,23 +26,25 @@ You can find the latest version of `neopdf` on [crates.io](https://crates.io/cra
 
 ## Python API
 
-To install the Python API, make sure that [maturin](https://www.maturin.rs/) is installed, and then simply run:
+To build the Python API from the source code, make sure that [maturin](https://www.maturin.rs/) is
+installed, go into the `neopdf_pyapi` directory, and then simply run:
 
 ```bash
 maturin develop --release
 ```
 
-This will build and install the NeoPDF Python extension in your current environment. If you do not have maturin, install it first with:
+This will build and install the `NeoPDF` Python extension in your current environment. `neopdf` is
+also available on ...
 
 ```bash
-pip install maturin
+pipx install neopdf
 ```
 
 ---
 
 ## C/C++ API
 
-To build the C-API, first install `cargo-c`:
+To build the C-API from source, first install `cargo-c`:
 
 ```bash
 cargo install cargo-c
