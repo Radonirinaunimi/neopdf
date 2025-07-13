@@ -1,0 +1,32 @@
+name: Run the C-API tests 📦
+
+on: [push]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  capi:
+    runs-on: ubuntu-latest
+    container: ghcr.io/${{ github.repository_owner }}/neopdf-container:latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install NeoPDF's C-API and C++ OOP Header 📦
+        env:
+          RUSTFLAGS: '-Cinstrument-coverage -Clink-dead-code'
+        run: |
+          cd neopdf_capi
+          # path to install the C++ OOP header
+          export CARGO_C_INSTALL_PREFIX=/usr/local
+          cargo cinstall --release --prefix=/usr/local/ --libdir=/usr/local/lib
+          ldconfig
+
+      - name: Test C++ examples 🚀
+        run: |
+          cd neopdf_capi/tests
+          # if `make` is too old, it doesn't support the `!=` operator
+          sed -i "s/\([a-zA-Z_]\+\) != \(.*\)$/echo \1 = \$(\2)/e" Makefile
+          # run tests with sanitizer
+          make CXXFLAGS="-O0 -ggdb -Wall -Wextra -Werror -fsanitize=address,undefined" test-examples
