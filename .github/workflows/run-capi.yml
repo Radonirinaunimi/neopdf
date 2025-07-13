@@ -9,7 +9,7 @@ defaults:
 jobs:
   capi:
     runs-on: ubuntu-latest
-    container: ghcr.io/radonirinaunimi/neopdf-container:latest
+    container: ghcr.io/radonirinaunimi/neopdf-container:sha-a2f7007
 
     steps:
       - uses: actions/checkout@v4
