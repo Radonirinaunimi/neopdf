@@ -26,7 +26,7 @@ pub fn convert_lhapdf_to_neopdf<P: AsRef<std::path::Path>>(
     let metadata = &members[0].0.clone();
     let grids: Vec<GridArray> = members
         .into_iter()
-        .map(|(_meta, pdf_data)| GridArray::new(pdf_data.subgrid_data, pdf_data.pids))
+        .map(|(_meta, knot_array)| knot_array)
         .collect();
 
     GridArrayCollection::compress(&grids, metadata, output_path)?;

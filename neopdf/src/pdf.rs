@@ -1,4 +1,4 @@
-use super::gridpdf::{GridArray, GridPDF, RangeParameters};
+use super::gridpdf::{GridPDF, RangeParameters};
 use super::metadata::MetaData;
 use super::parser::LhapdfSet;
 use ndarray::Array2;
@@ -29,8 +29,7 @@ impl PDF {
     /// A `PDF` instance representing the loaded PDF member.
     pub fn load(pdf_name: &str, member: usize) -> Self {
         let lhapdf_set = LhapdfSet::new(pdf_name);
-        let (info, pdf_data) = lhapdf_set.member(member);
-        let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
+        let (info, knot_array) = lhapdf_set.member(member);
 
         Self {
             grid_pdf: GridPDF::new(info, knot_array),
@@ -52,11 +51,10 @@ impl PDF {
     /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
     pub fn load_pdfs(pdf_name: &str) -> Vec<PDF> {
         let lhapdf_set = LhapdfSet::new(pdf_name);
-        lhapdf_set
-            .members()
+        (0..lhapdf_set.info.num_members as usize)
             .into_par_iter()
-            .map(|(info, pdf_data)| {
-                let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
+            .map(|idx| {
+                let (info, knot_array) = lhapdf_set.member(idx);
                 PDF {
                     grid_pdf: GridPDF::new(info, knot_array),
                 }
