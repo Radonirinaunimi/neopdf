@@ -7,3 +7,4 @@ pub mod metadata;
 pub mod parser;
 pub mod pdf;
 pub mod utils;
+pub mod writer;
