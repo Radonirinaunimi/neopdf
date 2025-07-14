@@ -1,5 +1,6 @@
 //! `neopdf` library
 
+pub mod converter;
 pub mod gridpdf;
 pub mod interpolation;
 pub mod manage;
