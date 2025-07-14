@@ -5,7 +5,16 @@ from itertools import product
 
 
 class TestPDFInterpolations:
-    @pytest.mark.parametrize("pdfname", ["NNPDF40_nnlo_as_01180", "MSHT20qed_an3lo"])
+    @pytest.mark.parametrize(
+        "pdfname",
+        [
+            "NNPDF40_nnlo_as_01180",
+            "MSHT20qed_an3lo",
+            "CT18NNLO_as_0118",
+            "NNPDFpol20_nnlo_as_01180",
+            "nNNPDF30_nlo_as_0118_A56_Z26",
+        ],
+    )
     @pytest.mark.parametrize("pid", [nf for nf in range(-5, 6) if nf != 0])
     def test_xfxq2(self, neo_pdf, lha_pdf, xq2_points, pdfname, pid):
         neopdf = neo_pdf(pdfname)
