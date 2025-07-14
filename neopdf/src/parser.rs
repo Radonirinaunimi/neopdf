@@ -1,8 +1,11 @@
-use super::manage::ManageData;
-use super::metadata::MetaData;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+
+use super::gridpdf::GridArray;
+use super::manage::{ManageData, PdfSetFormat};
+use super::metadata::MetaData;
+use super::writer::GridArrayReader;
 
 /// Represents the data for a single subgrid within a PDF data file.
 #[derive(Debug, Serialize, Deserialize)]
@@ -40,9 +43,16 @@ impl LhapdfSet {
     ///
     /// * `pdf_name` - The name of the PDF set (e.g., "NNPDF40_nnlo_as_01180").
     pub fn new(pdf_name: &str) -> Self {
-        let manager = ManageData::new(pdf_name);
-        let info_path = manager.info_path();
+        let manager = ManageData::new(pdf_name, PdfSetFormat::Lhapdf);
+
+        let pdfset_path = manager.set_path();
+        let info_path = pdfset_path.join(format!(
+            "{}.info",
+            pdfset_path.file_name().unwrap().to_str().unwrap()
+        ));
+
         let info: MetaData = Self::read_metadata(&info_path).unwrap();
+
         Self { manager, info }
     }
 
@@ -56,7 +66,13 @@ impl LhapdfSet {
     ///
     /// A tuple containing the `MetaData` and `PdfData` for the specified member.
     pub fn member(&self, member: usize) -> (MetaData, PdfData) {
-        let data_path = self.manager.dat_path(member);
+        let pdfset_path = self.manager.set_path();
+        let data_path = pdfset_path.join(format!(
+            "{}_{:04}.dat",
+            pdfset_path.file_name().unwrap().to_str().unwrap(),
+            member
+        ));
+
         let pdf_data = Self::read_data(&data_path);
         (self.info.clone(), pdf_data)
     }
@@ -171,6 +187,30 @@ impl LhapdfSet {
             subgrid_data,
             pids: flavors,
         }
+    }
+}
+
+/// Manages the loading and parsing of NeoPDF sets.
+pub struct NeopdfSet {
+    info: MetaData,
+    grid_reader: GridArrayReader,
+}
+
+impl NeopdfSet {
+    /// TODO
+    pub fn new(pdf_name: &str) -> Self {
+        let manager = ManageData::new(pdf_name, PdfSetFormat::Neopdf);
+        let neopdf_setpath = manager.set_path();
+        let grid_reader = GridArrayReader::from_file(neopdf_setpath).unwrap();
+        let info = grid_reader.metadata().as_ref().clone();
+
+        Self { info, grid_reader }
+    }
+
+    /// TODO
+    pub fn member(&self, member: usize) -> (MetaData, GridArray) {
+        let load_grid = self.grid_reader.load_grid(member).unwrap();
+        (self.info.clone(), load_grid.grid)
     }
 }
 
