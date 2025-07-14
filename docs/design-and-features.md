@@ -1,28 +1,101 @@
 # Design & Features
 
-NeoPDF is designed to be a modern, extensible, and high-performance library for PDF interpolation.
+`NeoPDF` is designed to be a modern, extensible, and high-performance library for PDF interpolation.
 This page details the physics and technical features, design rationale, and future plans.
 
 ## Summary of the Current Supported Features
 
-| Feature                        | Status      | Notes                                  |
-|------------------------------- |-------------|----------------------------------------|
-| Rust API                       | ✅          | Fully supported                        |
-| Python API                     | ✅          | Fully supported                        |
-| C/C++ API                      | ✅          | Fully supported                        |
-| Fortran API                    | ❌          | Not yet implemented                    |
-| Multi-flavor grids             | ❌          | Planned                                |
-| Nuclear PDFs interpolation     | ✅          | Fully supported                        |
-| Strong Coupling interpolation  | ✅          | Fully supported                        |
-| Different Hadronic states      | ✅          | Fully supported                        |
-| Custom interpolation           | ✅          | Supported (user-defined strategies)    |
-| Analytical DGLAP interpolation | ❌          | Planned                                |
+<div align="center">
+<table style="border-collapse: collapse; width: 100%; border: 1px solid #888;">
+  <tr>
+    <th style="border: 1px solid #888;"></th>
+    <th style="border: 1px solid #888;">Feature</th>
+    <th style="border: 1px solid #888;">Status</th>
+    <th style="border: 1px solid #888;">Notes</th>
+  </tr>
+  <tr>
+    <td rowspan="4" style="text-align: center; vertical-align: middle; border: 1px solid #888;">APIs & FFIs</td>
+    <td style="border: 1px solid #888;">Rust API</td>
+    <td style="border: 1px solid #888;">✅</td>
+    <td style="border: 1px solid #888;">Fully supported</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #888;">Python API</td>
+    <td style="border: 1px solid #888;">✅</td>
+    <td style="border: 1px solid #888;">Fully supported</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #888;">C/C++ API</td>
+    <td style="border: 1px solid #888;">✅</td>
+    <td style="border: 1px solid #888;">Fully supported</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #888;">Fortran API</td>
+    <td style="border: 1px solid #888;">❌</td>
+    <td style="border: 1px solid #888;">Not yet implemented</td>
+  </tr>
+  <tr>
+    <td rowspan="7" style="text-align: center; vertical-align: middle; border: 1px solid #888;">Features</td>
+    <td style="border: 1px solid #888;">Multi-flavor grids</td>
+    <td style="border: 1px solid #888;">❌</td>
+    <td style="border: 1px solid #888;">Planned</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #888;">Nuclear PDFs interpolation</td>
+    <td style="border: 1px solid #888;">✅</td>
+    <td style="border: 1px solid #888;">Fully supported</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #888;">Strong Coupling interpolation</td>
+    <td style="border: 1px solid #888;">✅</td>
+    <td style="border: 1px solid #888;">Fully supported</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #888;">Different Hadronic states</td>
+    <td style="border: 1px solid #888;">✅</td>
+    <td style="border: 1px solid #888;">Fully supported</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #888;">Custom interpolation</td>
+    <td style="border: 1px solid #888;">✅</td>
+    <td style="border: 1px solid #888;">Supported (user-defined strategies)</td>
+  </tr>
+  <tr>
+    <td style="border: 1px solid #888;">Analytical DGLAP interpolation</td>
+    <td style="border: 1px solid #888;">❌</td>
+    <td style="border: 1px solid #888;">Planned</td>
+  </tr>
+</table>
+</div>
 
 ## Physics Features
 
 ### Hadron Types and PDF Classification
 
-NeoPDF provides comprehensive support for different types of hadronic structure functions and most
+!!! danger "Multiple types of Convolutions"
+
+    PDF interpolations are mainly used to convolve with partonic cross-sections in order to
+    get theoretical predictions. For various technical reasons, these theory predictions are
+    stored in some fast interpolating grids. Mondern interpolating libraries such as
+    [PineAPPL](https://github.com/NNPDF/pineappl) supports grids with arbitrarily many
+    convolutions. For instance, it support processes such as:
+
+    ```bash
+    proton + proton -> Pion + Pion + X
+    ```
+
+    An interpolation grid of this kind needs two different convolution functions: a (polarised) PDF for the
+    protons and a fragmentation function for the pions. When users convolve this grid with the two functions,
+    they must either pass the functions in the right order to avoid calculating wrong predictions. `NeoPDF`
+    circumvents this issue by adding the following keys to the metadata:
+
+    ``` yaml
+    HadronPID: 2212/212/...
+    Polarized: true/false
+    SetType: PDf/Fragfn
+    ```
+
+`NeoPDF` provides comprehensive support for different types of hadronic structure functions and most
 importantly distinguish between them, which is essential for precision QCD calculations.
 
 - **Parton vs Nuclear PDFs**:
@@ -56,27 +129,9 @@ importantly distinguish between them, which is essential for precision QCD calcu
     This distinction is crucial for precision phenomenology, as the evolution equations and factorization
     theorems differ between the two cases.
 
-The [PineAPPL](https://github.com/NNPDF/pineappl) fast interpolation supports grids with arbitrarily many
-convolutions. For instance, it support processes such as:
-
-```bash
-proton + proton -> Pion + Pion + X
-```
-
-An interpolation grid of this kind needs two different convolution functions: a (polarised) PDF for the
-protons and a fragmentation function for the pions. When users convolve this grid with the two functions,
-they must either pass the functions in the right order to avoid calculating wrong predictions. NeoPDF
-circumvents this issue by adding the following keys to the metadata:
-
-``` yaml
-HadronPID: 2212/212/...
-Polarized: true/false
-SetType: PDf/Fragfn
-```
-
 ### Multi-Parameter Interpolations
 
-NeoPDF supports interpolation across multiple physical parameters:
+`NeoPDF` supports interpolation across multiple physical parameters:
 
 - **$\alpha_s(M_Z)$ Dependence**:
   The strong coupling constant $\alpha_s(M_Z)$ is a fundamental parameter of QCD that affects PDF
@@ -97,9 +152,9 @@ NeoPDF supports interpolation across multiple physical parameters:
 
 ### Multi-Flavor Grids (Planned)
 
-NeoPDF will support grids with varying numbers of active flavors $n_f$, providing a consistent
+`NeoPDF` will support grids with varying numbers of active flavors $n_f$, providing a consistent
 treatment of heavy quark effects across all scales. Advanced schemes like FONLL and ACOT require
-careful handling of flavor thresholds and mass effects. NeoPDF's multi-flavor support will enable:
+careful handling of flavor thresholds and mass effects. `NeoPDF`'s multi-flavor support will enable:
 
   - Precision predictions for heavy flavor production
   - Proper matching across flavor thresholds
@@ -118,7 +173,7 @@ interpolation will provide:
 
 ### Language Interoperability
 
-NeoPDF provides native APIs across multiple programming languages, enabling seamless integration
+`NeoPDF` provides native APIs across multiple programming languages, enabling seamless integration
 into diverse computational workflows:
 
 - **Native Rust API**:
@@ -138,7 +193,7 @@ into diverse computational workflows:
 
 ### No-Code Migration
 
-NeoPDF maintains API compatibility with LHAPDF, enabling seamless migration:
+`NeoPDF` maintains API compatibility with LHAPDF, enabling seamless migration:
 
 - **Drop-in Replacement**:
   Existing LHAPDF code can often be migrated by simply changing import statements, with no
@@ -153,7 +208,7 @@ without requiring extensive code rewrites or validation efforts.
 
 ### Thread and Memory Safety
 
-NeoPDF leverages Rust's safety guarantees for robust multi-threaded applications:
+`NeoPDF` leverages Rust's safety guarantees for robust multi-threaded applications:
 
 - **Memory Safety**:
   Rust's ownership system prevents common memory errors (use-after-free, double-free, data races)
@@ -169,7 +224,7 @@ NeoPDF leverages Rust's safety guarantees for robust multi-threaded applications
 
 ### Extensible Interpolation
 
-NeoPDF's modular architecture enables easy extension and customization:
+`NeoPDF`'s modular architecture enables easy extension and customization:
 
 - **Pluggable Interpolation Strategies**:
   The library supports multiple interpolation algorithms (bilinear, bicubic, tricubic, N-dimensional)
@@ -185,7 +240,7 @@ NeoPDF's modular architecture enables easy extension and customization:
 
 ### Performance Optimization
 
-NeoPDF is designed for high-performance computing environments:
+`NeoPDF` is designed for high-performance computing environments:
 
 - **Zero-Cost Abstractions**:
   Rust's compilation model ensures that high-level abstractions don't incur runtime overhead, providing
@@ -221,8 +276,12 @@ graph TD;
 
 ## Benchmark Against LHAPDF
 
-NeoPDF implements (log)-bicubic interpolation by default, with optional $N$-dimensional strategies. Lower-dimensional (bilinear, (log)-tricubic) are also available for performance tuning.
+`NeoPDF` implements (log)-bicubic interpolation by default, with optional $N$-dimensional strategies.
+Lower-dimensional (bilinear, (log)-tricubic) are also available for performance tuning.
 
-> **Precision**: The difference between NeoPDF and LHAPDF, using the default interpolation, is **below machine precision** for floating-point numbers.
+!!! success "Benchmark against LHAPDF"
+
+    The difference between NeoPDF and LHAPDF, using the default interpolation, is **below machine
+    precision** for floating-point numbers.
 
 ![diff_NNPDF40_nnlo_as_01180_flav21](https://github.com/user-attachments/assets/d47bfa13-9930-4247-89fb-f2c2eab68bd7)
