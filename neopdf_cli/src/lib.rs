@@ -1,18 +1,8 @@
 //! Command Line Interface (CLI) for `neopdf`
+//!
+//! This crate provides a command-line interface for converting LHAPDF sets to NeoPDF format
+//! and for combining multiple nuclear PDFs into a single NeoPDF file with A dependence.
 
-/// TODO
-#[must_use]
-pub const fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+mod converter;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use converter::main;

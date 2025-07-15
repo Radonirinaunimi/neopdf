@@ -12,6 +12,12 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
+clap = { version = "4.5", features = ["derive"] }
+neopdf = { path = "../neopdf" }
 
 [lints]
 workspace = true
+
+[[bin]]
+name = "neopdf_cli"
+path = "src/main.rs"
