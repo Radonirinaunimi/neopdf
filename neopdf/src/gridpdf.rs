@@ -235,13 +235,13 @@ pub struct SubGrid {
     /// Array of alpha_s values.
     pub alphas: Array1<f64>,
     /// The valid range for the `nucleons` parameter in this subgrid.
-    nucleons_range: ParamRange,
+    pub nucleons_range: ParamRange,
     /// The valid range for the `AlphaS` parameter in this subgrid.
-    alphas_range: ParamRange,
+    pub alphas_range: ParamRange,
     /// The valid range for the `x` parameter in this subgrid.
-    x_range: ParamRange,
+    pub x_range: ParamRange,
     /// The valid range for the `q2` parameter in this subgrid.
-    q2_range: ParamRange,
+    pub q2_range: ParamRange,
 }
 
 impl SubGrid {
