@@ -15,7 +15,7 @@ use regex::Regex;
 /// # Errors
 ///
 /// Returns an error if reading or writing fails.
-pub fn convert_lhapdf_to_neopdf<P: AsRef<std::path::Path>>(
+pub fn convert_lhapdf<P: AsRef<std::path::Path>>(
     pdf_name: &str,
     output_path: P,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -44,7 +44,7 @@ pub fn convert_lhapdf_to_neopdf<P: AsRef<std::path::Path>>(
 ///
 /// # Errors
 /// Returns an error if loading or writing fails, or if the sets are not compatible.
-pub fn combine_nuclear_pdfs_with_a_dependence<P: AsRef<std::path::Path>>(
+pub fn combine_lhapdf_npdfs<P: AsRef<std::path::Path>>(
     pdf_names: &[&str],
     output_path: P,
 ) -> Result<(), Box<dyn std::error::Error>> {

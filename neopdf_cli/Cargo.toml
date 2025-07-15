@@ -19,5 +19,5 @@ neopdf = { path = "../neopdf" }
 workspace = true
 
 [[bin]]
-name = "neopdf_cli"
+name = "neopdf"
 path = "src/main.rs"
