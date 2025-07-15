@@ -4,6 +4,21 @@ This crate provides a command-line interface (CLI) for the `neopdf`
 Rust library, allowing users to interact with its functionalities
 directly from the terminal.
 
+To read the metadata for a given PDF set:
+```bash
+neopdf read metadata --pdf-name NNPDF40_nnlo_as_01180
+```
+
+To get the number of subgrids a PDF contains:
+```bash
+neopdf read num_subgrids --pdf-name NNPDF40_nnlo_as_01180
+```
+
+To get the knot values for a given subgrid:
+```bash
+neopdf read subgrid_info --pdf-name NNPDF40_nnlo_as_01180 --member 0 --subgrid-index 1
+```
+
 To compute the interpolated function $xf (x, Q^2)$:
 ```bash
 neopdf compute xfx_q2 --pdf-name NNPDF40_nnlo_as_01180 --member 0 --pid 21 1e-3 10.0

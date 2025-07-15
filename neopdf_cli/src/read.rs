@@ -67,9 +67,9 @@ pub fn main(cli: ReadCli) {
         ReadCommands::SubgridInfo(args) => {
             let pdf = neopdf::pdf::PDF::load(&args.pdf_name, args.member);
             let subgrid = pdf.subgrid(args.subgrid_index);
-            println!("Nucleons: {:?}", subgrid.nucleons);
-            println!("Alphas: {:?}", subgrid.alphas);
-            println!("X values: {:?}", subgrid.xs);
+            println!("Nucleon Numbers A: {:?}", subgrid.nucleons);
+            println!("Alphas values: {:?}", subgrid.alphas);
+            println!("x values: {:?}", subgrid.xs);
             println!("Q2 values: {:?}", subgrid.q2s);
         }
     }
