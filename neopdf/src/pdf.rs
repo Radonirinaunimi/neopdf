@@ -1,12 +1,38 @@
+//! This module provides the high-level interface for working with PDF sets.
+//!
+//! It defines the [`PDF`] struct, which serves as the main entry point for accessing,
+//! interpolating, and retrieving metadata from PDF sets. The module abstracts over different
+//! PDF set formats (LHAPDF and NeoPDF) and provides convenient loader functions for both
+//! single and multiple PDF members.
+//!
+//! # Main Features
+//!
+//! - Unified interface for loading and accessing PDF sets from different formats.
+//! - Parallel loading of all PDF members for efficient batch operations.
+//! - High-level interpolation methods for PDF values and strong coupling constant (`alpha_s`).
+//! - Access to underlying grid data and metadata for advanced use cases.
+//!
+//! # Key Types
+//!
+//! - [`PDF`]: Represents a single PDF member, providing methods for interpolation and metadata access.
+//! - [`PdfSet`]: Trait for abstracting over different PDF set backends.
+//! - Loader functions: [`PDF::load`], [`PDF::load_pdfs`], and internal helpers for batch loading.
+//!
+//! See the documentation for [`PDF`] for more details on available methods and usage patterns.
 use super::gridpdf::{GridArray, GridPDF, RangeParameters};
 use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
 use ndarray::Array2;
 use rayon::prelude::*;
 
-/// TODO
+/// Trait for abstracting over different PDF set backends (e.g., LHAPDF, NeoPDF).
+///
+/// Provides a unified interface for accessing the number of members and retrieving individual
+/// members as metadata and grid arrays.
 trait PdfSet: Send + Sync {
+    /// Returns the number of members in the PDF set.
     fn num_members(&self) -> usize;
+    /// Retrieves the metadata and grid array for the specified member index.
     fn member(&self, idx: usize) -> (MetaData, GridArray);
 }
 
@@ -28,7 +54,16 @@ impl PdfSet for NeopdfSet {
     }
 }
 
-/// TODO
+/// Loads a single PDF member from a generic PDF set backend.
+///
+/// # Arguments
+///
+/// * `set` - The PDF set backend implementing [`PdfSet`].
+/// * `member` - The index of the member to load.
+///
+/// # Returns
+///
+/// A [`PDF`] instance for the specified member.
 fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
     let (info, knot_array) = set.member(member);
     PDF {
@@ -36,7 +71,15 @@ fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
     }
 }
 
-/// TODO
+/// Loads all PDF members from a generic PDF set backend in parallel.
+///
+/// # Arguments
+///
+/// * `set` - The PDF set backend implementing [`PdfSet`].
+///
+/// # Returns
+///
+/// A vector of [`PDF`] instances, one for each member in the set.
 fn pdfsets_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
     (0..set.num_members())
         .into_par_iter()

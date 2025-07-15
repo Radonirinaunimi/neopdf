@@ -1,3 +1,25 @@
+//! This module provides utilities for serializing, compressing, and efficiently accessing PDF grid data.
+//!
+//! It defines types and methods for writing and reading collections of [`GridArray`]s to and from
+//! compressed files, supporting both eager and lazy access patterns. The module is designed for
+//! efficient storage and retrieval of large PDF sets, with shared metadata and support for random
+//! access to individual members.
+//!
+//! # Main Features
+//!
+//! - Compression and decompression of multiple [`GridArray`]s with shared metadata using LZ4 and bincode serialization.
+//! - Random access to individual grid members without loading the entire collection into memory.
+//! - Lazy iteration over grid members for memory-efficient processing of large sets.
+//! - Extraction of metadata without full decompression.
+//!
+//! # Key Types
+//!
+//! - [`GridArrayWithMetadata`]: Container for a grid and its associated metadata.
+//! - [`GridArrayCollection`]: Static interface for compressing and decompressing collections of grids.
+//! - [`GridArrayReader`]: Provides random access to individual grids in a compressed file.
+//! - [`LazyGridArrayIterator`]: Enables lazy, sequential iteration over grid members.
+//!
+//! See the documentation for each type for more details on available methods and usage patterns.
 use lz4_flex::frame::{FrameDecoder, FrameEncoder};
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -7,18 +29,33 @@ use super::gridpdf::GridArray;
 use super::metadata::MetaData;
 use std::sync::Arc;
 
-/// Container for GridArray with shared metadata reference.
+/// Container for a [`GridArray`] with a shared reference to its associated metadata.
+///
+/// Used to bundle grid data and metadata together for convenient access after decompression
+/// or random access.
 #[derive(Debug)]
 pub struct GridArrayWithMetadata {
     pub grid: GridArray,
     pub metadata: Arc<MetaData>,
 }
 
-/// For storing multiple GridArrays with shared metadata.
+/// Static interface for compressing and decompressing of [`GridArray`]s with shared metadata.
+///
+/// Provides methods for writing, reading, and extracting metadata from compressed files.
 pub struct GridArrayCollection;
 
 impl GridArrayCollection {
-    /// TODO
+    /// Compresses and writes a collection of [`GridArray`]s and shared metadata to a file.
+    ///
+    /// # Arguments
+    ///
+    /// * `grids` - Slice of grid arrays to compress.
+    /// * `metadata` - Shared metadata for all grids.
+    /// * `path` - Output file path.
+    ///
+    /// # Returns
+    ///
+    /// `Ok(())` on success, or an error if writing fails.
     pub fn compress<P: AsRef<Path>>(
         grids: &[GridArray],
         metadata: &MetaData,
@@ -75,7 +112,15 @@ impl GridArrayCollection {
         Ok(())
     }
 
-    /// TODO
+    /// Decompresses and loads all [`GridArray`]s and shared metadata from a file.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Input file path.
+    ///
+    /// # Returns
+    ///
+    /// A vector of [`GridArrayWithMetadata`] on success, or an error if reading fails.
     pub fn decompress<P: AsRef<Path>>(
         path: P,
     ) -> Result<Vec<GridArrayWithMetadata>, Box<dyn std::error::Error>> {
@@ -115,7 +160,15 @@ impl GridArrayCollection {
         Ok(grids)
     }
 
-    /// Extract just the metadata from a compressed file without loading grids.
+    /// Extracts just the metadata from a compressed file without loading the grids.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Input file path.
+    ///
+    /// # Returns
+    ///
+    /// The [`MetaData`] struct on success, or an error if reading fails.
     pub fn extract_metadata<P: AsRef<Path>>(
         path: P,
     ) -> Result<MetaData, Box<dyn std::error::Error>> {
@@ -137,7 +190,9 @@ impl GridArrayCollection {
     }
 }
 
-/// Access a given member of the set without loading the entire objects.
+/// Provides random access to individual [`GridArray`]s in a compressed file without loading the entire collection.
+///
+/// Useful for efficient access to large PDF sets where only a subset of members is needed.
 pub struct GridArrayReader {
     data: Vec<u8>,
     metadata: Arc<MetaData>,
@@ -147,7 +202,15 @@ pub struct GridArrayReader {
 }
 
 impl GridArrayReader {
-    /// Create a new reader from a file.
+    /// Creates a new reader from a file, enabling random access to grid members.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Input file path.
+    ///
+    /// # Returns
+    ///
+    /// A [`GridArrayReader`] instance on success, or an error if reading fails.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
         let file = File::open(path)?;
         let buf_reader = BufReader::new(file);
@@ -182,22 +245,31 @@ impl GridArrayReader {
         })
     }
 
-    /// Get the number of GridArrays in the collection.
+    /// Returns the number of grid arrays in the collection.
     pub fn len(&self) -> usize {
         self.count as usize
     }
 
-    /// Check if the collection is empty.
+    /// Returns true if the collection is empty.
     pub fn is_empty(&self) -> bool {
         self.count == 0
     }
 
-    /// Get a reference to the shared metadata.
+    /// Returns a reference to the shared metadata.
     pub fn metadata(&self) -> &Arc<MetaData> {
         &self.metadata
     }
 
-    /// Load a specific GridArray by index.
+    /// Loads a specific [`GridArrayWithMetadata`] by index.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the grid to load.
+    ///
+    /// # Returns
+    ///
+    /// The requested [`GridArrayWithMetadata`] on success, or an error if the index is out
+    /// of bounds or reading fails.
     pub fn load_grid(
         &self,
         index: usize,
@@ -227,7 +299,9 @@ impl GridArrayReader {
     }
 }
 
-/// Lazily iterate over the PDF members.
+/// Iterator for lazily reading [`GridArrayWithMetadata`] members from a compressed file.
+///
+/// Useful for memory-efficient sequential processing of large PDF sets.
 pub struct LazyGridArrayIterator {
     cursor: std::io::Cursor<Vec<u8>>,
     remaining: u64,
@@ -236,7 +310,15 @@ pub struct LazyGridArrayIterator {
 }
 
 impl LazyGridArrayIterator {
-    /// Create a new lazy iterator from a reader.
+    /// Creates a new lazy iterator from a reader.
+    ///
+    /// # Arguments
+    ///
+    /// * `reader` - Any type implementing [`Read`].
+    ///
+    /// # Returns
+    ///
+    /// A [`LazyGridArrayIterator`] instance on success, or an error if reading fails.
     pub fn new<R: Read>(reader: R) -> Result<Self, Box<dyn std::error::Error>> {
         let mut decoder = FrameDecoder::new(reader);
         let mut decompressed = Vec::new();
@@ -260,14 +342,22 @@ impl LazyGridArrayIterator {
         })
     }
 
-    /// Create from file path.
+    /// Creates a new lazy iterator from a file path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Input file path.
+    ///
+    /// # Returns
+    ///
+    /// A [`LazyGridArrayIterator`] instance on success, or an error if reading fails.
     pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
         let file = File::open(path)?;
         let buf_reader = BufReader::new(file);
         Self::new(buf_reader)
     }
 
-    /// Get a reference to the shared metadata.
+    /// Returns a reference to the shared metadata.
     pub fn metadata(&self) -> &Arc<MetaData> {
         &self.metadata
     }
