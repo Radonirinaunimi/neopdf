@@ -19,7 +19,7 @@
 //! - Loader functions: [`PDF::load`], [`PDF::load_pdfs`], and internal helpers for batch loading.
 //!
 //! See the documentation for [`PDF`] for more details on available methods and usage patterns.
-use super::gridpdf::{GridArray, GridPDF, RangeParameters};
+use super::gridpdf::{GridArray, GridPDF, RangeParameters, SubGrid};
 use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
 use ndarray::Array2;
@@ -192,15 +192,37 @@ impl PDF {
         self.grid_pdf.alphas_q2(q2)
     }
 
-    /// Returns the metadata for the PDF set.
+    /// Returns a reference to the PDF metadata.
     ///
     /// Abstraction to the `GridPDF::info` method.
     ///
     /// # Returns
     ///
     /// A `MetaData` struct containing information about the PDF set.
-    pub fn info(&self) -> &MetaData {
+    pub fn metadata(&self) -> &MetaData {
         self.grid_pdf.metadata()
+    }
+
+    /// Returns the number of subgrids in the PDF set.
+    ///
+    /// # Returns
+    ///
+    /// The number of subgrids.
+    pub fn num_subgrids(&self) -> usize {
+        self.grid_pdf.knot_array.subgrids.len()
+    }
+
+    /// Returns a reference to the subgrid at the given index.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the subgrid.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the `SubGrid`.
+    pub fn subgrid(&self, index: usize) -> &SubGrid {
+        &self.grid_pdf.knot_array.subgrids[index]
     }
 
     /// Retrieves the PDF value (xf) at a specific knot point in the grid.

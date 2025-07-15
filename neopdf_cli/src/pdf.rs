@@ -6,7 +6,7 @@ use clap::{Args, Parser, Subcommand};
 use std::process;
 
 /// Command-line interface for PDF and `alpha_s` evaluation.
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 #[command(author, version, about, long_about = None)]
 pub struct PdfCli {
     #[command(subcommand)]
@@ -14,7 +14,7 @@ pub struct PdfCli {
 }
 
 /// Subcommands for PDF and `alpha_s` evaluation.
-#[derive(Subcommand)]
+#[derive(Subcommand, Clone)]
 pub enum PdfCommands {
     /// Evaluate xf(x, Q2, pid, ...) for a given set, member, and input values.
     #[command(name = "xfx_q2")]
@@ -25,7 +25,7 @@ pub enum PdfCommands {
 }
 
 /// Arguments for the xfxQ2 subcommand.
-#[derive(Args)]
+#[derive(Args, Clone)]
 pub struct XfxQ2Args {
     /// Name of the PDF set (`LHAPDF` or `NeoPDF` file)
     #[arg(short, long)]
@@ -42,7 +42,7 @@ pub struct XfxQ2Args {
 }
 
 /// Arguments for the `alphas_q2` subcommand.
-#[derive(Args)]
+#[derive(Args, Clone)]
 pub struct AlphasQ2Args {
     /// Name of the PDF set (LHAPDF or `NeoPDF` file)
     #[arg(short, long)]
