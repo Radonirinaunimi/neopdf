@@ -51,7 +51,17 @@ fn help() {
 }
 
 #[test]
-fn read_metadata() {
+fn read_metadata_lhapdf() {
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args(["read", "metadata", "--pdf-name", "NNPDF40_nnlo_as_01180"])
+        .assert()
+        .success()
+        .stdout(METADATA);
+}
+
+#[test]
+fn read_metadata_neopdf() {
     Command::cargo_bin("neopdf")
         .unwrap()
         .args([
@@ -66,7 +76,22 @@ fn read_metadata() {
 }
 
 #[test]
-fn read_num_subgrids() {
+fn read_num_subgrids_lhapdf() {
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "read",
+            "num_subgrids",
+            "--pdf-name",
+            "NNPDF40_nnlo_as_01180",
+        ])
+        .assert()
+        .success()
+        .stdout("2\n");
+}
+
+#[test]
+fn read_num_subgrids_neopdf() {
     Command::cargo_bin("neopdf")
         .unwrap()
         .args([
@@ -81,7 +106,26 @@ fn read_num_subgrids() {
 }
 
 #[test]
-fn read_num_subgrid_info() {
+fn read_num_subgrid_info_lhapdf() {
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "read",
+            "subgrid_info",
+            "--pdf-name",
+            "NNPDF40_nnlo_as_01180",
+            "--member",
+            "0",
+            "--subgrid-index",
+            "0",
+        ])
+        .assert()
+        .success()
+        .stdout(SUBGRID_INFO);
+}
+
+#[test]
+fn read_num_subgrid_info_neopdf() {
     Command::cargo_bin("neopdf")
         .unwrap()
         .args([
