@@ -5,12 +5,14 @@
 
 use clap::{Parser, Subcommand};
 use neopdf::converter;
+use std::fs::File;
+use std::io::{self, BufRead};
 
 /// Command-line interface for `NeoPDF` conversion utilities.
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct Cli {
-    /// The subcommand to run.
+    /// TODO
     #[command(subcommand)]
     pub command: Commands,
 }
@@ -30,8 +32,15 @@ pub enum Commands {
     /// Combine multiple nuclear PDFs into a single `NeoPDF` with A dependence.
     Combine {
         /// List of PDF set names (each with a different A).
-        #[arg(short = 'n', long = "pdf-names", required = true)]
-        pdf_names: Vec<String>,
+        #[arg(
+            short = 'n',
+            long = "pdf-names",
+            required_unless_present = "names_file"
+        )]
+        pdf_names: Option<Vec<String>>,
+        /// Path to a file containing PDF set names, one per line.
+        #[arg(short = 'f', long = "names-file", conflicts_with = "pdf_names")]
+        names_file: Option<String>,
         /// Output path for the combined `NeoPDF` file.
         #[arg(short, long)]
         output: String,
@@ -49,9 +58,25 @@ pub fn main(cli: Cli) {
                 std::process::exit(1);
             }
         }
-        Commands::Combine { pdf_names, output } => {
-            let names: Vec<&str> = pdf_names.iter().map(std::string::String::as_str).collect();
-            if let Err(err) = converter::combine_lhapdf_npdfs(&names, output) {
+        Commands::Combine {
+            pdf_names,
+            names_file,
+            output,
+        } => {
+            let names: Vec<String> = if let Some(file_path) = names_file {
+                let file = File::open(file_path).expect("Could not open names file");
+                io::BufReader::new(file)
+                    .lines()
+                    .filter_map(|line| line.ok())
+                    .collect()
+            } else if let Some(names_vec) = pdf_names {
+                names_vec.to_vec()
+            } else {
+                eprintln!("Error: Either --pdf-names or --names-file must be provided.");
+                std::process::exit(1);
+            };
+            let names_str: Vec<&str> = names.iter().map(std::string::String::as_str).collect();
+            if let Err(err) = converter::combine_lhapdf_npdfs(&names_str, output) {
                 eprintln!("Error: {err}");
                 std::process::exit(1);
             }

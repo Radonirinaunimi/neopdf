@@ -1,5 +1,5 @@
 use crate::gridpdf::{GridArray, SubGrid};
-use crate::metadata::MetaData;
+use crate::metadata::{InterpolatorType, MetaData};
 use crate::parser::LhapdfSet;
 use crate::writer::GridArrayCollection;
 use ndarray::{concatenate, Array1, Axis};
@@ -88,6 +88,7 @@ pub fn combine_lhapdf_npdfs<P: AsRef<std::path::Path>>(
     let mut meta = all_members[0][0].0.clone();
     meta.set_desc = format!("Combined nuclear PDFs: {}", pdf_names.join(", "));
     meta.num_members = num_members as u32;
+    meta.interpolator_type = InterpolatorType::LogTricubic;
 
     for member_idx in 0..num_members {
         // For each set, get the GridArray for this member
