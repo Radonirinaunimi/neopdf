@@ -65,6 +65,7 @@ impl GridArrayCollection {
         let buf_writer = BufWriter::new(file);
         let mut encoder = FrameEncoder::new(buf_writer);
 
+        // Write metadata
         let metadata_serialized = bincode::serialize(metadata)?;
         let metadata_size = metadata_serialized.len() as u64;
 
@@ -72,35 +73,40 @@ impl GridArrayCollection {
         encoder.write_all(&metadata_size_bytes)?;
         encoder.write_all(&metadata_serialized)?;
 
+        // Write number of grids
         let count = grids.len() as u64;
         let count_bytes = bincode::serialize(&count)?;
         encoder.write_all(&count_bytes)?;
 
+        // Serialize all grids first
         let mut serialized_grids = Vec::new();
         for grid in grids {
             let serialized = bincode::serialize(grid)?;
             serialized_grids.push(serialized);
         }
 
+        // Calculate offsets relative to start of data section
         let mut offsets = Vec::new();
         let mut current_offset = 0u64;
 
-        let offset_table_size = (serialized_grids.len() * 8) as u64;
-        current_offset += 8 + offset_table_size;
-
+        // Each grid entry has: 8 bytes for size + data
         for serialized in &serialized_grids {
             offsets.push(current_offset);
-            current_offset += 8;
-            current_offset += serialized.len() as u64;
+            current_offset += 8; // size field
+            current_offset += serialized.len() as u64; // data
         }
 
+        // Write offset table size and offsets
+        let offset_table_size = (serialized_grids.len() * 8) as u64;
         let offset_table_size_bytes = bincode::serialize(&offset_table_size)?;
         encoder.write_all(&offset_table_size_bytes)?;
+
         for offset in &offsets {
             let offset_bytes = bincode::serialize(offset)?;
             encoder.write_all(&offset_bytes)?;
         }
 
+        // Write grid data
         for serialized in &serialized_grids {
             let size = serialized.len() as u64;
             let size_bytes = bincode::serialize(&size)?;
@@ -133,18 +139,26 @@ impl GridArrayCollection {
 
         let mut cursor = std::io::Cursor::new(decompressed);
 
+        // Read metadata
         let metadata_size: u64 = bincode::deserialize_from(&mut cursor)?;
         let mut metadata_bytes = vec![0u8; metadata_size as usize];
         cursor.read_exact(&mut metadata_bytes)?;
         let metadata: MetaData = bincode::deserialize(&metadata_bytes)?;
         let shared_metadata = Arc::new(metadata);
-
         let count: u64 = bincode::deserialize_from(&mut cursor)?;
 
-        let offset_table_size: u64 = bincode::deserialize_from(&mut cursor)?;
-        cursor.set_position(cursor.position() + offset_table_size);
-        let mut grids = Vec::with_capacity(count as usize);
+        // Read offset table size (but don't skip it!)
+        let _offset_table_size: u64 = bincode::deserialize_from(&mut cursor)?;
 
+        // Read the actual offsets
+        let mut offsets = Vec::with_capacity(count as usize);
+        for _ in 0..count {
+            let offset: u64 = bincode::deserialize_from(&mut cursor)?;
+            offsets.push(offset);
+        }
+
+        // Now read the grid data
+        let mut grids = Vec::with_capacity(count as usize);
         for _ in 0..count {
             let size: u64 = bincode::deserialize_from(&mut cursor)?;
             let mut grid_bytes = vec![0u8; size as usize];
@@ -221,6 +235,7 @@ impl GridArrayReader {
 
         let mut cursor = std::io::Cursor::new(&data);
 
+        // Read metadata
         let metadata_size: u64 = bincode::deserialize_from(&mut cursor)?;
         let mut metadata_bytes = vec![0u8; metadata_size as usize];
         cursor.read_exact(&mut metadata_bytes)?;
@@ -228,6 +243,10 @@ impl GridArrayReader {
         let shared_metadata = Arc::new(metadata);
         let count: u64 = bincode::deserialize_from(&mut cursor)?;
 
+        // Read offset table size (but don't skip it!)
+        let _offset_table_size: u64 = bincode::deserialize_from(&mut cursor)?;
+
+        // Read the actual offsets
         let mut offsets = Vec::with_capacity(count as usize);
         for _ in 0..count {
             let offset: u64 = bincode::deserialize_from(&mut cursor)?;
