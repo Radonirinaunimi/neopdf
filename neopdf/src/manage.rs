@@ -26,16 +26,11 @@ pub struct ManageData {
 impl ManageData {
     pub fn new(set_name: &str, format: PdfSetFormat) -> Self {
         let data_path = Self::get_data_path();
-
-        let effective_set_name = match format {
-            PdfSetFormat::Neopdf => format!("{}.neopdf.lz4", set_name),
-            _ => set_name.to_string(),
-        };
-        let xpdf_path = data_path.join(&effective_set_name);
+        let xpdf_path = data_path.join(set_name);
 
         let manager = Self {
             neopdf_path: data_path,
-            set_name: effective_set_name,
+            set_name: set_name.to_string(),
             pdfset_path: xpdf_path,
             pdfset_format: format,
         };

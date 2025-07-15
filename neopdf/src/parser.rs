@@ -191,7 +191,7 @@ impl LhapdfSet {
 
 /// Manages the loading and parsing of NeoPDF sets.
 pub struct NeopdfSet {
-    info: MetaData,
+    pub info: MetaData,
     grid_reader: GridArrayReader,
 }
 

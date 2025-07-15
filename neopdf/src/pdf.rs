@@ -1,8 +1,53 @@
-use super::gridpdf::{GridPDF, RangeParameters};
+use super::gridpdf::{GridArray, GridPDF, RangeParameters};
 use super::metadata::MetaData;
-use super::parser::LhapdfSet;
+use super::parser::{LhapdfSet, NeopdfSet};
 use ndarray::Array2;
 use rayon::prelude::*;
+
+/// TODO
+trait PdfSet: Send + Sync {
+    fn num_members(&self) -> usize;
+    fn member(&self, idx: usize) -> (MetaData, GridArray);
+}
+
+impl PdfSet for LhapdfSet {
+    fn num_members(&self) -> usize {
+        self.info.num_members as usize
+    }
+    fn member(&self, idx: usize) -> (MetaData, GridArray) {
+        self.member(idx)
+    }
+}
+
+impl PdfSet for NeopdfSet {
+    fn num_members(&self) -> usize {
+        self.info.num_members as usize
+    }
+    fn member(&self, idx: usize) -> (MetaData, GridArray) {
+        self.member(idx)
+    }
+}
+
+/// TODO
+fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
+    let (info, knot_array) = set.member(member);
+    PDF {
+        grid_pdf: GridPDF::new(info, knot_array),
+    }
+}
+
+/// TODO
+fn pdfsets_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
+    (0..set.num_members())
+        .into_par_iter()
+        .map(|idx| {
+            let (info, knot_array) = set.member(idx);
+            PDF {
+                grid_pdf: GridPDF::new(info, knot_array),
+            }
+        })
+        .collect()
+}
 
 /// Represents a Parton Distribution Function (PDF) set.
 ///
@@ -28,11 +73,10 @@ impl PDF {
     ///
     /// A `PDF` instance representing the loaded PDF member.
     pub fn load(pdf_name: &str, member: usize) -> Self {
-        let lhapdf_set = LhapdfSet::new(pdf_name);
-        let (info, knot_array) = lhapdf_set.member(member);
-
-        Self {
-            grid_pdf: GridPDF::new(info, knot_array),
+        if pdf_name.ends_with(".neopdf.lz4") {
+            pdfset_loader(NeopdfSet::new(pdf_name), member)
+        } else {
+            pdfset_loader(LhapdfSet::new(pdf_name), member)
         }
     }
 
@@ -50,16 +94,11 @@ impl PDF {
     ///
     /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
     pub fn load_pdfs(pdf_name: &str) -> Vec<PDF> {
-        let lhapdf_set = LhapdfSet::new(pdf_name);
-        (0..lhapdf_set.info.num_members as usize)
-            .into_par_iter()
-            .map(|idx| {
-                let (info, knot_array) = lhapdf_set.member(idx);
-                PDF {
-                    grid_pdf: GridPDF::new(info, knot_array),
-                }
-            })
-            .collect()
+        if pdf_name.ends_with(".neopdf.lz4") {
+            pdfsets_loader(NeopdfSet::new(pdf_name))
+        } else {
+            pdfsets_loader(LhapdfSet::new(pdf_name))
+        }
     }
 
     /// Interpolates the PDF value (xf) for a given nucleon, alphas, flavor, x, and Q2.
