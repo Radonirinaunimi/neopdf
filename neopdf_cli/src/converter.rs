@@ -41,8 +41,7 @@ pub enum Commands {
 /// Entry point for the `NeoPDF` CLI.
 ///
 /// Parses command-line arguments and dispatches to the appropriate subcommand handler.
-pub fn main() {
-    let cli = Cli::parse();
+pub fn main(cli: Cli) {
     match &cli.command {
         Commands::Convert { pdf_name, output } => {
             if let Err(err) = converter::convert_lhapdf(pdf_name, output) {

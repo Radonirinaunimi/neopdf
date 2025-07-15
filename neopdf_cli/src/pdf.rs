@@ -1,11 +1,11 @@
-//! CLI logic for evaluating PDF values (xfxQ2) and alpha_s(Q2) for a given set, member, and kinematics.
+//! CLI logic for evaluating PDF values (xfxQ2) and (alphasQ2) for a given set, member, and kinematics.
 //!
-//! This module provides subcommands for evaluating PDF values and alpha_s at specified kinematic points.
+//! This module provides subcommands for evaluating PDF values and `alpha_s` at specified kinematic points.
 
 use clap::{Args, Parser, Subcommand};
 use std::process;
 
-/// Command-line interface for PDF and alpha_s evaluation.
+/// Command-line interface for PDF and `alpha_s` evaluation.
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 pub struct PdfCli {
@@ -13,19 +13,21 @@ pub struct PdfCli {
     pub command: PdfCommands,
 }
 
-/// Subcommands for PDF and alpha_s evaluation.
+/// Subcommands for PDF and `alpha_s` evaluation.
 #[derive(Subcommand)]
 pub enum PdfCommands {
     /// Evaluate xf(x, Q2, pid, ...) for a given set, member, and input values.
+    #[command(name = "xfx_q2")]
     XfxQ2(XfxQ2Args),
-    /// Evaluate alpha_s(Q2) for a given set, member, and Q2 value.
+    /// Evaluate `alphasQ2` for a given set, member, and Q2 value.
+    #[command(name = "alphas_q2")]
     AlphasQ2(AlphasQ2Args),
 }
 
 /// Arguments for the xfxQ2 subcommand.
 #[derive(Args)]
 pub struct XfxQ2Args {
-    /// Name of the PDF set (LHAPDF or NeoPDF file)
+    /// Name of the PDF set (`LHAPDF` or `NeoPDF` file)
     #[arg(short, long)]
     pub pdf_name: String,
     /// Member index (0-based)
@@ -39,10 +41,10 @@ pub struct XfxQ2Args {
     pub inputs: Vec<f64>,
 }
 
-/// Arguments for the alphas_q2 subcommand.
+/// Arguments for the `alphas_q2` subcommand.
 #[derive(Args)]
 pub struct AlphasQ2Args {
-    /// Name of the PDF set (LHAPDF or NeoPDF file)
+    /// Name of the PDF set (LHAPDF or `NeoPDF` file)
     #[arg(short, long)]
     pub pdf_name: String,
     /// Member index (0-based)
@@ -54,8 +56,7 @@ pub struct AlphasQ2Args {
 }
 
 /// Entry point for the pdf CLI.
-pub fn main() {
-    let cli = PdfCli::parse();
+pub fn main(cli: PdfCli) {
     match &cli.command {
         PdfCommands::XfxQ2(args) => {
             let pdf = neopdf::pdf::PDF::load(&args.pdf_name, args.member);

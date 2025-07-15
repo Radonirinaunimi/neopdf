@@ -4,6 +4,16 @@ This crate provides a command-line interface (CLI) for the `neopdf`
 Rust library, allowing users to interact with its functionalities
 directly from the terminal.
 
+To compute the interpolated function $xf (x, Q^2)$:
+```bash
+neopdf pdf xfx_q2 --pdf-name NNPDF40_nnlo_as_01180 --member 0 --pid 21 1e-3 10.0
+```
+
+Similarly, to compute $\alpha_s(Q^2)$:
+```bash
+neopdf pdf alphas_q2 --pdf-name NNPDF40_nnlo_as_01180 --member 0 --q2 10
+```
+
 To convert a given LHAPDF set into the new format:
 ```bash
 neopdf convert --pdf-name NNPDF40_nnlo_as_01180 --output output.neopdf.lz4

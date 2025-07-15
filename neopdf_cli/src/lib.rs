@@ -32,7 +32,7 @@ pub enum TopLevelCommand {
 pub fn main() {
     let cli = Cli::parse();
     match cli.command {
-        TopLevelCommand::Convert(_) => converter::main(),
-        TopLevelCommand::Pdf(_) => pdf::main(),
+        TopLevelCommand::Convert(args) => converter::main(args),
+        TopLevelCommand::Pdf(args) => pdf::main(args),
     }
 }
