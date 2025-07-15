@@ -1,4 +1,4 @@
-# Design & Features
+# Features
 
 `NeoPDF` is designed to be a modern, extensible, and high-performance library for PDF interpolation.
 This page details the physics and technical features, design rationale, and future plans.
@@ -86,8 +86,9 @@ This page details the physics and technical features, design rationale, and futu
 
     An interpolation grid of this kind needs two different convolution functions: a (polarised) PDF for the
     protons and a fragmentation function for the pions. When users convolve this grid with the two functions,
-    they must either pass the functions in the right order to avoid calculating wrong predictions. `NeoPDF`
-    circumvents this issue by adding the following keys to the metadata:
+    they must either pass the functions in the right order to avoid calculating wrong predictions
+    (see this [issue](https://gitlab.com/hepcedar/lhapdf/-/issues/79) for more details). `NeoPDF` circumvents
+    this issue by adding the following keys to the metadata:
 
     ``` yaml
     HadronPID: 2212/212/...

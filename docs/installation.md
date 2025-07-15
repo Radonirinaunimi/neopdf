@@ -49,7 +49,7 @@ To build the C-API from source, first install `cargo-c`:
 cargo install cargo-c
 ```
 
-Then run the following command:
+Then go into the `neopdf_capi` directory and run the following command:
 
 ```bash
 export CARGO_C_INSTALL_PREFIX=${prefix} # Needed if you want the OOP C++ header
@@ -65,6 +65,20 @@ export PKG_CONFIG_PATH=${prefix}/lib/pkgconfig:$PKG_CONFIG_PATH
 ```
 
 Remember to source your shell configuration or restart your terminal for the changes to take effect.
+
+---
+
+## CLI Tool
+
+To build and install the NeoPDF command-line interface (CLI) from source, simply run:
+
+```bash
+cargo install --path neopdf_cli --debug
+```
+
+This will compile the CLI in debug mode and make the `neopdf` command available in your
+cargo bin directory (usually `~/.cargo/bin`). You can then run `neopdf --help` to see
+the available commands.
 
 !!! note "Note on where to store PDF sets"
 

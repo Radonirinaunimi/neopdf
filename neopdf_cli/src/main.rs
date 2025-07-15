@@ -1,10 +1,8 @@
-//! Command Line Interface (CLI) for `neopdf`
-//!
-//! This crate provides a command-line interface for converting LHAPDF sets to `NeoPDF` format,
-//! combining nuclear PDFs, and evaluating PDF values and `alpha_s` at given kinematics.
+//! Launches the `NeoPDF` command-line interface (CLI).
 
 mod converter;
 mod pdf;
+mod read;
 
 use clap::{Parser, Subcommand};
 
@@ -24,6 +22,8 @@ pub enum TopLevelCommand {
     Write(converter::Cli),
     /// Evaluate PDF values and `alpha_s` at given kinematics
     Compute(pdf::PdfCli),
+    /// Commands for reading PDF set information.
+    Read(read::ReadCli),
 }
 
 /// Entry point for the `NeoPDF` CLI.
@@ -34,5 +34,6 @@ pub fn main() {
     match cli.command {
         TopLevelCommand::Write(args) => converter::main(args),
         TopLevelCommand::Compute(args) => pdf::main(args),
+        TopLevelCommand::Read(args) => read::main(args),
     }
 }

@@ -1,8 +1,96 @@
-use super::gridpdf::{GridArray, GridPDF, RangeParameters};
+//! This module provides the high-level interface for working with PDF sets.
+//!
+//! It defines the [`PDF`] struct, which serves as the main entry point for accessing,
+//! interpolating, and retrieving metadata from PDF sets. The module abstracts over different
+//! PDF set formats (LHAPDF and NeoPDF) and provides convenient loader functions for both
+//! single and multiple PDF members.
+//!
+//! # Main Features
+//!
+//! - Unified interface for loading and accessing PDF sets from different formats.
+//! - Parallel loading of all PDF members for efficient batch operations.
+//! - High-level interpolation methods for PDF values and strong coupling constant (`alpha_s`).
+//! - Access to underlying grid data and metadata for advanced use cases.
+//!
+//! # Key Types
+//!
+//! - [`PDF`]: Represents a single PDF member, providing methods for interpolation and metadata access.
+//! - [`PdfSet`]: Trait for abstracting over different PDF set backends.
+//! - Loader functions: [`PDF::load`], [`PDF::load_pdfs`], and internal helpers for batch loading.
+//!
+//! See the documentation for [`PDF`] for more details on available methods and usage patterns.
+use super::gridpdf::{GridArray, GridPDF, RangeParameters, SubGrid};
 use super::metadata::MetaData;
-use super::parser::LhapdfSet;
+use super::parser::{LhapdfSet, NeopdfSet};
 use ndarray::Array2;
 use rayon::prelude::*;
+
+/// Trait for abstracting over different PDF set backends (e.g., LHAPDF, NeoPDF).
+///
+/// Provides a unified interface for accessing the number of members and retrieving individual
+/// members as metadata and grid arrays.
+trait PdfSet: Send + Sync {
+    /// Returns the number of members in the PDF set.
+    fn num_members(&self) -> usize;
+    /// Retrieves the metadata and grid array for the specified member index.
+    fn member(&self, idx: usize) -> (MetaData, GridArray);
+}
+
+impl PdfSet for LhapdfSet {
+    fn num_members(&self) -> usize {
+        self.info.num_members as usize
+    }
+    fn member(&self, idx: usize) -> (MetaData, GridArray) {
+        self.member(idx)
+    }
+}
+
+impl PdfSet for NeopdfSet {
+    fn num_members(&self) -> usize {
+        self.info.num_members as usize
+    }
+    fn member(&self, idx: usize) -> (MetaData, GridArray) {
+        self.member(idx)
+    }
+}
+
+/// Loads a single PDF member from a generic PDF set backend.
+///
+/// # Arguments
+///
+/// * `set` - The PDF set backend implementing [`PdfSet`].
+/// * `member` - The index of the member to load.
+///
+/// # Returns
+///
+/// A [`PDF`] instance for the specified member.
+fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
+    let (info, knot_array) = set.member(member);
+    PDF {
+        grid_pdf: GridPDF::new(info, knot_array),
+    }
+}
+
+/// Loads all PDF members from a generic PDF set backend in parallel.
+///
+/// # Arguments
+///
+/// * `set` - The PDF set backend implementing [`PdfSet`].
+///
+/// # Returns
+///
+/// A vector of [`PDF`] instances, one for each member in the set.
+fn pdfsets_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
+    (0..set.num_members())
+        .into_par_iter()
+        .map(|idx| {
+            let (info, knot_array) = set.member(idx);
+            PDF {
+                grid_pdf: GridPDF::new(info, knot_array),
+            }
+        })
+        .collect()
+}
 
 /// Represents a Parton Distribution Function (PDF) set.
 ///
@@ -28,12 +116,10 @@ impl PDF {
     ///
     /// A `PDF` instance representing the loaded PDF member.
     pub fn load(pdf_name: &str, member: usize) -> Self {
-        let lhapdf_set = LhapdfSet::new(pdf_name);
-        let (info, pdf_data) = lhapdf_set.member(member);
-        let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
-
-        Self {
-            grid_pdf: GridPDF::new(info, knot_array),
+        if pdf_name.ends_with(".neopdf.lz4") {
+            pdfset_loader(NeopdfSet::new(pdf_name), member)
+        } else {
+            pdfset_loader(LhapdfSet::new(pdf_name), member)
         }
     }
 
@@ -51,17 +137,11 @@ impl PDF {
     ///
     /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
     pub fn load_pdfs(pdf_name: &str) -> Vec<PDF> {
-        let lhapdf_set = LhapdfSet::new(pdf_name);
-        lhapdf_set
-            .members()
-            .into_par_iter()
-            .map(|(info, pdf_data)| {
-                let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
-                PDF {
-                    grid_pdf: GridPDF::new(info, knot_array),
-                }
-            })
-            .collect()
+        if pdf_name.ends_with(".neopdf.lz4") {
+            pdfsets_loader(NeopdfSet::new(pdf_name))
+        } else {
+            pdfsets_loader(LhapdfSet::new(pdf_name))
+        }
     }
 
     /// Interpolates the PDF value (xf) for a given nucleon, alphas, flavor, x, and Q2.
@@ -112,15 +192,37 @@ impl PDF {
         self.grid_pdf.alphas_q2(q2)
     }
 
-    /// Returns the metadata for the PDF set.
+    /// Returns a reference to the PDF metadata.
     ///
     /// Abstraction to the `GridPDF::info` method.
     ///
     /// # Returns
     ///
     /// A `MetaData` struct containing information about the PDF set.
-    pub fn info(&self) -> &MetaData {
+    pub fn metadata(&self) -> &MetaData {
         self.grid_pdf.metadata()
+    }
+
+    /// Returns the number of subgrids in the PDF set.
+    ///
+    /// # Returns
+    ///
+    /// The number of subgrids.
+    pub fn num_subgrids(&self) -> usize {
+        self.grid_pdf.knot_array.subgrids.len()
+    }
+
+    /// Returns a reference to the subgrid at the given index.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the subgrid.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the `SubGrid`.
+    pub fn subgrid(&self, index: usize) -> &SubGrid {
+        &self.grid_pdf.knot_array.subgrids[index]
     }
 
     /// Retrieves the PDF value (xf) at a specific knot point in the grid.

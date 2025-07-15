@@ -6,15 +6,25 @@ use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use tar::Archive;
 
+/// TODO
+#[derive(Debug, Deserialize, Serialize)]
+pub enum PdfSetFormat {
+    /// TODO
+    Lhapdf,
+    /// TODO
+    Neopdf,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ManageData {
     neopdf_path: PathBuf,
     set_name: String,
     pdfset_path: PathBuf,
+    pdfset_format: PdfSetFormat,
 }
 
 impl ManageData {
-    pub fn new(set_name: &str) -> Self {
+    pub fn new(set_name: &str, format: PdfSetFormat) -> Self {
         let data_path = Self::get_data_path();
         let xpdf_path = data_path.join(set_name);
 
@@ -22,6 +32,7 @@ impl ManageData {
             neopdf_path: data_path,
             set_name: set_name.to_string(),
             pdfset_path: xpdf_path,
+            pdfset_format: format,
         };
         manager.ensure_pdf_installed().unwrap();
 
@@ -90,7 +101,10 @@ impl ManageData {
 
     /// Check that the PDF set is installed in the correct path.
     pub fn is_pdf_installed(&self) -> bool {
-        self.pdfset_path.exists() && self.pdfset_path.is_dir()
+        match self.pdfset_format {
+            PdfSetFormat::Neopdf => self.pdfset_path.exists() && self.pdfset_path.is_file(),
+            _ => self.pdfset_path.exists() && self.pdfset_path.is_dir(),
+        }
     }
 
     /// Ensure that the PDF set is installed, otherwise download it.
@@ -116,22 +130,5 @@ impl ManageData {
     /// Get the full path to this specific PDF set.
     pub fn set_path(&self) -> &Path {
         &self.pdfset_path
-    }
-
-    /// Get the path to the .info file for this PDF set.
-    pub fn info_path(&self) -> PathBuf {
-        self.pdfset_path.join(format!(
-            "{}.info",
-            self.pdfset_path.file_name().unwrap().to_str().unwrap()
-        ))
-    }
-
-    /// Get the path to a specific .dat member file for this PDF set.
-    pub fn dat_path(&self, member: usize) -> PathBuf {
-        self.pdfset_path.join(format!(
-            "{}_{:04}.dat",
-            self.pdfset_path.file_name().unwrap().to_str().unwrap(),
-            member
-        ))
     }
 }

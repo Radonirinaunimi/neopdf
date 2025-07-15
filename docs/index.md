@@ -39,3 +39,6 @@ graph TD
 
 - [GitHub Repository](https://github.com/radonirinaunimi/neopdf)
 - Issues and feature requests welcome!
+- [Features](design-and-features.md)
+- [Design](design.md)
+- [CLI Tutorials](cli-tutorials.md)

@@ -1,7 +1,31 @@
 //! This module defines the structures and methods for handling PDF grid data and interpolation.
 //!
 //! It provides a clean, modular interface for accessing and interpolating PDF data through
-//! the `GridPDF` struct, with support for multiple interpolation strategies and dimensions.
+//! the [`GridPDF`] struct, with support for multiple interpolation strategies and dimensions.
+//!
+//! # Main Features
+//!
+//! - Flexible support for 2D, 3D, and 4D interpolation over nucleons, alpha_s, x, and Q².
+//! - Modular design with traits for dynamic interpolation and extensible strategies.
+//! - Efficient storage and access of grid data via [`GridArray`] and [`SubGrid`].
+//! - Error handling for subgrid selection and interpolation failures.
+//! - Integration with metadata for parameter ranges and PDF set information.
+//!
+//! # Key Types
+//!
+//! - [`GridPDF`]: High-level interface for PDF grid interpolation and metadata access.
+//! - [`GridArray`]: Stores the full set of subgrids and flavor IDs.
+//! - [`SubGrid`]: Represents a region of phase space with a consistent grid.
+//! - [`DynInterpolator`]: Trait for dynamic, multi-dimensional interpolation.
+//! - [`InterpolationConfig`]: Enum for selecting interpolation dimensionality.
+//!
+//! # Interpolation Strategies
+//!
+//! The module supports a variety of interpolation strategies, including bilinear, bicubic,
+//! and log-space variants, as well as N-dimensional interpolation for advanced use cases.
+//! The appropriate strategy is selected automatically based on the grid structure and metadata.
+//!
+//! See the documentation for [`GridPDF`] and related types for more details on available methods.
 
 use core::panic;
 
@@ -211,13 +235,13 @@ pub struct SubGrid {
     /// Array of alpha_s values.
     pub alphas: Array1<f64>,
     /// The valid range for the `nucleons` parameter in this subgrid.
-    nucleons_range: ParamRange,
+    pub nucleons_range: ParamRange,
     /// The valid range for the `AlphaS` parameter in this subgrid.
-    alphas_range: ParamRange,
+    pub alphas_range: ParamRange,
     /// The valid range for the `x` parameter in this subgrid.
-    x_range: ParamRange,
+    pub x_range: ParamRange,
     /// The valid range for the `q2` parameter in this subgrid.
-    q2_range: ParamRange,
+    pub q2_range: ParamRange,
 }
 
 impl SubGrid {
@@ -330,7 +354,10 @@ impl SubGrid {
     }
 }
 
-/// A factory for creating interpolators based on the interpolation type and grid dimensions.
+/// Factory for creating dynamic interpolators based on interpolation type and grid dimensions.
+///
+/// This struct provides static methods to construct the appropriate interpolator for a given
+/// subgrid and flavor, supporting 2D, 3D, and N-dimensional cases.
 pub struct InterpolatorFactory;
 
 impl InterpolatorFactory {
@@ -363,6 +390,16 @@ impl InterpolatorFactory {
     }
 
     /// Creates a 2D interpolator for `x` and `q2`.
+    ///
+    /// # Arguments
+    ///
+    /// * `interp_type` - The type of interpolation to use.
+    /// * `subgrid` - A reference to the `SubGrid`.
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Returns
+    ///
+    /// A `Box<dyn DynInterpolator>` for 2D interpolation.
     fn interpolator_xfxq2(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,
@@ -406,6 +443,16 @@ impl InterpolatorFactory {
     }
 
     /// Creates a 3D interpolator for nucleons, `x`, and `q2`.
+    ///
+    /// # Arguments
+    ///
+    /// * `interp_type` - The type of interpolation to use.
+    /// * `subgrid` - A reference to the `SubGrid`.
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Returns
+    ///
+    /// A `Box<dyn DynInterpolator>` for 3D interpolation over nucleons.
     fn interpolator_xfxq2_nucleons(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,
@@ -433,6 +480,16 @@ impl InterpolatorFactory {
     }
 
     /// Creates a 3D interpolator for alpha_s, `x`, and `q2`.
+    ///
+    /// # Arguments
+    ///
+    /// * `interp_type` - The type of interpolation to use.
+    /// * `subgrid` - A reference to the `SubGrid`.
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Returns
+    ///
+    /// A `Box<dyn DynInterpolator>` for 3D interpolation over alpha_s.
     fn interpolator_xfxq2_alphas(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,
@@ -459,7 +516,17 @@ impl InterpolatorFactory {
         }
     }
 
-    /// Creates an N-dimensional interpolator.
+    /// Creates an N-dimensional interpolator for nucleons, alpha_s, x, and q2.
+    ///
+    /// # Arguments
+    ///
+    /// * `interp_type` - The type of interpolation to use.
+    /// * `subgrid` - A reference to the `SubGrid`.
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Returns
+    ///
+    /// A `Box<dyn DynInterpolator>` for N-dimensional interpolation.
     fn interpolator_ndim(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,

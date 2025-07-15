@@ -211,7 +211,7 @@ impl PyPDF {
     #[pyo3(name = "metadata")]
     pub fn metadata(&self) -> PyMetaData {
         PyMetaData {
-            meta: self.pdf.info().clone(),
+            meta: self.pdf.metadata().clone(),
         }
     }
 }

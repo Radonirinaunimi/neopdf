@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 /// Represents the type of PDF set.
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
@@ -66,4 +67,23 @@ pub struct MetaData {
     /// Type of interpolator used for the PDF (e.g., "LogBicubic").
     #[serde(rename = "InterpolatorType", default)]
     pub interpolator_type: InterpolatorType,
+}
+
+impl fmt::Display for MetaData {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "Set Description: {}", self.set_desc)?;
+        writeln!(f, "Set Index: {}", self.set_index)?;
+        writeln!(f, "Number of Members: {}", self.num_members)?;
+        writeln!(f, "XMin: {}", self.x_min)?;
+        writeln!(f, "XMax: {}", self.x_max)?;
+        writeln!(f, "QMin: {}", self.q_min)?;
+        writeln!(f, "QMax: {}", self.q_max)?;
+        writeln!(f, "Flavors: {:?}", self.flavors)?;
+        writeln!(f, "Format: {}", self.format)?;
+        writeln!(f, "AlphaS Q Values: {:?}", self.alphas_q_values)?;
+        writeln!(f, "AlphaS Values: {:?}", self.alphas_vals)?;
+        writeln!(f, "Polarized: {}", self.polarised)?;
+        writeln!(f, "Set Type: {:?}", self.set_type)?;
+        writeln!(f, "Interpolator Type: {:?}", self.interpolator_type)
+    }
 }
