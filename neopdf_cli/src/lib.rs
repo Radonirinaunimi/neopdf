@@ -1,8 +1,38 @@
 //! Command Line Interface (CLI) for `neopdf`
 //!
-//! This crate provides a command-line interface for converting LHAPDF sets to NeoPDF format
-//! and for combining multiple nuclear PDFs into a single NeoPDF file with A dependence.
+//! This crate provides a command-line interface for converting LHAPDF sets to NeoPDF format,
+//! combining nuclear PDFs, and evaluating PDF values and alpha_s at given kinematics.
 
 mod converter;
+mod pdf;
 
-pub use converter::main;
+use clap::{Parser, Subcommand};
+
+/// Top-level CLI for NeoPDF, supporting conversion and evaluation subcommands.
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+pub struct Cli {
+    /// TODO
+    #[command(subcommand)]
+    pub command: TopLevelCommand,
+}
+
+/// Top-level subcommands for the NeoPDF CLI.
+#[derive(Subcommand)]
+pub enum TopLevelCommand {
+    /// Conversion and combination of PDF sets
+    Convert(converter::Cli),
+    /// Evaluate PDF values and alpha_s at given kinematics
+    Pdf(pdf::PdfCli),
+}
+
+/// Entry point for the NeoPDF CLI.
+///
+/// Dispatches to the appropriate subcommand handler.
+pub fn main() {
+    let cli = Cli::parse();
+    match cli.command {
+        TopLevelCommand::Convert(_) => converter::main(),
+        TopLevelCommand::Pdf(_) => pdf::main(),
+    }
+}
