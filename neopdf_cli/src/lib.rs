@@ -21,9 +21,9 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum TopLevelCommand {
     /// Conversion and combination of PDF sets
-    Convert(converter::Cli),
+    Write(converter::Cli),
     /// Evaluate PDF values and `alpha_s` at given kinematics
-    Pdf(pdf::PdfCli),
+    Compute(pdf::PdfCli),
 }
 
 /// Entry point for the `NeoPDF` CLI.
@@ -32,7 +32,7 @@ pub enum TopLevelCommand {
 pub fn main() {
     let cli = Cli::parse();
     match cli.command {
-        TopLevelCommand::Convert(args) => converter::main(args),
-        TopLevelCommand::Pdf(args) => pdf::main(args),
+        TopLevelCommand::Write(args) => converter::main(args),
+        TopLevelCommand::Compute(args) => pdf::main(args),
     }
 }
