@@ -23,7 +23,9 @@ extra_javascript:
 nav:
   - Home: index.md
   - Installation: installation.md
-  - 'Design & Features': design-and-features.md
+  - Features: design-and-features.md
+  - Design: design.md
+  - CLI Tutorials: cli-tutorials.md
   - Examples:
       - 'Python API': 'examples/python.md'
       - 'C++ OOP API': 'examples/c-oop.md'

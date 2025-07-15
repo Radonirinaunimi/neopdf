@@ -1,4 +1,4 @@
-# Design & Features
+# Features
 
 `NeoPDF` is designed to be a modern, extensible, and high-performance library for PDF interpolation.
 This page details the physics and technical features, design rationale, and future plans.
