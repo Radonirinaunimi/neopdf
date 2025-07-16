@@ -27,8 +27,8 @@ pub fn convert_lhapdf<P: AsRef<std::path::Path>>(
 
     // All members share the same metadata
     let metadata = &members[0].0.clone();
-    let grids: Vec<GridArray> = members
-        .into_iter()
+    let grids: Vec<&GridArray> = members
+        .iter()
         .map(|(_meta, knot_array)| knot_array)
         .collect();
 
@@ -147,7 +147,8 @@ pub fn combine_lhapdf_npdfs<P: AsRef<std::path::Path>>(
         };
         combined_grids.push(combined_grid);
     }
-    // Write to disk
+
+    let combined_grids: Vec<&GridArray> = combined_grids.iter().collect();
     GridArrayCollection::compress(&combined_grids, &meta, output_path)?;
     Ok(())
 }

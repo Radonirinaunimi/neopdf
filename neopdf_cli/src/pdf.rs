@@ -56,6 +56,7 @@ pub struct AlphasQ2Args {
 }
 
 /// Entry point for the pdf CLI.
+#[allow(clippy::needless_pass_by_value)]
 pub fn main(cli: PdfCli) {
     match &cli.command {
         PdfCommands::XfxQ2(args) => {

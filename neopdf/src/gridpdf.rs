@@ -222,7 +222,7 @@ where
 ///
 /// A subgrid represents a region of the phase space with a consistent
 /// grid of `x` and `Q²` values.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubGrid {
     /// Array of `x` values (momentum fraction).
     pub xs: Array1<f64>,

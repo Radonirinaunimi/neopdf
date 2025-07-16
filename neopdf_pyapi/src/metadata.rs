@@ -50,6 +50,7 @@ impl From<&InterpolatorType> for PyInterpolatorType {
 
 /// Grid metadata.
 #[pyclass(name = "MetaData")]
+#[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct PyMetaData {
     pub(crate) meta: MetaData,

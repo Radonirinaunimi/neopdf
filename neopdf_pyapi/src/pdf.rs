@@ -172,6 +172,7 @@ impl PyPDF {
     ///     A 2D NumPy array containing the interpolated PDF values.
     #[must_use]
     #[pyo3(name = "xfxQ2s")]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn xfxq2s<'py>(
         &self,
         pids: Vec<i32>,

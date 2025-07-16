@@ -54,6 +54,7 @@ pub struct SubgridInfoArgs {
 }
 
 /// Entry point for the read CLI.
+#[allow(clippy::needless_pass_by_value)]
 pub fn main(cli: ReadCli) {
     match &cli.command {
         ReadCommands::Metadata(args) => {

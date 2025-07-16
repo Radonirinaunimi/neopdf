@@ -95,6 +95,7 @@ fn load_pdf_names(
 ///
 /// * `Ok(())` - If the command executed successfully
 /// * `Err(Box<dyn std::error::Error>)` - If any error occurred during execution
+#[allow(clippy::needless_pass_by_value)]
 pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     match &cli.command {
         Commands::Convert { pdf_name, output } => {
