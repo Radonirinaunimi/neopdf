@@ -8,9 +8,13 @@ use super::metadata::PyMetaData;
 
 /// Python interface for GridArrayCollection utilities.
 ///
+/// This module provides functions to compress, decompress, and extract metadata from
+/// collections of PDF grids.
+///
 /// # Errors
 ///
-/// TODO
+/// Functions in this module may return a `PyRuntimeError` if the underlying compression
+/// or decompression fails, such as due to missing files, invalid input, or I/O errors.
 #[pymodule]
 pub fn writer(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(py_compress, m)?)?;
@@ -21,9 +25,21 @@ pub fn writer(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
 /// Compresses and writes a collection of GridArrays and shared metadata to a file.
 ///
+/// Compresses the provided grids and metadata and writes them to the specified file path.
+///
+/// # Parameters
+///
+/// - `grids`: The list of grid arrays to compress.
+/// - `metadata`: The shared metadata for the grids.
+/// - `path`: The output file path.
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the compression succeeds, or a `PyRuntimeError` if the operation fails.
+///
 /// # Errors
 ///
-/// TODO
+/// Returns a `PyRuntimeError` if the compression process fails due to invalid input or I/O errors.
 #[pyfunction(name = "compress")]
 #[allow(clippy::needless_pass_by_value)]
 pub fn py_compress(
@@ -38,9 +54,19 @@ pub fn py_compress(
 
 /// Decompresses and loads all GridArrays and shared metadata from a file.
 ///
+/// Loads and decompresses all grid arrays and their associated metadata from the specified file.
+///
+/// # Parameters
+///
+/// - `path`: The path to the compressed file.
+///
+/// # Returns
+///
+/// Returns a vector of tuples, each containing the metadata and grid array for a member.
+///
 /// # Panics
 ///
-/// TODO
+/// Panics if the file cannot be read or is not in the expected format.
 #[must_use]
 #[pyfunction(name = "decompress")]
 pub fn py_decompress(path: &str) -> Vec<(PyMetaData, PyGridArray)> {
@@ -59,9 +85,20 @@ pub fn py_decompress(path: &str) -> Vec<(PyMetaData, PyGridArray)> {
 
 /// Extracts just the metadata from a compressed file without loading the grids.
 ///
+/// Loads only the metadata from the specified compressed file, without decompressing
+/// the grid arrays.
+///
+/// # Parameters
+///
+/// - `path`: The path to the compressed file.
+///
+/// # Returns
+///
+/// Returns the metadata for the PDF set.
+///
 /// # Panics
 ///
-/// TODO
+/// Panics if the file cannot be read or is not in the expected format.
 #[must_use]
 #[pyfunction(name = "extract_metadata")]
 pub fn py_extract_metadata(path: &str) -> PyMetaData {
@@ -71,13 +108,16 @@ pub fn py_extract_metadata(path: &str) -> PyMetaData {
 
 /// Registers the writer module with the parent Python module.
 ///
+/// Adds the `writer` submodule to the parent Python module, exposing PDF grid writer
+/// utilities to Python.
+///
 /// # Panics
 ///
-/// TODO
+/// Panics if the submodule cannot be created or added.
 ///
 /// # Errors
 ///
-/// TODO
+/// Returns a `PyErr` if any function registration fails.
 pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let m = PyModule::new(parent_module.py(), "writer")?;
     m.setattr(

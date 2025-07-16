@@ -207,7 +207,16 @@ impl PyPDF {
         self.pdf.alphas_q2(q2)
     }
 
-    /// TODO
+    /// Returns the metadata associated with this PDF set.
+    ///
+    /// Provides access to the metadata describing the PDF set, including information
+    /// such as the set description, number of members, parameter ranges, and other
+    /// relevant details.
+    ///
+    /// Returns
+    /// -------
+    /// MetaData
+    ///     The metadata for this PDF set as a `MetaData` Python object.
     #[must_use]
     #[pyo3(name = "metadata")]
     pub fn metadata(&self) -> PyMetaData {

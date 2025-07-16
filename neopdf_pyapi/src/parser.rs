@@ -86,9 +86,13 @@ impl PyNeopdfSet {
 
 /// Registers the parser module with the parent Python module.
 ///
+/// Adds the `parser` submodule to the parent Python module, exposing
+/// PDF set parser utilities to Python.
+///
 /// # Errors
 ///
-/// TODO
+/// Returns a `PyErr` if the submodule cannot be created or added, or
+/// if any class registration fails.
 pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let m = PyModule::new(parent_module.py(), "parser")?;
     m.setattr(

@@ -6,9 +6,9 @@ use pyo3::prelude::*;
 #[pyclass(name = "PdfSetFormat")]
 #[derive(Clone)]
 pub enum PyPdfSetFormat {
-    /// TODO
+    /// LHAPDF format (standard PDF set format used by LHAPDF).
     Lhapdf,
-    /// TODO
+    /// NeoPDF format (native format for this library).
     Neopdf,
 }
 
@@ -40,9 +40,17 @@ impl PyManageData {
 
     /// Download the PDF set and extract it into the designated path.
     ///
+    /// Attempts to download the PDF set and extract it to the appropriate directory.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the download and extraction succeed, or a `PyRuntimeError`
+    /// if the operation fails.
+    ///
     /// # Errors
     ///
-    /// TODO
+    /// Returns a `PyRuntimeError` if the download or extraction fails due to network
+    /// issues, missing files, or I/O errors.
     pub fn download_pdf(&self) -> PyResult<()> {
         self.inner
             .download_pdf()
@@ -51,9 +59,7 @@ impl PyManageData {
 
     /// Check that the PDF set is installed in the correct path.
     ///
-    /// # Errors
-    ///
-    /// TODO
+    /// Returns `true` if the PDF set is installed, `false` otherwise.
     #[must_use]
     pub fn is_pdf_installed(&self) -> bool {
         self.inner.is_pdf_installed()
@@ -61,9 +67,17 @@ impl PyManageData {
 
     /// Ensure that the PDF set is installed, otherwise download it.
     ///
+    /// Ensures the PDF set is present; if not, attempts to download and install it.
+    ///
+    /// # Returns
+    ///
+    /// Returns `Ok(())` if the set is installed or successfully downloaded, or a
+    /// `PyRuntimeError` if the operation fails.
+    ///
     /// # Errors
     ///
-    /// TODO
+    /// Returns a `PyRuntimeError` if the download or installation fails due to network
+    /// issues, missing files, or I/O errors.
     pub fn ensure_pdf_installed(&self) -> PyResult<()> {
         self.inner
             .ensure_pdf_installed()
@@ -91,9 +105,13 @@ impl PyManageData {
 
 /// Registers the manage module with the parent Python module.
 ///
+/// Adds the `manage` submodule to the parent Python module, exposing PDF set
+/// management utilities to Python.
+///
 /// # Errors
 ///
-/// TODO
+/// Returns a `PyErr` if the submodule cannot be created or added, or if any
+/// class registration fails.
 pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     let m = PyModule::new(parent_module.py(), "manage")?;
     m.setattr(
