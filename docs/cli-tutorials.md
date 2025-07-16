@@ -5,7 +5,8 @@ to perform PDF interpolation, alpha_s evaluation, file format conversion, and me
 
 !!! note "How to use the new NeoPDF format?"
 
-    - To use the `NeoPDF` grid format, if available, simply append `.neopdf.lz4` to the name of the PDF set
+    - To use the `NeoPDF` grid format, if available, simply append `.neopdf.lz4` to the name of the PDF set; LHAPDF
+      sets can be converted into the NeoPDF format using the CLI (see below)
     - The CLI supports both eager and lazy loading of grids, and can operate on both standard and compressed formats
     - For more advanced usage, see the help output:
 

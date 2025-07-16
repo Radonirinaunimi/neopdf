@@ -6,7 +6,7 @@
 use clap::{Parser, Subcommand};
 use neopdf::converter;
 use std::fs::File;
-use std::io::{self, BufRead};
+use std::io::{BufRead, BufReader};
 
 /// Command-line interface for `NeoPDF` conversion utilities.
 #[derive(Parser)]
@@ -47,39 +47,78 @@ pub enum Commands {
     },
 }
 
-/// Entry point for the `NeoPDF` CLI.
+// Loads PDF names from either command line arguments or a file.
 ///
-/// Parses command-line arguments and dispatches to the appropriate subcommand handler.
-pub fn main(cli: Cli) {
+/// This function handles the mutually exclusive options for providing PDF names:
+/// either directly via command line arguments or from a file containing one name per line.
+/// Exactly one of the two options must be provided.
+///
+/// # Arguments
+///
+/// * `pdf_names` - Optional slice of PDF names provided directly via command line
+/// * `names_file` - Optional path to a file containing PDF names (one per line)
+///
+/// # Returns
+///
+/// * `Ok(Vec<String>)` - Vector of PDF names loaded successfully
+/// * `Err(Box<dyn std::error::Error>)` - If:
+///   - Both options are provided or both are None
+///   - File cannot be opened or read
+///   - I/O error occurs while reading the file
+fn load_pdf_names(
+    pdf_names: Option<&[String]>,
+    names_file: Option<&str>,
+) -> Result<Vec<String>, Box<dyn std::error::Error>> {
+    match (pdf_names, names_file) {
+        (Some(names), None) => Ok(names.to_vec()),
+        (None, Some(file_path)) => {
+            let file = File::open(file_path)?;
+            BufReader::new(file)
+                .lines()
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(Into::into)
+        }
+        _ => Err("Either --pdf-names or --names-file must be provided.".into()),
+    }
+}
+
+/// Executes the CLI command based on the parsed arguments.
+///
+/// This function handles the main application logic for both Convert and Combine commands.
+/// It delegates to the appropriate converter functions and propagates any errors that occur.
+///
+/// # Arguments
+///
+/// * `cli` - The parsed command line interface structure containing the command and its arguments
+///
+/// # Returns
+///
+/// * `Ok(())` - If the command executed successfully
+/// * `Err(Box<dyn std::error::Error>)` - If any error occurred during execution
+pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     match &cli.command {
         Commands::Convert { pdf_name, output } => {
-            if let Err(err) = converter::convert_lhapdf(pdf_name, output) {
-                eprintln!("Error: {err}");
-                std::process::exit(1);
-            }
+            converter::convert_lhapdf(pdf_name, output)?;
         }
         Commands::Combine {
             pdf_names,
             names_file,
             output,
         } => {
-            let names: Vec<String> = if let Some(file_path) = names_file {
-                let file = File::open(file_path).expect("Could not open names file");
-                io::BufReader::new(file)
-                    .lines()
-                    .filter_map(|line| line.ok())
-                    .collect()
-            } else if let Some(names_vec) = pdf_names {
-                names_vec.to_vec()
-            } else {
-                eprintln!("Error: Either --pdf-names or --names-file must be provided.");
-                std::process::exit(1);
-            };
-            let names_str: Vec<&str> = names.iter().map(std::string::String::as_str).collect();
-            if let Err(err) = converter::combine_lhapdf_npdfs(&names_str, output) {
-                eprintln!("Error: {err}");
-                std::process::exit(1);
-            }
+            let names = load_pdf_names(pdf_names.as_deref(), names_file.as_deref())?;
+            let names_str: Vec<&str> = names.iter().map(String::as_str).collect();
+            converter::combine_lhapdf_npdfs(&names_str, output)?;
         }
+    }
+    Ok(())
+}
+
+/// Entry point for the `NeoPDF` CLI.
+///
+/// Parses command-line arguments and dispatches to the appropriate subcommand handler.
+pub fn main(cli: Cli) {
+    if let Err(err) = run_cli(cli) {
+        eprintln!("Error: {err}");
+        std::process::exit(1);
     }
 }

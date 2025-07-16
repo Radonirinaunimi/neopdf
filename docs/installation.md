@@ -5,7 +5,7 @@ Fortran, and C/C++.
 
 !!! note "Where to store PDF sets?"
 
-    By default, `NeoPDF` stores PDF sets in `${HOME}/.local/share/NeoPDF`, however this can be
+    By default, `NeoPDF` stores PDF sets in `${HOME}/.local/share/neopdf`, however this can be
     overwritten via the environment variable `NEOPDF_DATA_PATH` to point to the LHAPDF path for
     example.
 
