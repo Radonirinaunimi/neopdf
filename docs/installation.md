@@ -3,6 +3,16 @@
 This guide provides detailed instructions for installing `NeoPDF `and its APIs for Rust, Python,
 Fortran, and C/C++.
 
+!!! note "Where to store PDF sets?"
+
+    By default, `NeoPDF` stores PDF sets in `${HOME}/.local/share/NeoPDF`, however this can be
+    overwritten via the environment variable `NEOPDF_DATA_PATH` to point to the LHAPDF path for
+    example.
+
+    ```bash
+    export NEOPDF_DATA_PATH=${LHAPDF_DATA_PATH}
+    ```
+
 ---
 
 ## Rust Crate
@@ -79,9 +89,3 @@ cargo install --path neopdf_cli --debug
 This will compile the CLI in debug mode and make the `neopdf` command available in your
 cargo bin directory (usually `~/.cargo/bin`). You can then run `neopdf --help` to see
 the available commands.
-
-!!! note "Note on where to store PDF sets"
-
-    By default, `NeoPDF` stores PDF sets in `${HOME}/.local/share/NeoPDF`, however this can be
-    overwritten via the environment variable `NEOPDF_DATA_PATH` to point to the LHAPDF path for
-    example.
