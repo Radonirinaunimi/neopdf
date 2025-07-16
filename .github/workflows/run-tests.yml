@@ -7,6 +7,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  NEOPDF_DATA_PATH: ${{ github.workspace }}/neopdf-data
 
 jobs:
   build:
@@ -16,8 +17,21 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-    - uses: actions/checkout@v4
-    - name: Build NeoPDF crate 🦀
-      run: cargo build --release
-    - name: Run tests 🚀
-      run: cargo test --release --no-fail-fast -p neopdf
+      - uses: actions/checkout@v4
+      - name: Get data
+        id: cache-data
+        uses: actions/cache@v4
+        with:
+          path: neopdf-data
+          key: data-v1
+      - name: Download data
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        run: |
+          cd maintainer
+          ./download-data.sh
+      - name: Build NeoPDF crate 🦀
+        run: cargo build --release
+      - name: Run tests 🚀
+        run: |
+          export NEOPDF_DATA_PATH=${PWD}/neopdf-data
+          cargo test --release --no-fail-fast
