@@ -92,6 +92,28 @@ fn xfxq2_neopdf_combined_npdfs() {
 }
 
 #[test]
+fn xfxq2_neopdf_combined_npdfs_interpolation() {
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "compute",
+            "xfx_q2",
+            "--pdf-name",
+            "nNNPDF30_nlo_as_0118.neopdf.lz4",
+            "--member",
+            "0",
+            "--pid",
+            "21",
+            "45",
+            "1e-3",
+            "10.0",
+        ])
+        .assert()
+        .success()
+        .stdout("7.994425939656785\n");
+}
+
+#[test]
 fn alphasq2_lhapdf() {
     Command::cargo_bin("neopdf")
         .unwrap()
