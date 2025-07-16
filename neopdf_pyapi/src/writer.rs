@@ -124,6 +124,11 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
         pyo3::intern!(m.py(), "__doc__"),
         "PDF grid writer utilities.",
     )?;
+    pyo3::py_run!(
+        parent_module.py(),
+        m,
+        "import sys; sys.modules['neopdf.writer'] = m"
+    );
     m.add_function(wrap_pyfunction!(py_compress, &m)?)?;
     m.add_function(wrap_pyfunction!(py_decompress, &m)?)?;
     m.add_function(wrap_pyfunction!(py_extract_metadata, &m)?)?;

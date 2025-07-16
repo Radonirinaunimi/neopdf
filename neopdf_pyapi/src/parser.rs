@@ -99,6 +99,11 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
         pyo3::intern!(m.py(), "__doc__"),
         "PDF set parser utilities.",
     )?;
+    pyo3::py_run!(
+        parent_module.py(),
+        m,
+        "import sys; sys.modules['neopdf.parser'] = m"
+    );
     m.add_class::<PyLhapdfSet>()?;
     m.add_class::<PyNeopdfSet>()?;
     parent_module.add_submodule(&m)

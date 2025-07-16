@@ -147,6 +147,11 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
         pyo3::intern!(m.py(), "__doc__"),
         "GridPDF interpolation interface.",
     )?;
+    pyo3::py_run!(
+        parent_module.py(),
+        m,
+        "import sys; sys.modules['neopdf.gridpdf'] = m"
+    );
     m.add_class::<PySubGrid>()?;
     m.add_class::<PyGridArray>()?;
     parent_module.add_submodule(&m)

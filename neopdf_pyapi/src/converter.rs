@@ -83,6 +83,11 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
         pyo3::intern!(m.py(), "__doc__"),
         "PDF set conversion utilities.",
     )?;
+    pyo3::py_run!(
+        parent_module.py(),
+        m,
+        "import sys; sys.modules['neopdf.converter'] = m"
+    );
     m.add_function(wrap_pyfunction!(py_convert_lhapdf, &m)?)?;
     m.add_function(wrap_pyfunction!(py_combine_lhapdf_npdfs, &m)?)?;
     parent_module.add_submodule(&m)

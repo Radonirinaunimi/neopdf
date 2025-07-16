@@ -118,6 +118,11 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
         pyo3::intern!(m.py(), "__doc__"),
         "PDF set management utilities.",
     )?;
+    pyo3::py_run!(
+        parent_module.py(),
+        m,
+        "import sys; sys.modules['neopdf.manage'] = m"
+    );
     m.add_class::<PyPdfSetFormat>()?;
     m.add_class::<PyManageData>()?;
     parent_module.add_submodule(&m)

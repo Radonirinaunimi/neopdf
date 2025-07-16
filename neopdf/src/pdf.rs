@@ -211,6 +211,18 @@ impl PDF {
     pub fn num_subgrids(&self) -> usize {
         self.grid_pdf.knot_array.subgrids.len()
     }
+    /// Returns references to all the subgrid at the given index.
+    ///
+    /// # Arguments
+    ///
+    /// * `index` - The index of the subgrid.
+    ///
+    /// # Returns
+    ///
+    /// A reference to all the `SubGrid`.
+    pub fn subgrids(&self) -> &Vec<SubGrid> {
+        &self.grid_pdf.knot_array.subgrids
+    }
 
     /// Returns a reference to the subgrid at the given index.
     ///

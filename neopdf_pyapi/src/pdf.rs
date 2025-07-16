@@ -2,6 +2,7 @@ use neopdf::pdf::PDF;
 use numpy::{IntoPyArray, PyArray2};
 use pyo3::prelude::*;
 
+use super::gridpdf::PySubGrid;
 use super::metadata::PyMetaData;
 
 /// Python wrapper for the `neopdf::pdf::PDF` struct.
@@ -85,6 +86,23 @@ impl PyPDF {
         PDF::load_pdfs(pdf_name)
             .into_iter()
             .map(move |pdfobj| Self { pdf: pdfobj })
+            .collect()
+    }
+
+    /// Returns the list of `Subgrid` objects.
+    ///
+    /// Returns
+    /// -------
+    /// list[PySubgrid]
+    ///     The subgrids.
+    #[must_use]
+    pub fn subgrids(&self) -> Vec<PySubGrid> {
+        self.pdf
+            .subgrids()
+            .iter()
+            .map(|subgrid| PySubGrid {
+                subgrid: subgrid.clone(),
+            })
             .collect()
     }
 

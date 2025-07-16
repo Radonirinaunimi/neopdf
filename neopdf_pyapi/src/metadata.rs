@@ -20,6 +20,15 @@ impl From<&SetType> for PySetType {
     }
 }
 
+impl From<&PySetType> for SetType {
+    fn from(set_type: &PySetType) -> Self {
+        match set_type {
+            PySetType::Pdf => Self::Pdf,
+            PySetType::Fragfn => Self::Fragfn,
+        }
+    }
+}
+
 /// The interpolation method used for the grid.
 #[pyclass(eq, eq_int, name = "InterpolatorType")]
 #[derive(Clone, PartialEq, Eq)]
@@ -48,6 +57,18 @@ impl From<&InterpolatorType> for PyInterpolatorType {
     }
 }
 
+impl From<&PyInterpolatorType> for InterpolatorType {
+    fn from(basis: &PyInterpolatorType) -> Self {
+        match basis {
+            PyInterpolatorType::Bilinear => Self::Bilinear,
+            PyInterpolatorType::LogBilinear => Self::LogBilinear,
+            PyInterpolatorType::LogBicubic => Self::LogBicubic,
+            PyInterpolatorType::LogTricubic => Self::LogTricubic,
+            PyInterpolatorType::NDLinear => Self::InterpNDLinear,
+        }
+    }
+}
+
 /// Grid metadata.
 #[pyclass(name = "MetaData")]
 #[derive(Debug, Clone)]
@@ -58,6 +79,102 @@ pub struct PyMetaData {
 
 #[pymethods]
 impl PyMetaData {
+    /// Constructor for PyMetaData.
+    #[new]
+    #[must_use]
+    #[allow(clippy::needless_pass_by_value)]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (
+        set_desc,
+        set_index,
+        num_members,
+        x_min,
+        x_max,
+        q_min,
+        q_max,
+        flavors,
+        format,
+        alphas_q_values = vec![],
+        alphas_vals = vec![],
+        polarised = false,
+        set_type = PySetType::Pdf,
+        interpolator_type = PyInterpolatorType::LogBicubic
+    ))]
+    pub fn new(
+        set_desc: String,
+        set_index: u32,
+        num_members: u32,
+        x_min: f64,
+        x_max: f64,
+        q_min: f64,
+        q_max: f64,
+        flavors: Vec<i32>,
+        format: String,
+        alphas_q_values: Vec<f64>,
+        alphas_vals: Vec<f64>,
+        polarised: bool,
+        set_type: PySetType,
+        interpolator_type: PyInterpolatorType,
+    ) -> Self {
+        let meta = MetaData {
+            set_desc,
+            set_index,
+            num_members,
+            x_min,
+            x_max,
+            q_min,
+            q_max,
+            flavors,
+            format,
+            alphas_q_values,
+            alphas_vals,
+            polarised,
+            set_type: SetType::from(&set_type),
+            interpolator_type: InterpolatorType::from(&interpolator_type),
+        };
+
+        Self { meta }
+    }
+
+    /// Convert to Python dictionary
+    ///
+    /// # Errors
+    ///
+    /// Raises an erro if the values are not Python compatible.
+    pub fn to_dict(&self, py: Python) -> PyResult<PyObject> {
+        let dict = pyo3::types::PyDict::new(py);
+
+        let set_type = match &self.meta.set_type {
+            SetType::Pdf => "PDF",
+            SetType::Fragfn => "FragFn",
+        };
+
+        let interpolator_type = match &self.meta.interpolator_type {
+            InterpolatorType::Bilinear => "Bilinear",
+            InterpolatorType::LogBilinear => "LogBilinear",
+            InterpolatorType::LogBicubic => "LogBicubic",
+            InterpolatorType::LogTricubic => "LogTricubic",
+            InterpolatorType::InterpNDLinear => "NDLinear",
+        };
+
+        dict.set_item("set_desc", &self.meta.set_desc)?;
+        dict.set_item("set_index", self.meta.set_index)?;
+        dict.set_item("num_members", self.meta.num_members)?;
+        dict.set_item("x_min", self.meta.x_min)?;
+        dict.set_item("x_max", self.meta.x_max)?;
+        dict.set_item("q_min", self.meta.q_min)?;
+        dict.set_item("q_max", self.meta.q_max)?;
+        dict.set_item("flavors", &self.meta.flavors)?;
+        dict.set_item("format", &self.meta.format)?;
+        dict.set_item("alphas_q_values", &self.meta.alphas_q_values)?;
+        dict.set_item("alphas_vals", &self.meta.alphas_vals)?;
+        dict.set_item("polarised", self.meta.polarised)?;
+        dict.set_item("set_type", set_type)?;
+        dict.set_item("interpolator_type", interpolator_type)?;
+
+        Ok(dict.into())
+    }
+
     /// The description of the grid.
     #[must_use]
     pub const fn description(&self) -> &String {
