@@ -3,7 +3,7 @@
 The `neopdf` CLI tool provides a command-line interface to the `NeoPDF` library, enabling users
 to perform PDF interpolation, alpha_s evaluation, file format conversion, and metadata inspection directly from the terminal. Below are detailed usage instructions and examples for each major feature.
 
-!!! note Notes
+!!! note "How to use the new NeoPDF format?"
 
     - To use the `NeoPDF` grid format, if available, simply append `.neopdf.lz4` to the name of the PDF set
     - The CLI supports both eager and lazy loading of grids, and can operate on both standard and compressed formats
@@ -94,7 +94,7 @@ neopdf compute xfx_q2 --pdf-name NNPDF40_nnlo_as_01180 --member 0 --pid 21 1e-3 
 - If the PDF set doesn't have the $\alpha_s$ and $A$ dependence, then the last two arguments
   are simply the $x$ and $Q^2$ values at which to evaluate the PDF.
 
-!!! note "NOTE"
+!!! note "More about the last argument"
 
     In the case where the PDF set contains an $\alpha_s$ and/or $A$ dependence, the the
     argument should be either $(A, x, Q^2)$, $(\alpha_s, x, Q^2)$, or $(A, \alpha_s, x, Q^2)$
