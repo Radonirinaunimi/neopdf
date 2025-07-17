@@ -57,7 +57,7 @@ impl GridArrayCollection {
     ///
     /// `Ok(())` on success, or an error if writing fails.
     pub fn compress<P: AsRef<Path>>(
-        grids: &[GridArray],
+        grids: &[&GridArray],
         metadata: &MetaData,
         path: P,
     ) -> Result<(), Box<dyn std::error::Error>> {
@@ -444,7 +444,8 @@ mod tests {
             interpolator_type: InterpolatorType::LogBicubic,
         };
 
-        let grids = vec![test_grid(), test_grid()];
+        let test_grid = test_grid();
+        let grids = vec![&test_grid, &test_grid];
         let temp_file = NamedTempFile::new().unwrap();
         let path = temp_file.path();
 

@@ -2,6 +2,7 @@ use neopdf::pdf::PDF;
 use numpy::{IntoPyArray, PyArray2};
 use pyo3::prelude::*;
 
+use super::gridpdf::PySubGrid;
 use super::metadata::PyMetaData;
 
 /// Python wrapper for the `neopdf::pdf::PDF` struct.
@@ -88,6 +89,23 @@ impl PyPDF {
             .collect()
     }
 
+    /// Returns the list of `Subgrid` objects.
+    ///
+    /// Returns
+    /// -------
+    /// list[PySubgrid]
+    ///     The subgrids.
+    #[must_use]
+    pub fn subgrids(&self) -> Vec<PySubGrid> {
+        self.pdf
+            .subgrids()
+            .iter()
+            .map(|subgrid| PySubGrid {
+                subgrid: subgrid.clone(),
+            })
+            .collect()
+    }
+
     /// Retrieves the minimum x-value for this PDF set.
     ///
     /// Returns
@@ -154,6 +172,31 @@ impl PyPDF {
         self.pdf.xfxq2(id, &[x, q2])
     }
 
+    /// Interpolates the PDF value (xf) for a given set of parameters.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : int
+    ///     The flavor ID (e.g., 21 for gluon, 1 for d-quark).
+    /// params: list[float]
+    ///     A list of parameters that the grids depends on. If the PDF
+    ///     grid only contains `x` and `Q2` dependence then its value is
+    ///     `[x, q2]`; if it contains either the `A` and `alpha_s`
+    ///     dependence, then its value is `[A, x, q2]` or `[alpha_s, x, q2]`
+    ///     respectively; if it contains both, then `[A, alpha_s, x, q2]`.
+    ///
+    /// Returns
+    /// -------
+    /// float
+    ///     The interpolated PDF value. Returns 0.0 if extrapolation is
+    ///     attempted and not allowed.
+    #[must_use]
+    #[pyo3(name = "xfxQ2_ND")]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn xfxq2_nd(&self, id: i32, params: Vec<f64>) -> f64 {
+        self.pdf.xfxq2(id, &params)
+    }
+
     /// Interpolates the PDF value (xf) for lists of flavors, x-values,
     /// and Q2-values.
     ///
@@ -172,6 +215,7 @@ impl PyPDF {
     ///     A 2D NumPy array containing the interpolated PDF values.
     #[must_use]
     #[pyo3(name = "xfxQ2s")]
+    #[allow(clippy::needless_pass_by_value)]
     pub fn xfxq2s<'py>(
         &self,
         pids: Vec<i32>,
@@ -206,7 +250,16 @@ impl PyPDF {
         self.pdf.alphas_q2(q2)
     }
 
-    /// TODO
+    /// Returns the metadata associated with this PDF set.
+    ///
+    /// Provides access to the metadata describing the PDF set, including information
+    /// such as the set description, number of members, parameter ranges, and other
+    /// relevant details.
+    ///
+    /// Returns
+    /// -------
+    /// MetaData
+    ///     The metadata for this PDF set as a `MetaData` Python object.
     #[must_use]
     #[pyo3(name = "metadata")]
     pub fn metadata(&self) -> PyMetaData {
