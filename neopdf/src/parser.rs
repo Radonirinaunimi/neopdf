@@ -8,7 +8,7 @@ use super::metadata::MetaData;
 use super::writer::GridArrayReader;
 
 /// Represents the data for a single subgrid within a PDF data file.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SubgridData {
     pub nucleons: Vec<f64>,
     pub alphas: Vec<f64>,
