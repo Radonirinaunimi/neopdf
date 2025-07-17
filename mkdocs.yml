@@ -18,6 +18,7 @@ theme:
     - content.code.copy
 extra_css:
   - custom.css
+  - assets/stylesheets/notebooks.css
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 nav:
@@ -27,12 +28,23 @@ nav:
   - Design: design.md
   - CLI Tutorials: cli-tutorials.md
   - Examples:
-      - 'Python API': 'examples/python.md'
+      - 'Python API': 'examples/neopdf-pyapi.ipynb'
       - 'C++ OOP API': 'examples/c-oop.md'
       - 'C API': 'examples/c.md'
 plugins:
   - search
   - mermaid2
+  - mkdocs-jupyter:
+      execute: false
+      include_source: true
+      theme: dark
+      include: ["*.ipynb", "*.nb.py"]
+      execute_ignore: []
+      allow_errors: false
+      kernel_name: python3
+      ignore_h1_titles: true
+      show_input: true
+      no_input: false
 markdown_extensions:
   - pymdownx.highlight:
       anchor_linenums: true

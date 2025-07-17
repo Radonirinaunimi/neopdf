@@ -78,6 +78,12 @@ impl PySubGrid {
     pub const fn q2_range(&self) -> (f64, f64) {
         (self.subgrid.q2_range.min, self.subgrid.q2_range.max)
     }
+
+    /// Returns the shape of the subgrid
+    #[must_use]
+    pub fn grid_shape(&self) -> (usize, usize, usize, usize, usize) {
+        self.subgrid.grid.dim()
+    }
 }
 
 /// Python wrapper for the `GridArray` struct.

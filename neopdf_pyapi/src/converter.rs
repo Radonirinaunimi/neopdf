@@ -36,7 +36,7 @@ pub fn converter(_py: Python, m: &Bound<'_, PyModule>) -> PyResult<()> {
 ///
 /// Returns a `PyRuntimeError` if the conversion process fails due to missing files, invalid
 /// input, or I/O errors.
-#[pyfunction]
+#[pyfunction(name = "convert_lhapdf")]
 pub fn py_convert_lhapdf(pdf_name: &str, output_path: &str) -> PyResult<()> {
     convert_lhapdf(pdf_name, output_path)
         .map_err(|e| PyRuntimeError::new_err(format!("Conversion failed: {e}")))
@@ -60,7 +60,7 @@ pub fn py_convert_lhapdf(pdf_name: &str, output_path: &str) -> PyResult<()> {
 ///
 /// Returns a `PyRuntimeError` if the combination process fails due to missing files, invalid input,
 /// or I/O errors.
-#[pyfunction]
+#[pyfunction(name = "combine_lhapdf_npdfs")]
 #[allow(clippy::needless_pass_by_value)]
 pub fn py_combine_lhapdf_npdfs(pdf_names: Vec<String>, output_path: &str) -> PyResult<()> {
     let pdf_names: Vec<&str> = pdf_names.iter().map(std::string::String::as_str).collect();
