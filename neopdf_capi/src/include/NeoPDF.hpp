@@ -205,7 +205,7 @@ class GridWriter {
                 throw std::runtime_error("Failed to create `NeoPDFGrid`");
             }
 
-            NeoPDFResult result = neopdf_grid_add_subgrid(
+            NeopdfResult result = neopdf_grid_add_subgrid(
                 grid,
                 nucleons.data(), nucleons.size(),
                 alphas.data(), alphas.size(),
@@ -213,19 +213,19 @@ class GridWriter {
                 q2s.data(), q2s.size(),
                 grid_data.data(), grid_data.size()
             );
-            if (result != NeoPDFResult::NEO_PDF_RESULT_SUCCESS) {
+            if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
                 neopdf_grid_free(grid);
                 throw std::runtime_error("Failed to add subgrid");
             }
 
             result = neopdf_grid_set_flavors(grid, flavors.data(), flavors.size());
-            if (result != NeoPDFResult::NEO_PDF_RESULT_SUCCESS) {
+            if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
                 neopdf_grid_free(grid);
                 throw std::runtime_error("Failed to set flavors");
             }
 
             result = neopdf_gridarray_collection_add_grid(collection_raw, grid);
-            if (result != NeoPDFResult::NEO_PDF_RESULT_SUCCESS) {
+            if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
                 neopdf_grid_free(grid);
                 throw std::runtime_error("Failed to add grid to collection");
             }
@@ -239,8 +239,8 @@ class GridWriter {
          */
         void compress(const MetaData& metadata, const std::string& output_path) {
             NeoPDFMetaData c_meta = metadata.to_c();
-            NeoPDFResult result = neopdf_grid_compress(collection_raw, &c_meta, output_path.c_str());
-            if (result != NeoPDFResult::NEO_PDF_RESULT_SUCCESS) {
+            NeopdfResult result = neopdf_grid_compress(collection_raw, &c_meta, output_path.c_str());
+            if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
                 throw std::runtime_error("Failed to compress grid data");
             }
         }

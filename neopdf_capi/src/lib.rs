@@ -13,7 +13,7 @@ use neopdf::writer::GridArrayCollection;
 /// Result codes for `NeoPDF` operations
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum NeoPDFResult {
+pub enum NeopdfResult {
     /// TODO
     Success = 0,
     /// TODO
@@ -26,8 +26,8 @@ pub enum NeoPDFResult {
     ErrorInvalidLength = -4,
 }
 
-impl From<NeoPDFResult> for c_int {
-    fn from(result: NeoPDFResult) -> Self {
+impl From<NeopdfResult> for c_int {
+    fn from(result: NeopdfResult) -> Self {
         result as Self
     }
 }
@@ -239,6 +239,101 @@ pub unsafe extern "C" fn neopdf_pdf_alphas_q2(pdf: *mut NeoPDFWrapper, q2: f64) 
     pdf_obj.alphas_q2(q2)
 }
 
+/// Returns the number of subgrids in the PDF Grid.
+///
+/// # Panics
+///
+/// TODO
+///
+/// # Safety
+///
+/// TODO
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_num_subgrids(pdf: *mut NeoPDFWrapper) -> usize {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &(*pdf).0 };
+    pdf_obj.num_subgrids()
+}
+
+/// TODO
+#[repr(C)]
+pub enum NeopdfSubgridParams {
+    /// TODO
+    Nucleons,
+    /// TODO
+    Alphas,
+    /// TODO
+    Momentum,
+    /// TODO
+    Scale,
+}
+
+/// Returns the shape of the subgrids in the order of their index for a given parameter.
+///
+/// # Panics
+///
+/// TODO
+///
+/// # Safety
+///
+/// TODO
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_subgrids_shape_for_param(
+    pdf: *mut NeoPDFWrapper,
+    subgrid_shape: *mut usize,
+    num_subgrid: usize,
+    subgrid_param: NeopdfSubgridParams,
+) {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &(*pdf).0 };
+
+    let subgrid_shape = unsafe { slice::from_raw_parts_mut(subgrid_shape, num_subgrid) };
+    let shape_subgrids: Vec<usize> = pdf_obj
+        .subgrids()
+        .iter()
+        .map(|sub| match subgrid_param {
+            NeopdfSubgridParams::Nucleons => sub.nucleons.len(),
+            NeopdfSubgridParams::Alphas => sub.alphas.len(),
+            NeopdfSubgridParams::Momentum => sub.xs.len(),
+            NeopdfSubgridParams::Scale => sub.q2s.len(),
+        })
+        .collect();
+
+    subgrid_shape.copy_from_slice(&shape_subgrids);
+}
+
+/// Returns the grid values of a parameter for a given subgrid.
+///
+/// # Panics
+///
+/// TODO
+///
+/// # Safety
+///
+/// TODO
+pub unsafe extern "C" fn neopdf_pdf_subgrids_for_param(
+    pdf: *mut NeoPDFWrapper,
+    subgrid: *mut f64,
+    subgrid_param: NeopdfSubgridParams,
+    num_subgrid: usize,
+    subgrid_shape: *mut usize,
+    subgrid_index: usize,
+) {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &(*pdf).0 };
+
+    let subgrid_shape = unsafe { slice::from_raw_parts(subgrid_shape, num_subgrid) };
+    let subgrid = unsafe { slice::from_raw_parts_mut(subgrid, subgrid_shape[subgrid_index]) };
+    let subgrid_knots = match subgrid_param {
+        NeopdfSubgridParams::Nucleons => &pdf_obj.subgrids()[subgrid_index].nucleons,
+        NeopdfSubgridParams::Alphas => &pdf_obj.subgrids()[subgrid_index].alphas,
+        NeopdfSubgridParams::Momentum => &pdf_obj.subgrids()[subgrid_index].xs,
+        NeopdfSubgridParams::Scale => &pdf_obj.subgrids()[subgrid_index].q2s,
+    };
+
+    subgrid.copy_from_slice(subgrid_knots.as_slice().unwrap());
+}
+
 /// An opaque struct holding the data for a single grid, including its subgrids and flavors.
 /// C code should not access its fields directly.
 pub struct NeoPDFGrid {
@@ -269,7 +364,7 @@ impl NeoPDFGrid {
         num_q2s: usize,
         grid_data: *const c_double,
         grid_data_len: usize,
-    ) -> NeoPDFResult {
+    ) -> NeopdfResult {
         // Check for null pointers
         if nucleons.is_null()
             || alphas.is_null()
@@ -277,7 +372,7 @@ impl NeoPDFGrid {
             || q2s.is_null()
             || grid_data.is_null()
         {
-            return NeoPDFResult::ErrorNullPointer;
+            return NeopdfResult::ErrorNullPointer;
         }
 
         let subgrid = unsafe {
@@ -291,17 +386,17 @@ impl NeoPDFGrid {
         };
         self.subgrids.push(subgrid);
 
-        NeoPDFResult::Success
+        NeopdfResult::Success
     }
 
     /// Sets the flavor IDs for the grid
-    unsafe fn set_flavors(&mut self, flavors: *const c_int, num_flavors: usize) -> NeoPDFResult {
+    unsafe fn set_flavors(&mut self, flavors: *const c_int, num_flavors: usize) -> NeopdfResult {
         if flavors.is_null() {
-            return NeoPDFResult::ErrorNullPointer;
+            return NeopdfResult::ErrorNullPointer;
         }
         self.flavors = unsafe { slice::from_raw_parts(flavors, num_flavors).to_vec() };
 
-        NeoPDFResult::Success
+        NeopdfResult::Success
     }
 }
 
@@ -331,10 +426,10 @@ pub unsafe extern "C" fn neopdf_grid_add_subgrid(
     num_q2s: usize,
     grid_data: *const c_double,
     grid_data_len: usize,
-) -> NeoPDFResult {
+) -> NeopdfResult {
     unsafe {
         grid.as_mut()
-            .map_or(NeoPDFResult::ErrorNullPointer, |grid| {
+            .map_or(NeopdfResult::ErrorNullPointer, |grid| {
                 grid.add_subgrid(
                     nucleons,
                     num_nucleons,
@@ -361,10 +456,10 @@ pub unsafe extern "C" fn neopdf_grid_set_flavors(
     grid: *mut NeoPDFGrid,
     flavors: *const c_int,
     num_flavors: usize,
-) -> NeoPDFResult {
+) -> NeopdfResult {
     unsafe {
         grid.as_mut()
-            .map_or(NeoPDFResult::ErrorNullPointer, |grid| {
+            .map_or(NeopdfResult::ErrorNullPointer, |grid| {
                 grid.set_flavors(flavors, num_flavors)
             })
     }
@@ -497,10 +592,10 @@ impl NeoPDFGridArrayCollection {
     /// # Returns
     /// `NeoPDFResult::Success` if the grid was added successfully, or an error code
     /// (`ErrorNullPointer`, `ErrorMemoryError`) if an issue occurred.
-    fn add_grid(&mut self, grid: *mut NeoPDFGrid) -> NeoPDFResult {
+    fn add_grid(&mut self, grid: *mut NeoPDFGrid) -> NeopdfResult {
         // Ensure the provided grid pointer is not null.
         if grid.is_null() {
-            return NeoPDFResult::ErrorNullPointer;
+            return NeopdfResult::ErrorNullPointer;
         }
 
         // Check if the current number of grids has reached the allocated capacity.
@@ -542,7 +637,7 @@ impl NeoPDFGridArrayCollection {
 
             // Check if reallocation failed (returned null).
             if new_ptr.is_null() {
-                return NeoPDFResult::ErrorMemoryError;
+                return NeopdfResult::ErrorMemoryError;
             }
 
             // Update the collection's pointer and capacity to the new allocation.
@@ -557,7 +652,7 @@ impl NeoPDFGridArrayCollection {
         // Increment the count of grids in the collection.
         self.num_grids += 1;
 
-        NeoPDFResult::Success
+        NeopdfResult::Success
     }
 
     /// Returns the number of grids currently in the collection.
@@ -624,13 +719,13 @@ pub extern "C" fn neopdf_gridarray_collection_new() -> *mut NeoPDFGridArrayColle
 pub unsafe extern "C" fn neopdf_gridarray_collection_add_grid(
     collection: *mut NeoPDFGridArrayCollection,
     grid: *mut NeoPDFGrid,
-) -> NeoPDFResult {
+) -> NeopdfResult {
     // Convert the raw `collection` pointer to a mutable reference.
     // This is unsafe because the pointer could be null or invalid.
     unsafe {
         collection
             .as_mut()
-            .map_or(NeoPDFResult::ErrorNullPointer, |collection| {
+            .map_or(NeopdfResult::ErrorNullPointer, |collection| {
                 // Call the safe `add_grid` method on the Rust struct.
                 collection.add_grid(grid)
             })
@@ -675,10 +770,10 @@ pub unsafe extern "C" fn neopdf_grid_compress(
     collection: *const NeoPDFGridArrayCollection,
     metadata: *const NeoPDFMetaData,
     output_path: *const c_char,
-) -> NeoPDFResult {
+) -> NeopdfResult {
     // Perform null pointer checks for all input arguments.
     if collection.is_null() || metadata.is_null() || output_path.is_null() {
-        return NeoPDFResult::ErrorNullPointer;
+        return NeopdfResult::ErrorNullPointer;
     }
 
     // Convert the raw `collection` pointer to an immutable reference.
@@ -688,14 +783,14 @@ pub unsafe extern "C" fn neopdf_grid_compress(
     // Process the C-style `metadata` struct into a Rust `MetaData` struct.
     // If processing fails (e.g., due to invalid C strings), return an error.
     let Some(meta) = process_metadata(metadata) else {
-        return NeoPDFResult::ErrorInvalidData;
+        return NeopdfResult::ErrorInvalidData;
     };
 
     // Convert the C-style `output_path` string to a Rust string slice.
     // Check for valid UTF-8 conversion.
     let out_path = unsafe { CStr::from_ptr(output_path).to_str() };
     let Ok(out_path) = out_path else {
-        return NeoPDFResult::ErrorInvalidData;
+        return NeopdfResult::ErrorInvalidData;
     };
 
     // Create a `Vec` to hold `GridArray` objects, pre-allocating capacity for efficiency.
@@ -706,7 +801,7 @@ pub unsafe extern "C" fn neopdf_grid_compress(
         // Retrieve a reference to the `NeoPDFGrid` at the current index.
         // If retrieval fails (e.g., invalid index), return an error.
         let Some(grid) = collection.get(i) else {
-            return NeoPDFResult::ErrorInvalidData;
+            return NeopdfResult::ErrorInvalidData;
         };
 
         // Create a `GridArray` from the `NeoPDFGrid`'s internal `subgrids` and `flavors`.
@@ -723,7 +818,7 @@ pub unsafe extern "C" fn neopdf_grid_compress(
     // Call the `compress` function from the `neopdf::writer` module.
     // Map the `Result` to `NeoPDFResult`.
     match GridArrayCollection::compress(&grid_refs, &meta, out_path) {
-        Ok(()) => NeoPDFResult::Success,
-        Err(_) => NeoPDFResult::ErrorMemoryError,
+        Ok(()) => NeopdfResult::Success,
+        Err(_) => NeopdfResult::ErrorMemoryError,
     }
 }

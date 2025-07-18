@@ -84,7 +84,7 @@ int main() {
             q2s.data(), q2s.size(),
             grid_data.data(), grid_data.size()
         );
-        if (add_subgrid != NEO_PDF_RESULT_SUCCESS) {
+        if (add_subgrid != NEOPDF_RESULT_SUCCESS) {
             std::cerr << "Failed to add subgrid for member: " << m << "!\n";
             neopdf_grid_free(grid);
             continue;

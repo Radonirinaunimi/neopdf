@@ -19,11 +19,12 @@
 //! - Loader functions: [`PDF::load`], [`PDF::load_pdfs`], and internal helpers for batch loading.
 //!
 //! See the documentation for [`PDF`] for more details on available methods and usage patterns.
+use ndarray::Array2;
+use rayon::prelude::*;
+
 use super::gridpdf::{GridArray, GridPDF, RangeParameters, SubGrid};
 use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
-use ndarray::Array2;
-use rayon::prelude::*;
 
 /// Trait for abstracting over different PDF set backends (e.g., LHAPDF, NeoPDF).
 ///
@@ -211,18 +212,6 @@ impl PDF {
     pub fn num_subgrids(&self) -> usize {
         self.grid_pdf.knot_array.subgrids.len()
     }
-    /// Returns references to all the subgrid at the given index.
-    ///
-    /// # Arguments
-    ///
-    /// * `index` - The index of the subgrid.
-    ///
-    /// # Returns
-    ///
-    /// A reference to all the `SubGrid`.
-    pub fn subgrids(&self) -> &Vec<SubGrid> {
-        &self.grid_pdf.knot_array.subgrids
-    }
 
     /// Returns a reference to the subgrid at the given index.
     ///
@@ -236,6 +225,54 @@ impl PDF {
     pub fn subgrid(&self, index: usize) -> &SubGrid {
         &self.grid_pdf.knot_array.subgrids[index]
     }
+
+    /// Returns references to all the subgrid at the given index.
+    ///
+    /// # Returns
+    ///
+    /// A reference to all the `SubGrid`.
+    pub fn subgrids(&self) -> &Vec<SubGrid> {
+        &self.grid_pdf.knot_array.subgrids
+    }
+
+    // /// Retruns the nucleon values for a given subgrid represented by its index.
+    // ///
+    // /// # Arguments
+    // ///
+    // /// * `index` - The index of the subgrid.
+    // ///
+    // /// # Returns
+    // ///
+    // /// The nucleons values for the subgrid.
+    // pub fn nucleon_subgrids(&self, index: usize) -> &Array1<f64> {
+    //     &self.grid_pdf.knot_array.subgrids[index].nucleons
+    // }
+
+    // /// Retruns the x values for a given subgrid represented by its index.
+    // ///
+    // /// # Arguments
+    // ///
+    // /// * `index` - The index of the subgrid.
+    // ///
+    // /// # Returns
+    // ///
+    // /// The x-grid values for the subgrid.
+    // pub fn x_subgrids(&self, index: usize) -> &Array1<f64> {
+    //     &self.grid_pdf.knot_array.subgrids[index].xs
+    // }
+
+    // /// Retruns the Q2 values for a given subgrid represented by its index.
+    // ///
+    // /// # Arguments
+    // ///
+    // /// * `index` - The index of the subgrid.
+    // ///
+    // /// # Returns
+    // ///
+    // /// The Q2-grid values for the subgrid.
+    // pub fn q2_subgrids(&self, index: usize) -> &Array1<f64> {
+    //     &self.grid_pdf.knot_array.subgrids[index].q2s
+    // }
 
     /// Retrieves the PDF value (xf) at a specific knot point in the grid.
     ///
