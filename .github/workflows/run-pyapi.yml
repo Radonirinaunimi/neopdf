@@ -1,7 +1,6 @@
 name: Run the Python-API tests 🐍
 
-on:
-  workflow_dispatch:
+on: [push]
 
 jobs:
   pyapi:
