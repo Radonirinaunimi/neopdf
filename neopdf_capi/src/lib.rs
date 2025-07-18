@@ -239,6 +239,55 @@ pub unsafe extern "C" fn neopdf_pdf_alphas_q2(pdf: *mut NeoPDFWrapper, q2: f64) 
     pdf_obj.alphas_q2(q2)
 }
 
+/// Returns the number of PIDs.
+///
+/// # Panics
+///
+/// TODO
+///
+/// # Safety
+///
+/// TODO
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_num_pids(pdf: *mut NeoPDFWrapper) -> usize {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &(*pdf).0 };
+    pdf_obj.pids().len()
+}
+
+/// Returns the PID representation of the PDF Grid.
+///
+/// # Panics
+///
+/// TODO
+///
+/// # Safety
+///
+/// TODO
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_pids(pdf: *mut NeoPDFWrapper, pids: *mut i32, num_pids: usize) {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &(*pdf).0 };
+
+    let pids = unsafe { slice::from_raw_parts_mut(pids, num_pids) };
+    let pid_values = pdf_obj.pids();
+
+    pids.copy_from_slice(pid_values.as_slice().unwrap());
+}
+
+/// TODO
+#[repr(C)]
+pub enum NeopdfSubgridParams {
+    /// TODO
+    Nucleons,
+    /// TODO
+    Alphas,
+    /// TODO
+    Momentum,
+    /// TODO
+    Scale,
+}
+
 /// Returns the number of subgrids in the PDF Grid.
 ///
 /// # Panics
@@ -255,17 +304,43 @@ pub unsafe extern "C" fn neopdf_pdf_num_subgrids(pdf: *mut NeoPDFWrapper) -> usi
     pdf_obj.num_subgrids()
 }
 
+/// Returns the minimum and maximum value for a given parameter.
+///
+/// # Panics
+///
 /// TODO
-#[repr(C)]
-pub enum NeopdfSubgridParams {
-    /// TODO
-    Nucleons,
-    /// TODO
-    Alphas,
-    /// TODO
-    Momentum,
-    /// TODO
-    Scale,
+///
+/// # Safety
+///
+/// TODO
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_param_range(
+    pdf: *mut NeoPDFWrapper,
+    param: NeopdfSubgridParams,
+    param_range: *mut f64,
+) {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &(*pdf).0 };
+
+    let param_range = unsafe { slice::from_raw_parts_mut(param_range, 2) };
+    let range_params = match param {
+        NeopdfSubgridParams::Nucleons => &[
+            pdf_obj.param_ranges().nucleons.min,
+            pdf_obj.param_ranges().nucleons.max,
+        ],
+        NeopdfSubgridParams::Alphas => &[
+            pdf_obj.param_ranges().alphas.min,
+            pdf_obj.param_ranges().alphas.max,
+        ],
+        NeopdfSubgridParams::Momentum => {
+            &[pdf_obj.param_ranges().x.min, pdf_obj.param_ranges().x.max]
+        }
+        NeopdfSubgridParams::Scale => {
+            &[pdf_obj.param_ranges().q2.min, pdf_obj.param_ranges().q2.max]
+        }
+    };
+
+    param_range.copy_from_slice(range_params);
 }
 
 /// Returns the shape of the subgrids in the order of their index for a given parameter.
@@ -311,6 +386,7 @@ pub unsafe extern "C" fn neopdf_pdf_subgrids_shape_for_param(
 /// # Safety
 ///
 /// TODO
+#[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_subgrids_for_param(
     pdf: *mut NeoPDFWrapper,
     subgrid: *mut f64,

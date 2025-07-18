@@ -19,7 +19,7 @@
 //! - Loader functions: [`PDF::load`], [`PDF::load_pdfs`], and internal helpers for batch loading.
 //!
 //! See the documentation for [`PDF`] for more details on available methods and usage patterns.
-use ndarray::Array2;
+use ndarray::{Array1, Array2};
 use rayon::prelude::*;
 
 use super::gridpdf::{GridArray, GridPDF, RangeParameters, SubGrid};
@@ -235,44 +235,25 @@ impl PDF {
         &self.grid_pdf.knot_array.subgrids
     }
 
-    // /// Retruns the nucleon values for a given subgrid represented by its index.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `index` - The index of the subgrid.
-    // ///
-    // /// # Returns
-    // ///
-    // /// The nucleons values for the subgrid.
-    // pub fn nucleon_subgrids(&self, index: usize) -> &Array1<f64> {
-    //     &self.grid_pdf.knot_array.subgrids[index].nucleons
-    // }
+    /// Returns the flavor PIDS of the PDG Grid.
+    ///
+    /// # Returns
+    ///
+    /// PID representation of the PDF.
+    pub fn pids(&self) -> &Array1<i32> {
+        &self.grid_pdf.knot_array.pids
+    }
 
-    // /// Retruns the x values for a given subgrid represented by its index.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `index` - The index of the subgrid.
-    // ///
-    // /// # Returns
-    // ///
-    // /// The x-grid values for the subgrid.
-    // pub fn x_subgrids(&self, index: usize) -> &Array1<f64> {
-    //     &self.grid_pdf.knot_array.subgrids[index].xs
-    // }
-
-    // /// Retruns the Q2 values for a given subgrid represented by its index.
-    // ///
-    // /// # Arguments
-    // ///
-    // /// * `index` - The index of the subgrid.
-    // ///
-    // /// # Returns
-    // ///
-    // /// The Q2-grid values for the subgrid.
-    // pub fn q2_subgrids(&self, index: usize) -> &Array1<f64> {
-    //     &self.grid_pdf.knot_array.subgrids[index].q2s
-    // }
+    /// Retrieves the ranges for the parameters.
+    ///
+    /// Abstraction to the `GridPDF::param_ranges` method.
+    ///
+    /// # Returns
+    ///
+    /// The minimum and maximum values for the parameters (x, q2, ...).
+    pub fn param_ranges(&self) -> RangeParameters {
+        self.grid_pdf.param_ranges()
+    }
 
     /// Retrieves the PDF value (xf) at a specific knot point in the grid.
     ///
@@ -303,16 +284,5 @@ impl PDF {
         self.grid_pdf
             .knot_array
             .xf_from_index(i_nucleons, i_alphas, ix, iq2, id, subgrid_id)
-    }
-
-    /// Retrieves the ranges for the parameters.
-    ///
-    /// Abstraction to the `GridPDF::param_ranges` method.
-    ///
-    /// # Returns
-    ///
-    /// The minimum and maximum values for the parameters (x, q2, ...).
-    pub fn param_ranges(&self) -> RangeParameters {
-        self.grid_pdf.param_ranges()
     }
 }
