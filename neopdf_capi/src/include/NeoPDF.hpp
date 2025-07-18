@@ -125,6 +125,54 @@ class NeoPDF {
         double alphasQ2(double q2) const {
             return neopdf_pdf_alphas_q2(this->raw, q2);
         }
+
+        /** @brief Get the number of PIDs. */
+        size_t num_pids() const {
+            return neopdf_pdf_num_pids(this->raw);
+        }
+
+        /** @brief Get the PID representation of the PDF Grid. */
+        std::vector<int32_t> pids() const {
+            size_t num = num_pids();
+            std::vector<int32_t> pids(num);
+            neopdf_pdf_pids(this->raw, pids.data(), num);
+            return pids;
+        }
+
+        /** @brief Get the number of subgrids in the PDF Grid. */
+        size_t num_subgrids() const {
+            return neopdf_pdf_num_subgrids(this->raw);
+        }
+
+        /** @brief Get the minimum and maximum value for a given parameter. */
+        std::vector<double> param_range(NeopdfSubgridParams param) const {
+            std::vector<double> range(2);
+            neopdf_pdf_param_range(this->raw, param, range.data());
+            return range;
+        }
+
+        /** @brief Get the shape of the subgrids in the order of their index for a given parameter. */
+        std::vector<size_t> subgrids_shape_for_param(NeopdfSubgridParams param) const {
+            size_t num = num_subgrids();
+            std::vector<size_t> shape(num);
+            neopdf_pdf_subgrids_shape_for_param(this->raw, shape.data(), num, param);
+            return shape;
+        }
+
+        /** @brief Get the grid values of a parameter for a given subgrid. */
+        std::vector<double> subgrid_for_param(NeopdfSubgridParams param, size_t subgrid_index) const {
+            std::vector<size_t> shape = subgrids_shape_for_param(param);
+            std::vector<double> values(shape[subgrid_index]);
+            neopdf_pdf_subgrids_for_param(
+                this->raw,
+                values.data(),
+                param,
+                shape.size(),
+                shape.data(),
+                subgrid_index
+            );
+            return values;
+        }
 };
 
 /** @brief Class to load and manage multiple PDF members. */
