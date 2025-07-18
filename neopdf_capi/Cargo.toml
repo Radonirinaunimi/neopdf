@@ -15,6 +15,7 @@ version.workspace = true
 [dependencies]
 neopdf = { path = "../neopdf", version = "0.1.0" }
 ndarray = { version = "0.16.1", features = ["serde"] }
+libc = "0.2"
 
 [build-dependencies]
 cbindgen = "0.26.0"

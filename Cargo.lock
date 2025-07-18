@@ -1131,6 +1131,7 @@ name = "neopdf_capi"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
+ "libc",
  "ndarray",
  "neopdf",
 ]

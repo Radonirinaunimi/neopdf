@@ -3,7 +3,7 @@ CXXFLAGS = -O3 -Wall -Wextra -Werror
 NEOPDF_DEPS != pkg-config --cflags --libs neopdf_capi
 LHAPDF_DEPS != pkg-config --cflags --libs lhapdf
 
-PROGRAMS = check-capi check-oop
+PROGRAMS = check-capi check-oop check-writer check-writer-oop
 
 all: $(PROGRAMS)
 
@@ -13,7 +13,13 @@ test-examples: $(PROGRAMS)
 check-capi: check-capi.cpp
 	$(CXX) $(CXXFLAGS) $< $(LHAPDF_DEPS) $(NEOPDF_DEPS) -o $@
 
+check-writer: check-writer.cpp
+	$(CXX) $(CXXFLAGS) $< $(LHAPDF_DEPS) $(NEOPDF_DEPS) -o $@
+
 check-oop: check-oop.cpp
+	$(CXX) $(CXXFLAGS) $< $(LHAPDF_DEPS) $(NEOPDF_DEPS) -o $@
+
+check-writer-oop: check-writer-oop.cpp
 	$(CXX) $(CXXFLAGS) $< $(LHAPDF_DEPS) $(NEOPDF_DEPS) -o $@
 
 .PHONY: clean
