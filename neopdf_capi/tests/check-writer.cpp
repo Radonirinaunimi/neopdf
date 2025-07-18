@@ -28,6 +28,34 @@ std::vector<T> geomspace(T start, T stop, int num, bool endpoint = false) {
     return result;
 }
 
+// Helper function to extract subgrid parameters
+std::vector<double> extract_subgrid_params(
+    NeoPDFWrapper* pdf,
+    NeopdfSubgridParams param_type,
+    std::size_t subgrid_idx,
+    std::size_t num_subgrids
+) {
+    std::vector<std::size_t> shape(num_subgrids);
+    neopdf_pdf_subgrids_shape_for_param(
+        pdf,
+        shape.data(),
+        num_subgrids,
+        param_type
+    );
+
+    std::vector<double> values(shape[subgrid_idx]);
+    neopdf_pdf_subgrids_for_param(
+        pdf,
+        values.data(),
+        param_type,
+        num_subgrids,
+        shape.data(),
+        subgrid_idx
+    );
+
+    return values;
+}
+
 int main() {
     const char* pdfname = "NNPDF40_nnlo_as_01180";
     // Load all PDF members
@@ -45,14 +73,6 @@ int main() {
 
     // Extrac the number of subgrids
     std::size_t num_subgrids = neopdf_pdf_num_subgrids(neo_pdfs.pdfs[0]);
-
-    // // Example grid axes (small for speed)
-    // // TODO: Replace `min` and `max` values with the actual ranges
-    // std::vector<int> pids = {-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5};
-    // std::vector<double> xs = geomspace(1e-9, 1.0, 50);
-    // std::vector<double> q2s = geomspace(2.73, 1e10, 50);
-    // double nucleons[] = {1.0};
-    // double alphas[] = {0.118};
 
     // Create a collection
     NeoPDFGridArrayCollection* collection = neopdf_gridarray_collection_new();
@@ -75,74 +95,10 @@ int main() {
         // Loop over the Subgrids
         for (std::size_t subgrid_idx = 0; subgrid_idx != num_subgrids; subgrid_idx++) {
             // Extrac the parameter values of the given subgrid
-            // --- nucleons ---
-            std::vector<std::size_t> nucleons_subgrid_shape(num_subgrids);
-            neopdf_pdf_subgrids_shape_for_param(
-                pdf,
-                nucleons_subgrid_shape.data(),
-                num_subgrids,
-                NEOPDF_SUBGRID_PARAMS_NUCLEONS
-            );
-            std::vector<double> nucleons(nucleons_subgrid_shape[subgrid_idx]);
-            neopdf_pdf_subgrids_for_param(
-                pdf,
-                nucleons.data(),
-                NEOPDF_SUBGRID_PARAMS_NUCLEONS,
-                num_subgrids,
-                nucleons_subgrid_shape.data(),
-                subgrid_idx
-            );
-            // --- alphas ---
-            std::vector<std::size_t> alphas_subgrid_shape(num_subgrids);
-            neopdf_pdf_subgrids_shape_for_param(
-                pdf,
-                alphas_subgrid_shape.data(),
-                num_subgrids,
-                NEOPDF_SUBGRID_PARAMS_ALPHAS
-            );
-            std::vector<double> alphas(alphas_subgrid_shape[subgrid_idx]);
-            neopdf_pdf_subgrids_for_param(
-                pdf,
-                alphas.data(),
-                NEOPDF_SUBGRID_PARAMS_ALPHAS,
-                num_subgrids,
-                alphas_subgrid_shape.data(),
-                subgrid_idx
-            );
-            // --- Momentum x ---
-            std::vector<std::size_t> xs_subgrid_shape(num_subgrids);
-            neopdf_pdf_subgrids_shape_for_param(
-                pdf,
-                xs_subgrid_shape.data(),
-                num_subgrids,
-                NEOPDF_SUBGRID_PARAMS_MOMENTUM
-            );
-            std::vector<double> xs(xs_subgrid_shape[subgrid_idx]);
-            neopdf_pdf_subgrids_for_param(
-                pdf,
-                xs.data(),
-                NEOPDF_SUBGRID_PARAMS_MOMENTUM,
-                num_subgrids,
-                xs_subgrid_shape.data(),
-                subgrid_idx
-            );
-            // --- Scale Q2 ---
-            std::vector<std::size_t> q2s_subgrid_shape(num_subgrids);
-            neopdf_pdf_subgrids_shape_for_param(
-                pdf,
-                q2s_subgrid_shape.data(),
-                num_subgrids,
-                NEOPDF_SUBGRID_PARAMS_SCALE
-            );
-            std::vector<double> q2s(q2s_subgrid_shape[subgrid_idx]);
-            neopdf_pdf_subgrids_for_param(
-                pdf,
-                q2s.data(),
-                NEOPDF_SUBGRID_PARAMS_SCALE,
-                num_subgrids,
-                q2s_subgrid_shape.data(),
-                subgrid_idx
-            );
+            auto xs = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_MOMENTUM, subgrid_idx, num_subgrids);
+            auto q2s = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_SCALE, subgrid_idx, num_subgrids);
+            auto alphas = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_ALPHAS, subgrid_idx, num_subgrids);
+            auto nucleons = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_NUCLEONS, subgrid_idx, num_subgrids);
 
             // Compute grid_data: [nucleons][alphas][flavors][xs][q2s]
             std::vector<double> grid_data;
