@@ -20,7 +20,7 @@ jobs:
         run: |
           cd neopdf_pyapi
           python3 -m venv --system-site-packages myenv
-          source myenv/bin/activate
+          . myenv/bin/activate
           pip install maturin
           maturin develop --release --extras test
           # Use the PDF sets downloaded in the container
