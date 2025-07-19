@@ -14,15 +14,15 @@ use neopdf::writer::GridArrayCollection;
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NeopdfResult {
-    /// TODO
+    /// Operation completed successfully.
     Success = 0,
-    /// TODO
+    /// A null pointer was encountered where a valid pointer was expected.
     ErrorNullPointer = -1,
-    /// TODO
+    /// The provided data was invalid or could not be processed.
     ErrorInvalidData = -2,
-    /// TODO
+    /// A memory allocation or deallocation error occurred.
     ErrorMemoryError = -3,
-    /// TODO
+    /// The provided length or size argument was invalid.
     ErrorInvalidLength = -4,
 }
 
@@ -48,7 +48,7 @@ pub struct NeoPDFMembers {
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the provided C string is not valid UTF-8.
 ///
 /// # Safety
 ///
@@ -71,7 +71,7 @@ pub unsafe extern "C" fn neopdf_pdf_load(
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the provided C string is not valid UTF-8.
 ///
 /// # Safety
 ///
@@ -102,7 +102,7 @@ pub unsafe extern "C" fn neopdf_pdf_load_all(pdf_name: *const c_char) -> NeoPDFM
 ///
 /// # Panics
 ///
-/// TODO
+/// This function does not panic.
 ///
 /// # Safety
 ///
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn neopdf_pdf_array_free(array: NeoPDFMembers) {
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
@@ -158,7 +158,7 @@ pub unsafe extern "C" fn neopdf_pdf_x_min(pdf: *mut NeoPDFWrapper) -> f64 {
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
@@ -174,7 +174,7 @@ pub unsafe extern "C" fn neopdf_pdf_x_max(pdf: *mut NeoPDFWrapper) -> f64 {
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
@@ -190,7 +190,7 @@ pub unsafe extern "C" fn neopdf_pdf_q2_min(pdf: *mut NeoPDFWrapper) -> f64 {
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
@@ -206,7 +206,7 @@ pub unsafe extern "C" fn neopdf_pdf_q2_max(pdf: *mut NeoPDFWrapper) -> f64 {
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
@@ -227,7 +227,7 @@ pub unsafe extern "C" fn neopdf_pdf_xfxq2(
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
@@ -250,7 +250,7 @@ pub unsafe extern "C" fn neopdf_pdf_xfxq2_nd(
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
@@ -266,11 +266,11 @@ pub unsafe extern "C" fn neopdf_pdf_alphas_q2(pdf: *mut NeoPDFWrapper, q2: f64) 
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
-/// TODO
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_num_pids(pdf: *mut NeoPDFWrapper) -> usize {
     assert!(!pdf.is_null());
@@ -282,11 +282,11 @@ pub unsafe extern "C" fn neopdf_pdf_num_pids(pdf: *mut NeoPDFWrapper) -> usize {
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
-/// TODO
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object, and the `pids` pointer must be valid for writing `num_pids` elements.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_pids(pdf: *mut NeoPDFWrapper, pids: *mut i32, num_pids: usize) {
     assert!(!pdf.is_null());
@@ -298,16 +298,16 @@ pub unsafe extern "C" fn neopdf_pdf_pids(pdf: *mut NeoPDFWrapper, pids: *mut i32
     pids.copy_from_slice(pid_values.as_slice().unwrap());
 }
 
-/// TODO
+/// Parameters for subgrids in the PDF grid.
 #[repr(C)]
 pub enum NeopdfSubgridParams {
-    /// TODO
+    /// Parameters for subgrids in the PDF grid.
     Nucleons,
-    /// TODO
+    /// The strong coupling constant (alpha_s) parameter.
     Alphas,
-    /// TODO
+    /// The momentum fraction (x) parameter.
     Momentum,
-    /// TODO
+    /// The energy scale (Q^2) parameter.
     Scale,
 }
 
@@ -315,11 +315,11 @@ pub enum NeopdfSubgridParams {
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
-/// TODO
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_num_subgrids(pdf: *mut NeoPDFWrapper) -> usize {
     assert!(!pdf.is_null());
@@ -331,11 +331,11 @@ pub unsafe extern "C" fn neopdf_pdf_num_subgrids(pdf: *mut NeoPDFWrapper) -> usi
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
-/// TODO
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object, and the `param_range` pointer must be valid for writing two `f64` values.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_param_range(
     pdf: *mut NeoPDFWrapper,
@@ -370,11 +370,11 @@ pub unsafe extern "C" fn neopdf_pdf_param_range(
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
-/// TODO
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object, and the `subgrid_shape` pointer must be valid for writing `num_subgrid` elements.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_subgrids_shape_for_param(
     pdf: *mut NeoPDFWrapper,
@@ -404,11 +404,11 @@ pub unsafe extern "C" fn neopdf_pdf_subgrids_shape_for_param(
 ///
 /// # Panics
 ///
-/// TODO
+/// This function will panic if the `pdf` pointer is null.
 ///
 /// # Safety
 ///
-/// TODO
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object. The `subgrid` pointer must be valid for writing the number of elements specified by `subgrid_shape[subgrid_index]`.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_subgrids_for_param(
     pdf: *mut NeoPDFWrapper,

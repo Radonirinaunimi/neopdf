@@ -106,6 +106,11 @@ class NeoPDF {
             return neopdf_pdf_xfxq2(this->raw, pid, x, q2);
         }
 
+        /** @brief Compute the `xf` value for a generic set of parameters. */
+        double xfxQ2_ND(int pid, std::vector<double> params) const {
+            return neopdf_pdf_xfxq2_nd(this->raw, pid, params.data(), params.size());
+        }
+
         /** @brief Compute the value of `alphas` at the Q2 value. */
         double alphasQ2(double q2) const {
             return neopdf_pdf_alphas_q2(this->raw, q2);
