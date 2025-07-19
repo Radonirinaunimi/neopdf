@@ -11,21 +11,6 @@
 /** @brief Object Oriented interface to NeoPDF. */
 namespace neopdf {
 
-/** @brief Represents the type of PDF set. */
-enum class SetType {
-    Pdf = 0,
-    Fragfn = 1,
-};
-
-/** @brief Represents the type of interpolator used for the PDF. */
-enum class InterpolatorType {
-    Bilinear = 0,
-    LogBilinear = 1,
-    LogBicubic = 2,
-    LogTricubic = 3,
-    InterpNDLinear = 4,
-};
-
 /** @brief C++ representation of NeoPDFMetaData. */
 struct MetaData {
     std::string set_desc;
@@ -61,8 +46,8 @@ struct MetaData {
         c_meta.alphas_vals = alphas_vals.data();
         c_meta.num_alphas_vals = alphas_vals.size();
         c_meta.polarised = polarised;
-        c_meta.set_type = static_cast<int32_t>(set_type);
-        c_meta.interpolator_type = static_cast<int32_t>(interpolator_type);
+        c_meta.set_type = set_type;
+        c_meta.interpolator_type = interpolator_type;
         return c_meta;
     }
 };
@@ -121,9 +106,62 @@ class NeoPDF {
             return neopdf_pdf_xfxq2(this->raw, pid, x, q2);
         }
 
+        /** @brief Compute the `xf` value for a generic set of parameters. */
+        double xfxQ2_ND(int pid, std::vector<double> params) const {
+            return neopdf_pdf_xfxq2_nd(this->raw, pid, params.data(), params.size());
+        }
+
         /** @brief Compute the value of `alphas` at the Q2 value. */
         double alphasQ2(double q2) const {
             return neopdf_pdf_alphas_q2(this->raw, q2);
+        }
+
+        /** @brief Get the number of PIDs. */
+        size_t num_pids() const {
+            return neopdf_pdf_num_pids(this->raw);
+        }
+
+        /** @brief Get the PID representation of the PDF Grid. */
+        std::vector<int32_t> pids() const {
+            size_t num = num_pids();
+            std::vector<int32_t> pids(num);
+            neopdf_pdf_pids(this->raw, pids.data(), num);
+            return pids;
+        }
+
+        /** @brief Get the number of subgrids in the PDF Grid. */
+        size_t num_subgrids() const {
+            return neopdf_pdf_num_subgrids(this->raw);
+        }
+
+        /** @brief Get the minimum and maximum value for a given parameter. */
+        std::vector<double> param_range(NeopdfSubgridParams param) const {
+            std::vector<double> range(2);
+            neopdf_pdf_param_range(this->raw, param, range.data());
+            return range;
+        }
+
+        /** @brief Get the shape of the subgrids in the order of their index for a given parameter. */
+        std::vector<size_t> subgrids_shape_for_param(NeopdfSubgridParams param) const {
+            size_t num = num_subgrids();
+            std::vector<size_t> shape(num);
+            neopdf_pdf_subgrids_shape_for_param(this->raw, shape.data(), num, param);
+            return shape;
+        }
+
+        /** @brief Get the grid values of a parameter for a given subgrid. */
+        std::vector<double> subgrid_for_param(NeopdfSubgridParams param, size_t subgrid_index) const {
+            std::vector<size_t> shape = subgrids_shape_for_param(param);
+            std::vector<double> values(shape[subgrid_index]);
+            neopdf_pdf_subgrids_for_param(
+                this->raw,
+                values.data(),
+                param,
+                shape.size(),
+                shape.data(),
+                subgrid_index
+            );
+            return values;
         }
 };
 
@@ -205,7 +243,7 @@ class GridWriter {
                 throw std::runtime_error("Failed to create `NeoPDFGrid`");
             }
 
-            NeoPDFResult result = neopdf_grid_add_subgrid(
+            NeopdfResult result = neopdf_grid_add_subgrid(
                 grid,
                 nucleons.data(), nucleons.size(),
                 alphas.data(), alphas.size(),
@@ -213,19 +251,19 @@ class GridWriter {
                 q2s.data(), q2s.size(),
                 grid_data.data(), grid_data.size()
             );
-            if (result != NeoPDFResult::NEO_PDF_RESULT_SUCCESS) {
+            if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
                 neopdf_grid_free(grid);
                 throw std::runtime_error("Failed to add subgrid");
             }
 
             result = neopdf_grid_set_flavors(grid, flavors.data(), flavors.size());
-            if (result != NeoPDFResult::NEO_PDF_RESULT_SUCCESS) {
+            if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
                 neopdf_grid_free(grid);
                 throw std::runtime_error("Failed to set flavors");
             }
 
             result = neopdf_gridarray_collection_add_grid(collection_raw, grid);
-            if (result != NeoPDFResult::NEO_PDF_RESULT_SUCCESS) {
+            if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
                 neopdf_grid_free(grid);
                 throw std::runtime_error("Failed to add grid to collection");
             }
@@ -239,8 +277,8 @@ class GridWriter {
          */
         void compress(const MetaData& metadata, const std::string& output_path) {
             NeoPDFMetaData c_meta = metadata.to_c();
-            NeoPDFResult result = neopdf_grid_compress(collection_raw, &c_meta, output_path.c_str());
-            if (result != NeoPDFResult::NEO_PDF_RESULT_SUCCESS) {
+            NeopdfResult result = neopdf_grid_compress(collection_raw, &c_meta, output_path.c_str());
+            if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
                 throw std::runtime_error("Failed to compress grid data");
             }
         }
