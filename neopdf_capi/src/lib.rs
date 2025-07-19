@@ -223,6 +223,29 @@ pub unsafe extern "C" fn neopdf_pdf_xfxq2(
     pdf_obj.xfxq2(id, &[x, q2])
 }
 
+/// Interpolates the PDF value (xf) for a generic set of parameters.
+///
+/// # Panics
+///
+/// TODO
+///
+/// # Safety
+///
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object.
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_xfxq2_nd(
+    pdf: *mut NeoPDFWrapper,
+    id: i32,
+    params: *mut f64,
+    num_params: usize,
+) -> f64 {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &(*pdf).0 };
+    let params = unsafe { slice::from_raw_parts(params, num_params) };
+
+    pdf_obj.xfxq2(id, params)
+}
+
 /// Computes the `alpha_s` value at a given Q2.
 ///
 /// # Panics
@@ -570,8 +593,8 @@ pub struct NeoPDFMetaData {
     alphas_vals: *const c_double,
     num_alphas_vals: usize,
     polarised: bool,
-    set_type: c_int,
-    interpolator_type: c_int,
+    set_type: SetType,
+    interpolator_type: InterpolatorType,
 }
 
 /// Safely converts C string to Rust string
@@ -620,17 +643,8 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
         alphas_q_values,
         alphas_vals,
         polarised: meta.polarised,
-        set_type: match meta.set_type {
-            1 => SetType::Fragfn,
-            _ => SetType::Pdf,
-        },
-        interpolator_type: match meta.interpolator_type {
-            0 => InterpolatorType::Bilinear,
-            1 => InterpolatorType::LogBilinear,
-            3 => InterpolatorType::LogTricubic,
-            4 => InterpolatorType::InterpNDLinear,
-            _ => InterpolatorType::LogBicubic,
-        },
+        set_type: meta.set_type.clone(),
+        interpolator_type: meta.interpolator_type.clone(),
     })
 }
 

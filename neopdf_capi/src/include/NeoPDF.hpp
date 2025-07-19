@@ -11,21 +11,6 @@
 /** @brief Object Oriented interface to NeoPDF. */
 namespace neopdf {
 
-/** @brief Represents the type of PDF set. */
-enum class SetType {
-    Pdf = 0,
-    Fragfn = 1,
-};
-
-/** @brief Represents the type of interpolator used for the PDF. */
-enum class InterpolatorType {
-    Bilinear = 0,
-    LogBilinear = 1,
-    LogBicubic = 2,
-    LogTricubic = 3,
-    InterpNDLinear = 4,
-};
-
 /** @brief C++ representation of NeoPDFMetaData. */
 struct MetaData {
     std::string set_desc;
@@ -61,8 +46,8 @@ struct MetaData {
         c_meta.alphas_vals = alphas_vals.data();
         c_meta.num_alphas_vals = alphas_vals.size();
         c_meta.polarised = polarised;
-        c_meta.set_type = static_cast<int32_t>(set_type);
-        c_meta.interpolator_type = static_cast<int32_t>(interpolator_type);
+        c_meta.set_type = set_type;
+        c_meta.interpolator_type = interpolator_type;
         return c_meta;
     }
 };

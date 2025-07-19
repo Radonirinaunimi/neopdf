@@ -1,3 +1,4 @@
+#include "neopdf_capi.h"
 #include <NeoPDF.hpp>
 #include <cassert>
 #include <cmath>
@@ -128,9 +129,9 @@ int main() {
         .num_alphas_q = 1,
         .alphas_vals = alphas_vals,
         .num_alphas_vals = 1,
-        .polarised = 0,
-        .set_type = 0, // NEOPDF_SET_TYPE_PDF
-        .interpolator_type = 2, // NEOPDF_INTERP_LOGBICUBIC
+        .polarised = false,
+        .set_type = SET_TYPE_PDF,
+        .interpolator_type = INTERPOLATOR_TYPE_LOG_BICUBIC,
     };
 
     // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.
