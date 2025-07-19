@@ -6,7 +6,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <string>
 #include <vector>
+
+const double TOLERANCE= 1e-16;
 
 template<typename T>
 std::vector<T> geomspace(T start, T stop, int num, bool endpoint = false) {
@@ -179,13 +182,40 @@ int main() {
         .interpolator_type = 2, // NEOPDF_INTERP_LOGBICUBIC
     };
 
-    // Write to disk
-    const char* output_path = "check-writer.neopdf.lz4";
-    int result = neopdf_grid_compress(collection, &meta, output_path);
+    // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.
+    const char* filename = "check-writer.neopdf.lz4";
+    const char* neopdf_path = std::getenv("NEOPDF_DATA_PATH");
+    std::string output_path = neopdf_path
+        ? std::string(neopdf_path) + (std::string(neopdf_path).back() == '/' ? "" : "/") + filename
+        : filename;
+
+    // Write the PDF Grid into disk
+    int result = neopdf_grid_compress(collection, &meta, output_path.c_str());
     if (result != 0) {
         std::cerr << "Compression failed with code " << result << "\n";
     } else {
-        std::cout << "Compression succeeded! Output: " << output_path << "\n";
+        std::cout << "Compression succeeded!" << "\n";
+    }
+
+    // If `NEOPDF_DATA_PATH` is defined, reload the grid and check ther results.
+    if (neopdf_path) {
+        int pid_test = 21;
+        double x_test = 1e-3;
+        double q2_test1 = 1e2;
+        double q2_test2 = 1e4;
+
+        double ref1 = neopdf_pdf_xfxq2(neo_pdfs.pdfs[0], pid_test, x_test, q2_test1);
+        double ref2 = neopdf_pdf_xfxq2(neo_pdfs.pdfs[0], pid_test, x_test, q2_test2);
+
+        NeoPDFWrapper* wpdf = neopdf_pdf_load(pdfname, 0);
+        double res1 = neopdf_pdf_xfxq2(wpdf, pid_test, x_test, q2_test1);
+        double res2 = neopdf_pdf_xfxq2(wpdf, pid_test, x_test, q2_test2);
+
+        assert(std::abs(res1 - ref1) < TOLERANCE);
+        assert(std::abs(res2 - ref2) < TOLERANCE);
+
+        // Delete PDF object from memory
+        neopdf_pdf_free(wpdf);
     }
 
     // Cleanup

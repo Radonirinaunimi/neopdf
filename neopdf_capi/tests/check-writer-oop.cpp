@@ -7,10 +7,14 @@
 #include <iostream>
 #include <vector>
 
+using namespace neopdf;
+
+const double TOLERANCE= 1e-16;
+
 int main() {
     const char* pdfname = "NNPDF40_nnlo_as_01180";
     // Load all PDF members
-    neopdf::NeoPDFs neo_pdfs(pdfname);
+    NeoPDFs neo_pdfs(pdfname);
     if (neo_pdfs.size() == 0) {
         std::cerr << "Failed to load any PDF members!\n";
         return 1;
@@ -18,7 +22,7 @@ int main() {
     std::cout << "Loaded " << neo_pdfs.size() << " PDF members\n";
 
     // Get the first PDF as a reference for metadata
-    neopdf::NeoPDF& ref_pdf = neo_pdfs[0];
+    NeoPDF& ref_pdf = neo_pdfs[0];
 
     // Extract the PID values of the PDF set
     auto pids = ref_pdf.pids();
@@ -35,7 +39,7 @@ int main() {
 
     // For each member, build a grid
     for (size_t m = 0; m < neo_pdfs.size(); ++m) {
-        neopdf::NeoPDF& pdf = neo_pdfs[m];
+        NeoPDF& pdf = neo_pdfs[m];
         NeoPDFGrid* grid = neopdf_grid_new();
 
         if (!grid) {
@@ -65,14 +69,15 @@ int main() {
             }
 
             // Add subgrid
-            if (neopdf_grid_add_subgrid(
-                    grid,
-                    nucleons.data(), nucleons.size(),
-                    alphas.data(), alphas.size(),
-                    xs.data(), xs.size(),
-                    q2s.data(), q2s.size(),
-                    grid_data.data(), grid_data.size()
-                ) != NEOPDF_RESULT_SUCCESS) {
+            int add_subgrid =neopdf_grid_add_subgrid(
+                grid,
+                nucleons.data(), nucleons.size(),
+                alphas.data(), alphas.size(),
+                xs.data(), xs.size(),
+                q2s.data(), q2s.size(),
+                grid_data.data(), grid_data.size()
+            );
+            if (add_subgrid != NEOPDF_RESULT_SUCCESS) {
                 std::cerr << "Failed to add subgrid for member: " << m << "!\n";
                 neopdf_grid_free(grid);
                 member_ok = false;
@@ -83,14 +88,16 @@ int main() {
         if (!member_ok) continue;
 
         // Set flavor PIDs
-        if (neopdf_grid_set_flavors(grid, pids.data(), pids.size()) != NEOPDF_RESULT_SUCCESS) {
+        int add_flavors = neopdf_grid_set_flavors(grid, pids.data(), pids.size());
+        if (add_flavors != NEOPDF_RESULT_SUCCESS) {
             std::cerr << "Failed to set flavors for member: " << m << "!\n";
             neopdf_grid_free(grid);
             continue;
         }
 
         // Add grid to collection
-        if (neopdf_gridarray_collection_add_grid(collection, grid) != NEOPDF_RESULT_SUCCESS) {
+        int add_grid = neopdf_gridarray_collection_add_grid(collection, grid);
+        if (add_grid != NEOPDF_RESULT_SUCCESS) {
             std::cerr << "Failed to add grid to collection for member: " << m << "!\n";
             neopdf_grid_free(grid);
             continue;
@@ -126,13 +133,37 @@ int main() {
         .interpolator_type = 2, // NEOPDF_INTERP_LOGBICUBIC
     };
 
-    // Write to disk
-    const char* output_path = "check-writer-oop.neopdf.lz4";
-    int result = neopdf_grid_compress(collection, &meta, output_path);
+    // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.
+    const char* filename = "check-writer.neopdf.lz4";
+    const char* neopdf_path = std::getenv("NEOPDF_DATA_PATH");
+    std::string output_path = neopdf_path
+        ? std::string(neopdf_path) + (std::string(neopdf_path).back() == '/' ? "" : "/") + filename
+        : filename;
+
+    // Write the PDF Grid into disk
+    int result = neopdf_grid_compress(collection, &meta, output_path.c_str());
     if (result != 0) {
         std::cerr << "Compression failed with code " << result << "\n";
     } else {
-        std::cout << "Compression succeeded! Output: " << output_path << "\n";
+        std::cout << "Compression succeeded!" << "\n";
+    }
+
+    // If `NEOPDF_DATA_PATH` is defined, reload the grid and check ther results.
+    if (neopdf_path) {
+        int pid_test = 21;
+        double x_test = 1e-3;
+        double q2_test1 = 1e2;
+        double q2_test2 = 1e4;
+
+        double ref1 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test1);
+        double ref2 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test2);
+
+        NeoPDF wpdf(pdfname);
+        double res1 = wpdf.xfxQ2(pid_test, x_test, q2_test1);
+        double res2 = wpdf.xfxQ2(pid_test, x_test, q2_test2);
+
+        assert(std::abs(res1 - ref1) < TOLERANCE);
+        assert(std::abs(res2 - ref2) < TOLERANCE);
     }
 
     // Cleanup
