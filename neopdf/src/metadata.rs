@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 
 /// Represents the type of PDF set.
+#[repr(C)]
 #[derive(Clone, Debug, Deserialize, Serialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum SetType {
@@ -11,6 +12,7 @@ pub enum SetType {
 }
 
 /// Represents the type of interpolator used for the PDF.
+#[repr(C)]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub enum InterpolatorType {
     Bilinear,

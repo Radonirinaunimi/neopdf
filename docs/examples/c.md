@@ -1,31 +1,26 @@
 # C API Example
 
-This example demonstrates how to use the NeoPDF C API to load PDF sets, evaluate parton
-distributions, and perform statistical analysis across PDF members.
+This example demonstrates how to use the `NeoPDF` C API to load and evaluate parton
+distributions.
 
 ## Prerequisites
 
 Build and install the C API as described in the [installation guide](../installation.md).
-- Include the NeoPDF C headers and link against the shared library.
 
 ## Example 1: Loading and Evaluating PDFs
 
-This example demonstrates the use of the NeoPDF C API to load both single and multiple PDF
-members, evaluate parton distributions for a range of $x$ and $Q^2$ values, and compare
+This example demonstrates the use of the `NeoPDF` C API to load both single and multiple PDF
+members, evaluate parton distributions for a range of $x$ and $Q^2$ values, and compare the
 results to LHAPDF.
 
 **Technical details:**
+
 - The C API requires explicit memory management: objects created with `neopdf_pdf_load` or
   `neopdf_pdf_load_all` must be freed with `neopdf_pdf_free` or `neopdf_pdf_array_free` to
   avoid memory leaks.
 - The evaluation of $x f(x, Q^2)$ and $\alpha_s(Q^2)$ is performed in nested loops for each parton,
-  $x$, and $Q^2$ value, which can be parallelized for performance in user code.
-- The code asserts that the results from NeoPDF and LHAPDF agree within a tight tolerance,
-  providing robust validation.
-- Error handling is performed via assertions and return codes; failures will terminate the program
-  or print error messages.
-- The example demonstrates direct interoperability with LHAPDF by using both APIs side by side for
-  validation.
+  $x$, and $Q^2$ value. See the documentation on how to use the parallelized `xfxQ2s`.
+- The code asserts that the results from `NeoPDF` and `LHAPDF` agree within a tight tolerance.
 
 ```cpp linenums="1"
 #include <LHAPDF/PDF.h>
@@ -194,16 +189,15 @@ int main() {
 }
 ```
 
-## Example 2: Writing a NeoPDF Grid
+## Example 2: Filling and Writing a NeoPDF Grid
 
-This example illustrates how to fill and write a NeoPDF grid using the C API. It demonstrates
+This example illustrates how to fill and write a `NeoPDF` grid using the C API. It demonstrates
 the process of constructing a grid for each PDF member and serializing the collection to disk.
 
 **Technical details:**
-- The grid axes are defined as arrays for $x$, $Q^2$, parton IDs, nucleons, and $\alpha_s$ values,
-  allowing for flexible and high-dimensional grids.
-- The grid data is stored in a flattened array, with the layout `[nucleons][alphas][flavors][xs][q2s]`,
-  which is required by the NeoPDF format for efficient storage and access.
+
+- The grid axes are defined as arrays for $x$, $Q^2$, parton IDs, nucleons, and $\alpha_s$ values.
+- The grid data is stored in a 5D array, with the layout `[nucleons][alphas][flavors][xs][q2s]`.
 - The `NeoPDFGridArrayCollection` manages the collection of grids and handles compression and
   serialization to disk.
 - Metadata is filled in a `NeoPDFMetaData` struct, which includes information about the set, axis
@@ -212,11 +206,17 @@ the process of constructing a grid for each PDF member and serializing the colle
 - All memory management must be handled manually; every object created must be freed with the
   appropriate function to avoid leaks.
 - The output file is compressed and written in the `.neopdf.lz4` format, suitable for use with
-  NeoPDF tools and APIs.
-- Error handling is performed via return codes; any failure in grid creation or writing is reported
-  to the user, and resources are cleaned up accordingly.
+  `NeoPDF` tools and APIs.
 
-```cpp linenums="1"
+!!! tip "NOTE"
+
+    The following example fills the `NeoPDF` grid by re-computing the values of the subgrids
+    from another set. This makes it possible to explicitly check that the filling of the grid
+    is correct. However, this makes the codes very verbose. To easily spot the parts that
+    actually fills the grid, some lines are highlighted.
+
+```cpp linenums="1" hl_lines="110-119 122-129 138 146 165-183 193"
+#include <cstddef>
 #include <neopdf_capi.h>
 #include <cassert>
 #include <cmath>
@@ -224,7 +224,10 @@ the process of constructing a grid for each PDF member and serializing the colle
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <string>
 #include <vector>
+
+const double TOLERANCE= 1e-16;
 
 template<typename T>
 std::vector<T> geomspace(T start, T stop, int num, bool endpoint = false) {
@@ -246,6 +249,34 @@ std::vector<T> geomspace(T start, T stop, int num, bool endpoint = false) {
     return result;
 }
 
+// Helper function to extract subgrid parameters
+std::vector<double> extract_subgrid_params(
+    NeoPDFWrapper* pdf,
+    NeopdfSubgridParams param_type,
+    std::size_t subgrid_idx,
+    std::size_t num_subgrids
+) {
+    std::vector<std::size_t> shape(num_subgrids);
+    neopdf_pdf_subgrids_shape_for_param(
+        pdf,
+        shape.data(),
+        num_subgrids,
+        param_type
+    );
+
+    std::vector<double> values(shape[subgrid_idx]);
+    neopdf_pdf_subgrids_for_param(
+        pdf,
+        values.data(),
+        param_type,
+        num_subgrids,
+        shape.data(),
+        subgrid_idx
+    );
+
+    return values;
+}
+
 int main() {
     const char* pdfname = "NNPDF40_nnlo_as_01180";
     // Load all PDF members
@@ -256,13 +287,13 @@ int main() {
     }
     std::cout << "Loaded " << neo_pdfs.size << " PDF members\n";
 
-    // Example grid axes (small for speed)
-    // TODO: Replace `min` and `max` values with the actual ranges
-    std::vector<int> pids = {-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5};
-    std::vector<double> xs = geomspace(1e-9, 1.0, 50);
-    std::vector<double> q2s = geomspace(2.73, 1e10, 50);
-    double nucleons[] = {1.0};
-    double alphas[] = {0.118};
+    // Extract the PID values of the PDF set
+    std::size_t num_pids = neopdf_pdf_num_pids(neo_pdfs.pdfs[0]);
+    std::vector<int> pids(num_pids);
+    neopdf_pdf_pids(neo_pdfs.pdfs[0], pids.data(), num_pids);
+
+    // Extrac the number of subgrids
+    std::size_t num_subgrids = neopdf_pdf_num_subgrids(neo_pdfs.pdfs[0]);
 
     // Create a collection
     NeoPDFGridArrayCollection* collection = neopdf_gridarray_collection_new();
@@ -282,31 +313,43 @@ int main() {
             continue;
         }
 
-        // Compute grid_data: [nucleons][alphas][flavors][xs][q2s]
-        std::vector<double> grid_data;
-        for (size_t f = 0; f < pids.size(); ++f) {
-            int pid = pids[f];
+        // Loop over the Subgrids
+        for (std::size_t subgrid_idx = 0; subgrid_idx != num_subgrids; subgrid_idx++) {
+            // Extrac the parameter values of the given subgrid
+            auto xs = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_MOMENTUM, subgrid_idx, num_subgrids);
+            auto q2s = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_SCALE, subgrid_idx, num_subgrids);
+            auto alphas = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_ALPHAS, subgrid_idx, num_subgrids);
+            auto nucleons = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_NUCLEONS, subgrid_idx, num_subgrids);
+
+            // Compute grid_data: [q2s][xs][flavors], instead of [nucleons][alphas][q2s][xs][flavors]
+            // NOTE: This assumes that there is no 'A' and `alphas` dependence.
+            assert(nucleons.size() == 1);
+            assert(alphas.size() == 1);
+            std::vector<double> grid_data;
             for (size_t xi = 0; xi < xs.size(); ++xi) {
                 for (size_t qi = 0; qi < q2s.size(); ++qi) {
-                    double val = neopdf_pdf_xfxq2(pdf, pid, xs[xi], q2s[qi]);
-                    grid_data.push_back(val);
+                    for (size_t f = 0; f < pids.size(); ++f) {
+                        int pid = pids[f];
+                        double val = neopdf_pdf_xfxq2(pdf, pid, xs[xi], q2s[qi]);
+                        grid_data.push_back(val);
+                    }
                 }
             }
-        }
 
-        // Add subgrid
-        int add_subgrid = neopdf_grid_add_subgrid(
-            grid,
-            nucleons, 1,
-            alphas, 1,
-            xs.data(), xs.size(),
-            q2s.data(), q2s.size(),
-            grid_data.data(), grid_data.size()
-        );
-        if (add_subgrid != NEO_PDF_RESULT_SUCCESS) {
-            std::cerr << "Failed to add subgrid for member: " << m << "!\n";
-            neopdf_grid_free(grid);
-            continue;
+            // Add subgrid
+            int add_subgrid = neopdf_grid_add_subgrid(
+                grid,
+                nucleons.data(), nucleons.size(),
+                alphas.data(), alphas.size(),
+                xs.data(), xs.size(),
+                q2s.data(), q2s.size(),
+                grid_data.data(), grid_data.size()
+            );
+            if (add_subgrid != NEOPDF_RESULT_SUCCESS) {
+                std::cerr << "Failed to add subgrid for member: " << m << "!\n";
+                neopdf_grid_free(grid);
+                continue;
+            }
         }
 
         // Set flavor PIDs
@@ -327,17 +370,24 @@ int main() {
         std::cout << "Added grid for member " << m << "\n";
     }
 
-    // Fill metadata (example values)
+    // Fill the running of alphas with some random values
     double alphas_qs[] = {2.0};
     double alphas_vals[] = {0.118};
+
+    // Extrac the ranges for the momentum x and scale Q2
+    std::vector<double> x_range(2);
+    std::vector<double> q2_range(2);
+    neopdf_pdf_param_range(neo_pdfs.pdfs[0], NEOPDF_SUBGRID_PARAMS_MOMENTUM, x_range.data());
+    neopdf_pdf_param_range(neo_pdfs.pdfs[0], NEOPDF_SUBGRID_PARAMS_SCALE, q2_range.data());
+
     NeoPDFMetaData meta = {
         .set_desc = "NNPDF40_nnlo_as_01180 collection",
         .set_index = 0,
         .num_members = (uint32_t)neo_pdfs.size,
-        .x_min = xs.front(),
-        .x_max = xs.back(),
-        .q_min = q2s.front(),
-        .q_max = q2s.back(),
+        .x_min = x_range[0],
+        .x_max = x_range[1],
+        .q_min = sqrt(q2_range[0]),
+        .q_max = sqrt(q2_range[1]),
         .flavors = pids.data(),
         .num_flavors = (size_t)pids.size(),
         .format = "neopdf",
@@ -345,24 +395,74 @@ int main() {
         .num_alphas_q = 1,
         .alphas_vals = alphas_vals,
         .num_alphas_vals = 1,
-        .polarised = 0,
-        .set_type = 0, // NEOPDF_SET_TYPE_PDF
-        .interpolator_type = 2, // NEOPDF_INTERP_LOGBICUBIC
+        .polarised = false,
+        .set_type = SET_TYPE_PDF,
+        .interpolator_type = INTERPOLATOR_TYPE_LOG_BICUBIC,
     };
 
-    // Write to disk
-    const char* output_path = "check-writer.neopdf.lz4";
-    int result = neopdf_grid_compress(collection, &meta, output_path);
+    // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.
+    const char* filename = "check-writer.neopdf.lz4";
+    const char* neopdf_path = std::getenv("NEOPDF_DATA_PATH");
+    std::string output_path = neopdf_path
+        ? std::string(neopdf_path) + (std::string(neopdf_path).back() == '/' ? "" : "/") + filename
+        : filename;
+
+    // Write the PDF Grid into disk
+    int result = neopdf_grid_compress(collection, &meta, output_path.c_str());
     if (result != 0) {
         std::cerr << "Compression failed with code " << result << "\n";
     } else {
-        std::cout << "Compression succeeded! Output: " << output_path << "\n";
+        std::cout << "Compression succeeded!" << "\n";
     }
 
-    // Cleanup
+    // If `NEOPDF_DATA_PATH` is defined, reload the grid and check ther results.
+    if (neopdf_path) {
+        int pid_test = 21;
+        double x_test = 1e-3;
+        double q2_test1 = 1e2;
+        double q2_test2 = 1e4;
+
+        double ref1 = neopdf_pdf_xfxq2(neo_pdfs.pdfs[0], pid_test, x_test, q2_test1);
+        double ref2 = neopdf_pdf_xfxq2(neo_pdfs.pdfs[0], pid_test, x_test, q2_test2);
+
+        NeoPDFWrapper* wpdf = neopdf_pdf_load(pdfname, 0);
+        double res1 = neopdf_pdf_xfxq2(wpdf, pid_test, x_test, q2_test1);
+        double res2 = neopdf_pdf_xfxq2(wpdf, pid_test, x_test, q2_test2);
+
+        assert(std::abs(res1 - ref1) < TOLERANCE);
+        assert(std::abs(res2 - ref2) < TOLERANCE);
+
+        // Delete PDF object from memory
+        neopdf_pdf_free(wpdf);
+    }
+
+    // Remove objects from memory.
     neopdf_gridarray_collection_free(collection);
     neopdf_pdf_array_free(neo_pdfs);
 
     return result == 0 ? 0 : 1;
+}
+```
+
+## Example 3: Filling and Writing a NeoPDF Grid with generic Parameters
+
+In the case where the PDF grid depends on more parameters, the filling of `grid_data`
+in the above example simply now becomes:
+
+```cpp linenums="1"
+std::vector<double> grid_data;
+for (size_t ni = 0; ni < nucleons.size(); ++ni) {
+    for (size_t asi = 0; asi < alphas.size(); ++asi) {
+        for (size_t xi = 0; xi < xs.size(); ++xi) {
+            for (size_t qi = 0; qi < q2s.size(); ++qi) {
+                for (size_t f = 0; f < pids.size(); ++f) {
+                    int pid = pids[f];
+                    std::vector<double> params = {nucleons[ni], alphas[asi], xs[xi], q2s[qi]};
+                    double val = neopdf_pdf_xfxq2_nd(pdf, pid, params.data(), params.size());
+                    grid_data.push_back(val);
+                }
+            }
+        }
+    }
 }
 ```
