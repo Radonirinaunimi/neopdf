@@ -52,11 +52,12 @@ int main() {
             auto alphas = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_ALPHAS, subgrid_idx);
             auto nucleons = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_NUCLEONS, subgrid_idx);
 
-            // Compute grid_data: [nucleons][alphas][flavors][xs][q2s]
+            // Compute grid_data: [q2s][xs][flavors], instead of [nucleons][alphas][q2s][xs][flavors]
+            // NOTE: This assumes that there is no 'A' and `alphas` dependence.
             std::vector<double> grid_data;
-            for (int pid : pids) {
-                for (double x : xs) {
-                    for (double q2 : q2s) {
+            for (double x : xs) {
+                for (double q2 : q2s) {
+                    for (int pid : pids) {
                         double val = pdf.xfxQ2(pid, x, q2);
                         grid_data.push_back(val);
                     }
