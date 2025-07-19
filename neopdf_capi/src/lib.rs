@@ -751,24 +751,28 @@ impl NeoPDFGridArrayCollection {
         // Dereference the raw pointer at the given index to get a reference to NeoPDFGrid.
         unsafe { (*self.grids.add(index)).as_ref() }
     }
+}
 
-    /// Frees the memory allocated for the internal array of `NeoPDFGrid` pointers.
-    /// This function does NOT free the individual `NeoPDFGrid` objects themselves;
-    /// it only deallocates the array that holds their pointers.
-    fn free_storage(&mut self) {
-        // Only deallocate if the `grids` pointer is not null.
-        if !self.grids.is_null() {
-            unsafe {
-                // Deallocate the memory using the same layout it was allocated with.
-                std::alloc::dealloc(
-                    self.grids.cast::<u8>(),
-                    std::alloc::Layout::array::<*mut NeoPDFGrid>(self.capacity).unwrap(),
-                );
+impl Drop for NeoPDFGridArrayCollection {
+    fn drop(&mut self) {
+        if self.grids.is_null() {
+            return;
+        }
+        // Free each individual grid in the collection
+        let grids_slice = unsafe { slice::from_raw_parts(self.grids, self.num_grids) };
+        for &grid_ptr in grids_slice {
+            if !grid_ptr.is_null() {
+                // Re-Box the raw pointer and let it drop, freeing the memory
+                unsafe { drop(Box::from_raw(grid_ptr)) };
             }
-            // Reset the pointer, count, and capacity to indicate an empty, deallocated state.
-            self.grids = std::ptr::null_mut();
-            self.num_grids = 0;
-            self.capacity = 0;
+        }
+
+        // Deallocate the memory for the pointer array itself
+        unsafe {
+            std::alloc::dealloc(
+                self.grids.cast::<u8>(),
+                std::alloc::Layout::array::<*mut NeoPDFGrid>(self.capacity).unwrap(),
+            );
         }
     }
 }
@@ -808,27 +812,20 @@ pub unsafe extern "C" fn neopdf_gridarray_collection_add_grid(
     }
 }
 
-/// Frees the memory of a `NeoPDFGridArrayCollection`.
-///
-/// This function deallocates the array that holds the `NeoPDFGrid` pointers.
-/// It does NOT free the individual `NeoPDFGrid` objects themselves.
-/// The caller is responsible for freeing each `NeoPDFGrid` pointer separately if needed.
+/// Frees the memory of a `NeoPDFGridArrayCollection` and all the grids it contains.
 ///
 /// # Safety
 /// - `collection` must be a valid, non-null pointer to a `NeoPDFGridArrayCollection`
 ///   that was previously created by `neopdf_gridarray_collection_new`.
-/// - After this call, the `collection` pointer becomes invalid and should not be used.
+/// - After this call, the `collection` pointer and all grids it contained become invalid
+///   and should not be used.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_gridarray_collection_free(
     collection: *mut NeoPDFGridArrayCollection,
 ) {
-    // Check if the collection pointer is null to prevent dereferencing an invalid pointer.
     if !collection.is_null() {
-        // Convert the raw `collection` pointer back into a `Box`.
-        // This transfers ownership back to Rust, allowing `drop` to be called.
-        let mut collection = unsafe { Box::from_raw(collection) };
-        // Call the `free_storage` method to deallocate the internal array of grid pointers.
-        collection.free_storage();
+        // This will call the `Drop` implementation for `NeoPDFGridArrayCollection`
+        unsafe { drop(Box::from_raw(collection)) };
     }
 }
 

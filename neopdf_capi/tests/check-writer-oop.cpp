@@ -135,8 +135,6 @@ int main() {
     }
 
     // Cleanup
-    // FIXME: The C-API has a memory leak. The grids added to the collection
-    // are not freed by `neopdf_gridarray_collection_free`.
     neopdf_gridarray_collection_free(collection);
     // The `neo_pdfs` object will be automatically destroyed, freeing the PDF members.
 
