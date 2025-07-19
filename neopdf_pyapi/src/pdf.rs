@@ -1,3 +1,5 @@
+use core::panic;
+
 use neopdf::pdf::PDF;
 use numpy::{IntoPyArray, PyArray2};
 use pyo3::prelude::*;
@@ -89,6 +91,17 @@ impl PyPDF {
             .collect()
     }
 
+    /// Returns the list of `PID` values.
+    ///
+    /// Returns
+    /// -------
+    /// list[int]
+    ///     The PID values.
+    #[must_use]
+    pub fn pids(&self) -> Vec<i32> {
+        self.pdf.pids().to_vec()
+    }
+
     /// Returns the list of `Subgrid` objects.
     ///
     /// Returns
@@ -104,6 +117,30 @@ impl PyPDF {
                 subgrid: subgrid.clone(),
             })
             .collect()
+    }
+
+    /// Returns the subgrid knots of a parameter for a given subgrid index.
+    ///
+    /// The parameter could be the nucleon numbers `A`, the strong coupling
+    /// `alphas`, the momentum fraction `x`, or the momentum scale `Q2`.
+    ///
+    /// # Panics
+    ///
+    /// This panics if the parameter is not valid.
+    ///
+    /// Returns
+    /// -------
+    /// list[float]
+    ///     The subgrid knots for a given parameter.
+    #[must_use]
+    pub fn subgrid_knots(&self, param: &str, subgrid_index: usize) -> Vec<f64> {
+        match param.to_lowercase().as_str() {
+            "alphas" => self.pdf.subgrid(subgrid_index).alphas.to_vec(),
+            "x" => self.pdf.subgrid(subgrid_index).xs.to_vec(),
+            "q2" => self.pdf.subgrid(subgrid_index).q2s.to_vec(),
+            "nucleons" => self.pdf.subgrid(subgrid_index).nucleons.to_vec(),
+            _ => panic!("The argument {param} is not a valid parameter."),
+        }
     }
 
     /// Retrieves the minimum x-value for this PDF set.
