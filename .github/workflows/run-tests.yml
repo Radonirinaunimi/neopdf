@@ -23,7 +23,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: neopdf-data
-          key: data-v1
+          key: data-v2
       - name: Download data
         if: steps.cache-data.outputs.cache-hit != 'true'
         run: |

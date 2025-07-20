@@ -91,7 +91,7 @@ This page details the physics and technical features, design rationale, and futu
     this issue by adding the following keys to the metadata:
 
     ``` yaml
-    HadronPID: 2212/212/...
+    Particle: 2212/212/... # Hadron PID
     Polarized: true/false
     SetType: PDf/Fragfn
     ```

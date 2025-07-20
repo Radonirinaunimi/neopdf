@@ -303,7 +303,7 @@ pub unsafe extern "C" fn neopdf_pdf_pids(pdf: *mut NeoPDFWrapper, pids: *mut i32
 pub enum NeopdfSubgridParams {
     /// Parameters for subgrids in the PDF grid.
     Nucleons,
-    /// The strong coupling constant (alpha_s) parameter.
+    /// The strong coupling constant (`alpha_s`) parameter.
     Alphas,
     /// The momentum fraction (x) parameter.
     Momentum,
@@ -595,6 +595,8 @@ pub struct NeoPDFMetaData {
     polarised: bool,
     set_type: SetType,
     interpolator_type: InterpolatorType,
+    error_type: *const c_char,
+    hadron_pid: c_int,
 }
 
 /// Safely converts C string to Rust string
@@ -629,6 +631,7 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
     let flavors = unsafe { carray_to_vec(meta.flavors, meta.num_flavors) }?;
     let alphas_q_values = unsafe { carray_to_vec(meta.alphas_q_values, meta.num_alphas_q) }?;
     let alphas_vals = unsafe { carray_to_vec(meta.alphas_vals, meta.num_alphas_vals) }?;
+    let error_type = unsafe { cstr_to_string(meta.error_type) }?;
 
     Some(MetaData {
         set_desc,
@@ -645,6 +648,8 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
         polarised: meta.polarised,
         set_type: meta.set_type.clone(),
         interpolator_type: meta.interpolator_type.clone(),
+        error_type,
+        hadron_pid: meta.hadron_pid,
     })
 }
 

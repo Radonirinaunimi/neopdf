@@ -69,6 +69,12 @@ pub struct MetaData {
     /// Type of interpolator used for the PDF (e.g., "LogBicubic").
     #[serde(rename = "InterpolatorType", default)]
     pub interpolator_type: InterpolatorType,
+    /// The error type representation of the PDF.
+    #[serde(rename = "ErrorType", default)]
+    /// The hadron PID value representation of the PDF.
+    pub error_type: String,
+    #[serde(rename = "Particle", default)]
+    pub hadron_pid: i32,
 }
 
 impl fmt::Display for MetaData {

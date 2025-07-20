@@ -281,7 +281,7 @@ below in the case the grid should explicitly depend on more parameters.
     is correct. However, this makes the codes very verbose. To easily spot the parts that
     actually fills the grid, some lines are highlighted.
 
-```cpp linenums="1" hl_lines="62-70 73-80 92 100 117-135 145"
+```cpp linenums="1" hl_lines="62-70 73-80 92 100 117-137 147"
 #include "neopdf_capi.h"
 #include <NeoPDF.hpp>
 #include <cassert>
@@ -416,6 +416,8 @@ int main() {
         .polarised = false,
         .set_type = SET_TYPE_PDF,
         .interpolator_type = INTERPOLATOR_TYPE_LOG_BICUBIC,
+        .error_type = "replicas",
+        .hadron_pid = 2212,
     };
 
     // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.

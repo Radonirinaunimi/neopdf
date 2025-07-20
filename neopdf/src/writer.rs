@@ -442,6 +442,8 @@ mod tests {
             polarised: false,
             set_type: SetType::Pdf,
             interpolator_type: InterpolatorType::LogBicubic,
+            error_type: "replicas".into(),
+            hadron_pid: 2212,
         };
 
         let test_grid = test_grid();
