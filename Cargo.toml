@@ -15,7 +15,7 @@ version = "0.1.0"
 ndarray = { version = "0.16.1", features = ["serde"] }
 thiserror = "1.0.69"
 tempfile = "3.10.1"
-itertools = "0.13"  # Using 0.13 to match your conflict resolution
+itertools = "0.13"
 
 # Core library dependencies
 ninterp = "0.7.3"

@@ -21,6 +21,7 @@ neopdf.workspace = true
 [[bin]]
 name = "neopdf"
 path = "src/main.rs"
+doc = false
 
 [dev-dependencies]
 assert_cmd.workspace = true

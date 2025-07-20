@@ -19,6 +19,7 @@ name = "neopdf"
 [lib]
 name = "neopdf"
 crate-type = ["cdylib"]
+doc = false
 
 [dependencies]
 thiserror.workspace = true
