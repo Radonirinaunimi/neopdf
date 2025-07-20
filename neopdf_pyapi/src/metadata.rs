@@ -98,7 +98,9 @@ impl PyMetaData {
         alphas_vals = vec![],
         polarised = false,
         set_type = PySetType::Pdf,
-        interpolator_type = PyInterpolatorType::LogBicubic
+        interpolator_type = PyInterpolatorType::LogBicubic,
+        error_type = "".to_string(),
+        hadron_pid = 0
     ))]
     pub fn new(
         set_desc: String,
@@ -115,6 +117,8 @@ impl PyMetaData {
         polarised: bool,
         set_type: PySetType,
         interpolator_type: PyInterpolatorType,
+        error_type: String,
+        hadron_pid: i32,
     ) -> Self {
         let meta = MetaData {
             set_desc,
@@ -131,6 +135,8 @@ impl PyMetaData {
             polarised,
             set_type: SetType::from(&set_type),
             interpolator_type: InterpolatorType::from(&interpolator_type),
+            error_type,
+            hadron_pid,
         };
 
         Self { meta }
@@ -171,6 +177,8 @@ impl PyMetaData {
         dict.set_item("polarised", self.meta.polarised)?;
         dict.set_item("set_type", set_type)?;
         dict.set_item("interpolator_type", interpolator_type)?;
+        dict.set_item("error_type", &self.meta.error_type)?;
+        dict.set_item("hadron_pid", self.meta.hadron_pid)?;
 
         Ok(dict.into())
     }
@@ -257,6 +265,18 @@ impl PyMetaData {
     #[must_use]
     pub fn interpolator_type(&self) -> PyInterpolatorType {
         PyInterpolatorType::from(&self.meta.interpolator_type)
+    }
+
+    /// The type of error.
+    #[must_use]
+    pub const fn error_type(&self) -> &String {
+        &self.meta.error_type
+    }
+
+    /// The hadron PID.
+    #[must_use]
+    pub const fn hadron_pid(&self) -> i32 {
+        self.meta.hadron_pid
     }
 }
 
