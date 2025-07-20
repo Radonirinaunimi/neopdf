@@ -7,8 +7,8 @@ use std::fmt;
 #[serde(rename_all = "lowercase")]
 pub enum SetType {
     #[default]
-    Pdf,
-    Fragfn,
+    SpaceLike,
+    TimeLike,
 }
 
 /// Represents the type of interpolator used for the PDF.

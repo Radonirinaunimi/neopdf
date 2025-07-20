@@ -181,7 +181,7 @@ int main() {
         .alphas_vals = alphas_vals,
         .num_alphas_vals = 1,
         .polarised = false,
-        .set_type = SET_TYPE_PDF,
+        .set_type = SET_TYPE_SPACE_LIKE,
         .interpolator_type = INTERPOLATOR_TYPE_LOG_BICUBIC,
         .error_type = "replicas",
         .hadron_pid = 2212,

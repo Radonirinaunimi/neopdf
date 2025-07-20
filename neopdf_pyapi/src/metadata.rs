@@ -14,8 +14,8 @@ pub enum PySetType {
 impl From<&SetType> for PySetType {
     fn from(set_type: &SetType) -> Self {
         match set_type {
-            SetType::Pdf => Self::Pdf,
-            SetType::Fragfn => Self::Fragfn,
+            SetType::SpaceLike => Self::Pdf,
+            SetType::TimeLike => Self::Fragfn,
         }
     }
 }
@@ -23,8 +23,8 @@ impl From<&SetType> for PySetType {
 impl From<&PySetType> for SetType {
     fn from(set_type: &PySetType) -> Self {
         match set_type {
-            PySetType::Pdf => Self::Pdf,
-            PySetType::Fragfn => Self::Fragfn,
+            PySetType::Pdf => Self::SpaceLike,
+            PySetType::Fragfn => Self::TimeLike,
         }
     }
 }
@@ -151,8 +151,8 @@ impl PyMetaData {
         let dict = pyo3::types::PyDict::new(py);
 
         let set_type = match &self.meta.set_type {
-            SetType::Pdf => "PDF",
-            SetType::Fragfn => "FragFn",
+            SetType::SpaceLike => "PDF",
+            SetType::TimeLike => "FragFn",
         };
 
         let interpolator_type = match &self.meta.interpolator_type {

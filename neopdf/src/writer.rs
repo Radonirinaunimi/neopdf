@@ -440,7 +440,7 @@ mod tests {
             alphas_q_values: vec![],
             alphas_vals: vec![],
             polarised: false,
-            set_type: SetType::Pdf,
+            set_type: SetType::SpaceLike,
             interpolator_type: InterpolatorType::LogBicubic,
             error_type: "replicas".into(),
             hadron_pid: 2212,
