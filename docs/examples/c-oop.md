@@ -266,7 +266,7 @@ below in the case the grid should explicitly depend on more parameters.
 
 - The grid axes are defined as vectors for $x$, $Q^2$, parton IDs, nucleons, and $\alpha_s$
   values.
-- The grid data is stored in a 5D array, with the layout `[nucleons][alphas][flavors][xs][q2s]`.
+- The grid data is stored in a 6D array, with the layout `[nucleons][alphas][pids][kT][xs][q2s]`.
 - The `GridWriter` class manages the collection of grids and handles compression and serialization to disk.
 - Metadata is filled in a `MetaData` object, which includes information about the set, axis ranges, flavors,
   and interpolation type. This metadata is essential for correct interpretation of the grid file.

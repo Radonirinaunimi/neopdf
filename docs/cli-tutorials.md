@@ -73,6 +73,7 @@ The above command will print out the following output:
 ```yaml
 Nucleon Numbers A: [1.0], shape=[1], strides=[1], layout=CFcf (0xf), const ndim=1
 Alphas values: [0.118], shape=[1], strides=[1], layout=CFcf (0xf), const ndim=1
+kT values: [0.0], shape=[1], strides=[1], layout=CFcf (0xf), const ndim=1
 x values: [1e-9, 1.2970848e-9, ...], shape=[196], strides=[1], layout=CFcf (0xf), const ndim=1
 Q2 values: [2.7224999999999997, ...], shape=[12], strides=[1], layout=CFcf (0xf), const ndim=1
 ```

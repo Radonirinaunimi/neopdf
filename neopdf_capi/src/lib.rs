@@ -305,6 +305,8 @@ pub enum NeopdfSubgridParams {
     Nucleons,
     /// The strong coupling constant (`alpha_s`) parameter.
     Alphas,
+    /// The transverse momentum `kT` parameter.
+    Kt,
     /// The momentum fraction (x) parameter.
     Momentum,
     /// The energy scale (Q^2) parameter.
@@ -355,6 +357,7 @@ pub unsafe extern "C" fn neopdf_pdf_param_range(
             pdf_obj.param_ranges().alphas.min,
             pdf_obj.param_ranges().alphas.max,
         ],
+        NeopdfSubgridParams::Kt => &[pdf_obj.param_ranges().kt.min, pdf_obj.param_ranges().kt.max],
         NeopdfSubgridParams::Momentum => {
             &[pdf_obj.param_ranges().x.min, pdf_obj.param_ranges().x.max]
         }
@@ -392,6 +395,7 @@ pub unsafe extern "C" fn neopdf_pdf_subgrids_shape_for_param(
         .map(|sub| match subgrid_param {
             NeopdfSubgridParams::Nucleons => sub.nucleons.len(),
             NeopdfSubgridParams::Alphas => sub.alphas.len(),
+            NeopdfSubgridParams::Kt => sub.kts.len(),
             NeopdfSubgridParams::Momentum => sub.xs.len(),
             NeopdfSubgridParams::Scale => sub.q2s.len(),
         })
@@ -426,6 +430,7 @@ pub unsafe extern "C" fn neopdf_pdf_subgrids_for_param(
     let subgrid_knots = match subgrid_param {
         NeopdfSubgridParams::Nucleons => &pdf_obj.subgrids()[subgrid_index].nucleons,
         NeopdfSubgridParams::Alphas => &pdf_obj.subgrids()[subgrid_index].alphas,
+        NeopdfSubgridParams::Kt => &pdf_obj.subgrids()[subgrid_index].kts,
         NeopdfSubgridParams::Momentum => &pdf_obj.subgrids()[subgrid_index].xs,
         NeopdfSubgridParams::Scale => &pdf_obj.subgrids()[subgrid_index].q2s,
     };
@@ -457,6 +462,8 @@ impl NeoPDFGrid {
         num_nucleons: usize,
         alphas: *const c_double,
         num_alphas: usize,
+        kts: *const c_double,
+        num_kts: usize,
         xs: *const c_double,
         num_xs: usize,
         q2s: *const c_double,
@@ -467,6 +474,7 @@ impl NeoPDFGrid {
         // Check for null pointers
         if nucleons.is_null()
             || alphas.is_null()
+            || kts.is_null()
             || xs.is_null()
             || q2s.is_null()
             || grid_data.is_null()
@@ -478,7 +486,7 @@ impl NeoPDFGrid {
             SubgridData {
                 nucleons: slice::from_raw_parts(nucleons, num_nucleons).to_vec(),
                 alphas: slice::from_raw_parts(alphas, num_alphas).to_vec(),
-                kts: vec![0.0],
+                kts: slice::from_raw_parts(kts, num_kts).to_vec(),
                 xs: slice::from_raw_parts(xs, num_xs).to_vec(),
                 q2s: slice::from_raw_parts(q2s, num_q2s).to_vec(),
                 grid_data: slice::from_raw_parts(grid_data, grid_data_len).to_vec(),
@@ -520,6 +528,8 @@ pub unsafe extern "C" fn neopdf_grid_add_subgrid(
     num_nucleons: usize,
     alphas: *const c_double,
     num_alphas: usize,
+    kts: *const c_double,
+    num_kts: usize,
     xs: *const c_double,
     num_xs: usize,
     q2s: *const c_double,
@@ -535,6 +545,8 @@ pub unsafe extern "C" fn neopdf_grid_add_subgrid(
                     num_nucleons,
                     alphas,
                     num_alphas,
+                    kts,
+                    num_kts,
                     xs,
                     num_xs,
                     q2s,

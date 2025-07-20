@@ -197,7 +197,7 @@ the process of constructing a grid for each PDF member and serializing the colle
 **Technical details:**
 
 - The grid axes are defined as arrays for $x$, $Q^2$, parton IDs, nucleons, and $\alpha_s$ values.
-- The grid data is stored in a 5D array, with the layout `[nucleons][alphas][flavors][xs][q2s]`.
+- The grid data is stored in a 6D array, with the layout `[nucleons][alphas][pids][kT][xs][q2s]`.
 - The `NeoPDFGridArrayCollection` manages the collection of grids and handles compression and
   serialization to disk.
 - Metadata is filled in a `NeoPDFMetaData` struct, which includes information about the set, axis

@@ -8,9 +8,9 @@ in the `neopdf::gridpdf` module.
 
 - **GridArray**: Stores the full set of subgrids and flavor IDs. Each subgrid represents a region
   of phase space with a consistent grid of variables ($A$, $\alpha_s$, $x$, $Q^2$).
-- **SubGrid**: Contains a 5-dimensional array: `[nucleons, alphas, pids, x, Q²]`. This allows for
+- **SubGrid**: Contains a 6-dimensional array: `[nucleons, alphas, pids, kT, x, Q²]`. This allows for
   efficient storage and interpolation across all relevant physical parameters.
-- **Interpolation**: The library supports 2D, 3D, and 4D interpolation strategies, automatically
+- **Interpolation**: The library supports up to 5D interpolation strategies, automatically
   selecting the appropriate method based on the grid structure and metadata. Interpolators are
   built for each subgrid and flavor, supporting log-space and linear strategies for high accuracy.
 
