@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <neopdf_capi.h>
 #include <string>
 #include <sys/types.h>
@@ -27,6 +28,8 @@ struct MetaData {
     bool polarised;
     SetType set_type;
     InterpolatorType interpolator_type;
+    std::string error_type;
+    int32_t hadron_pid;
 
     // Conversion to C struct
     NeoPDFMetaData to_c() const {
@@ -48,6 +51,8 @@ struct MetaData {
         c_meta.polarised = polarised;
         c_meta.set_type = set_type;
         c_meta.interpolator_type = interpolator_type;
+        c_meta.error_type = error_type.c_str();
+        c_meta.hadron_pid = hadron_pid;
         return c_meta;
     }
 };

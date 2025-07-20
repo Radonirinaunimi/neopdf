@@ -303,7 +303,7 @@ pub unsafe extern "C" fn neopdf_pdf_pids(pdf: *mut NeoPDFWrapper, pids: *mut i32
 pub enum NeopdfSubgridParams {
     /// Parameters for subgrids in the PDF grid.
     Nucleons,
-    /// The strong coupling constant (alpha_s) parameter.
+    /// The strong coupling constant (`alpha_s`) parameter.
     Alphas,
     /// The momentum fraction (x) parameter.
     Momentum,

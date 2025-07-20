@@ -99,8 +99,8 @@ impl PyMetaData {
         polarised = false,
         set_type = PySetType::Pdf,
         interpolator_type = PyInterpolatorType::LogBicubic,
-        error_type = "".to_string(),
-        hadron_pid = 0
+        error_type = "replicas".to_string(),
+        hadron_pid = 2212
     ))]
     pub fn new(
         set_desc: String,

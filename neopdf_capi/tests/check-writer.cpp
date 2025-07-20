@@ -180,6 +180,8 @@ int main() {
         .polarised = false,
         .set_type = SET_TYPE_PDF,
         .interpolator_type = INTERPOLATOR_TYPE_LOG_BICUBIC,
+        .error_type = "replicas",
+        .hadron_pid = 2212,
     };
 
     // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.
