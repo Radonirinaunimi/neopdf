@@ -273,6 +273,7 @@ impl PDF {
     /// # Returns
     ///
     /// The PDF value at the specified knot.
+    #[allow(clippy::too_many_arguments)]
     pub fn xf_from_index(
         &self,
         i_nucleons: usize,
