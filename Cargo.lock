@@ -954,15 +954,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "itertools"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
-dependencies = [
- "either",
-]
-
-[[package]]
 name = "itoa"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1112,7 +1103,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "flate2",
- "itertools 0.14.0",
+ "itertools",
  "lz4_flex",
  "ndarray",
  "ninterp",
@@ -1165,7 +1156,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b9a8917fb3e2ae0574a15c14f29d1855cb53f483edfde819bc218238830ca11"
 dependencies = [
  "dyn-clone",
- "itertools 0.13.0",
+ "itertools",
  "ndarray",
  "num-traits",
  "thiserror",
