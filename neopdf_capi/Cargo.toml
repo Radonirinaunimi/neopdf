@@ -13,11 +13,11 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-neopdf = { path = "../neopdf", version = "0.1.0" }
-ndarray = { version = "0.16.1", features = ["serde"] }
+neopdf.workspace = true
+ndarray.workspace = true
 
 [build-dependencies]
-cbindgen = "0.26.0"
+cbindgen.workspace = true
 
 [features]
 capi = []
