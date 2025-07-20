@@ -478,6 +478,7 @@ impl NeoPDFGrid {
             SubgridData {
                 nucleons: slice::from_raw_parts(nucleons, num_nucleons).to_vec(),
                 alphas: slice::from_raw_parts(alphas, num_alphas).to_vec(),
+                kts: vec![0.0],
                 xs: slice::from_raw_parts(xs, num_xs).to_vec(),
                 q2s: slice::from_raw_parts(q2s, num_q2s).to_vec(),
                 grid_data: slice::from_raw_parts(grid_data, grid_data_len).to_vec(),

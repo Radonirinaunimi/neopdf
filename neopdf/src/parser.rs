@@ -12,6 +12,7 @@ use super::writer::GridArrayReader;
 pub struct SubgridData {
     pub nucleons: Vec<f64>,
     pub alphas: Vec<f64>,
+    pub kts: Vec<f64>,
     pub xs: Vec<f64>,
     pub q2s: Vec<f64>,
     pub grid_data: Vec<f64>,
@@ -172,10 +173,12 @@ impl LhapdfSet {
             // in the `.info` file or from the name of the PDF set.
             let nucleons: Vec<f64> = vec![1.0];
             let alphas: Vec<f64> = vec![0.118];
+            let kts: Vec<f64> = vec![0.0];
 
             subgrid_data.push(SubgridData {
                 nucleons,
                 alphas,
+                kts,
                 xs,
                 q2s,
                 grid_data,
