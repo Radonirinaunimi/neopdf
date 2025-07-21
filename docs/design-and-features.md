@@ -1,7 +1,8 @@
 # Features
 
-`NeoPDF` is designed to be a modern, extensible, and high-performance library for PDF interpolation.
-This page details the physics and technical features, design rationale, and future plans.
+`NeoPDF` is designed to be a modern, extensible, and high-performance library for PDF/TMD
+interpolation. This page details the physics and technical features, [design rationale](./design.md),
+and future plans.
 
 ## Summary of the Current Supported Features
 
@@ -51,6 +52,11 @@ This page details the physics and technical features, design rationale, and futu
     <td style="border: 1px solid #888;">Fully supported</td>
   </tr>
   <tr>
+    <td style="border: 1px solid #888;">Momentum kT interpolation</td>
+    <td style="border: 1px solid #888;">✅</td>
+    <td style="border: 1px solid #888;">Fully supported</td>
+  </tr>
+  <tr>
     <td style="border: 1px solid #888;">Different Hadronic states</td>
     <td style="border: 1px solid #888;">✅</td>
     <td style="border: 1px solid #888;">Fully supported</td>
@@ -81,7 +87,7 @@ This page details the physics and technical features, design rationale, and futu
     convolutions. For instance, it support processes such as:
 
     ```bash
-    proton + proton -> Pion + Pion + X
+    Proton + Proton -> π + π + X
     ```
 
     An interpolation grid of this kind needs two different convolution functions: a (polarised) PDF for the
@@ -93,13 +99,28 @@ This page details the physics and technical features, design rationale, and futu
     ``` yaml
     Particle: 2212/212/... # Hadron PID
     Polarized: true/false
-    SetType: PDf/Fragfn
+    SetType: SpaceLike/TimeLike
     ```
 
 `NeoPDF` provides comprehensive support for different types of hadronic structure functions and most
 importantly distinguish between them, which is essential for precision QCD calculations.
 
-- **Parton vs Nuclear PDFs**:
+- **PDF vs TMD Distributions**:
+
+    * **Parton Distribution Functions (PDFs)** describe the probability of finding a parton (quark or gluon)
+      carrying a fraction $x$ of the longitudinal momentum of the parent hadron at a given scale $Q^2$.
+      These are functions of $(x, Q^2)$ and are the standard objects used in collinear factorization for
+      high-energy processes.
+    * **Transverse Momentum Dependent Distributions (TMDs)**, or TMD PDFs, generalize the concept of PDFs by
+      including the dependence on the parton's intrinsic transverse momentum $k_T$. TMDs are functions of
+      $(x, k_T, Q^2)$ and are essential for describing processes sensitive to the transverse structure of
+      hadrons, such as low-$p_T$ Drell-Yan, semi-inclusive deep inelastic scattering (SIDIS), and certain
+      jet observables.
+    * `NeoPDF` natively supports both collinear PDFs and TMDs, allowing users to interpolate and evaluate
+      distributions with or without $k_T$ dependence. The library automatically distinguishes between these
+      types based on the grid metadata, ensuring correct usage in phenomenological applications.
+
+- **Parton vs Nuclear PDFs (Or TMDs, respectively)**:
 
     * **Parton PDFs** describe the momentum distribution of quarks and gluons within protons and
       neutrons, fundamental for understanding the internal structure of hadrons. These are crucial
@@ -108,7 +129,7 @@ importantly distinguish between them, which is essential for precision QCD calcu
       for nuclear binding effects, shadowing, and anti-shadowing. These are essential for heavy-ion
       collisions and understanding nuclear structure effects in high-energy physics experiments.
 
-- **Polarized vs Unpolarized PDFs**:
+- **Polarized vs Unpolarized PDFs (Or TMDs, respectively)**:
 
     * **Unpolarized PDFs** represent the standard momentum distributions and are used in most collider
       physics calculations.
@@ -119,7 +140,7 @@ importantly distinguish between them, which is essential for precision QCD calcu
     The difference between polarized and unpolarized PDFs provides direct insight into the proton's spin
     decomposition and tests of QCD in the spin sector.
 
-- **Timelike vs Spacelike PDFs**:
+- **Timelike vs Spacelike PDFs (Or TMDs, respectively)**:
 
     - **Spacelike PDFs** (the standard case) describe parton distributions in deep-inelastic scattering
       and hadron-hadron collisions.
@@ -150,6 +171,20 @@ importantly distinguish between them, which is essential for precision QCD calcu
     * Predictions for nuclei not included in existing sets
     * Systematic studies of nuclear effects across the periodic table
     * Applications to heavy-ion physics and neutrino-nucleus scattering
+
+- **Transverse Momentum Dependence $k_T$**:
+  `NeoPDF` provides full support for interpolation in the transverse momentum $k_T$ variable, enabling
+  access to TMD PDFs and related distributions. Users can:
+
+    * Interpolate TMD grids as functions of $(x, k_T, Q^2)$, supporting both regular and logarithmic
+      $k_T$ binning.
+    * Seamlessly switch between collinear and TMD modes depending on the grid type, with automatic
+      handling of $k_T$ integration or projection as needed.
+    * Study $k_T$-dependent observables and perform phenomenological analyses that require access to
+      the full transverse momentum structure of the parton distributions.
+
+  This feature is crucial for modern QCD analyses, including TMD factorization, resummation, and the
+  study of nonperturbative effects in hadron structure.
 
 ### Multi-Flavor Grids (Planned)
 
@@ -270,10 +305,11 @@ graph TD;
     D --> F[PDF Set Files];
 ```
 
-- **API Layer**: Exposes a consistent interface in each language.
-- **Core Engine**: Handles all logic, grid management, and interpolation.
+- **API Layer**: Exposes a consistent interface in different programming languages.
+- **Core Engine**: Handles all logics, grid management, and interpolation.
 - **Grid Data**: Efficiently loads and manages PDF grid data and metadata.
 - **Interpolation Strategies**: Pluggable, with default (log)-bicubic, bilinear, and (log)-tricubic.
+  Relies on [ninterp](https://github.com/NREL/ninterp) for the N-dimensional interpolation.
 
 ## Benchmark Against LHAPDF
 

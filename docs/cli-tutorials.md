@@ -1,7 +1,9 @@
 # CLI Tutorials
 
 The `neopdf` CLI tool provides a command-line interface to the `NeoPDF` library, enabling users
-to perform PDF interpolation, alpha_s evaluation, file format conversion, and metadata inspection directly from the terminal. Below are detailed usage instructions and examples for each major feature.
+to perform PDF interpolation, alpha_s evaluation, file format conversion, and metadata inspection
+directly from the terminal. Below are detailed usage instructions and examples for each major
+feature.
 
 !!! note "How to use the new NeoPDF format?"
 
@@ -42,7 +44,7 @@ Flavors: [-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5]
 Format: lhagrid1
 ...
 Polarized: false
-Set Type: Pdf
+Set Type: SpaceLike
 Interpolator Type: LogBicubic
 ```
 
@@ -99,9 +101,10 @@ neopdf compute xfx_q2 --pdf-name NNPDF40_nnlo_as_01180 --member 0 --pid 21 1e-3 
 !!! note "More about the last argument"
 
     In the case where the PDF set contains an $\alpha_s$ and/or $A$ dependence, the the
-    argument should be either $(A, x, Q^2)$, $(\alpha_s, x, Q^2)$, or $(A, \alpha_s, x, Q^2)$
-    depending on what the grid contains. See the section below for an example where the grid
-    contains an $A$-dependence.
+    argument should be either $(A, x, Q^2)$, $(\alpha_s, x, Q^2)$, $(k_T, x, Q^2)$,
+    $(A, \alpha_s, x, Q^2)$, $(A, k_T, x, Q^2)$, $(\alpha_s, k_T, x, Q^2)$, or
+    $(A, \alpha_s, k_T, x, Q^2)$ depending on what the grid contains. See the section below
+    for an example where the grid contains an $A$-dependence.
 
 ### Compute strong coupling $\alpha_s$ at a given $Q^2$
 

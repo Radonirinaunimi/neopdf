@@ -215,7 +215,7 @@ the process of constructing a grid for each PDF member and serializing the colle
     is correct. However, this makes the codes very verbose. To easily spot the parts that
     actually fills the grid, some lines are highlighted.
 
-```cpp linenums="1" hl_lines="110-119 122-129 138 146 165-185 195"
+```cpp linenums="1" hl_lines="110-119 122-130 139 147 166-186 196"
 #include <cstddef>
 #include <neopdf_capi.h>
 #include <cassert>
@@ -341,6 +341,7 @@ int main() {
                 grid,
                 nucleons.data(), nucleons.size(),
                 alphas.data(), alphas.size(),
+                kts.data(), kts.size(),
                 xs.data(), xs.size(),
                 q2s.data(), q2s.size(),
                 grid_data.data(), grid_data.size()

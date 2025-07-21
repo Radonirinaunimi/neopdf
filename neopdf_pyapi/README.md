@@ -7,5 +7,5 @@ To install, make sure that [maturin](https://www.maturin.rs/) is
 installed, and then simply run:
 
 ```python
-maturin develop --release
+maturin develop --extras test --release
 ```
