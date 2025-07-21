@@ -71,10 +71,16 @@ pub struct MetaData {
     pub interpolator_type: InterpolatorType,
     /// The error type representation of the PDF.
     #[serde(rename = "ErrorType", default)]
-    /// The hadron PID value representation of the PDF.
     pub error_type: String,
+    /// The hadron PID value representation of the PDF.
     #[serde(rename = "Particle", default)]
     pub hadron_pid: i32,
+    /// The git version of the code that generated the PDF.
+    #[serde(rename = "GitVersion", default)]
+    pub git_version: String,
+    /// The code version (CARGO_PKG_VERSION) that generated the PDF.
+    #[serde(rename = "CodeVersion", default)]
+    pub code_version: String,
 }
 
 impl fmt::Display for MetaData {

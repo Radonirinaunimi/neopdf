@@ -120,6 +120,8 @@ impl PyMetaData {
         error_type: String,
         hadron_pid: i32,
     ) -> Self {
+        let git_version = "Unknown".to_string();
+        let code_version = "Unknown".to_string();
         let meta = MetaData {
             set_desc,
             set_index,
@@ -137,6 +139,8 @@ impl PyMetaData {
             interpolator_type: InterpolatorType::from(&interpolator_type),
             error_type,
             hadron_pid,
+            git_version,  // placeholder to be overwritten
+            code_version, // placeholder to be overwritten
         };
 
         Self { meta }
@@ -179,6 +183,8 @@ impl PyMetaData {
         dict.set_item("interpolator_type", interpolator_type)?;
         dict.set_item("error_type", &self.meta.error_type)?;
         dict.set_item("hadron_pid", self.meta.hadron_pid)?;
+        dict.set_item("git_version", &self.meta.git_version)?;
+        dict.set_item("code_version", &self.meta.code_version)?;
 
         Ok(dict.into())
     }
@@ -277,6 +283,18 @@ impl PyMetaData {
     #[must_use]
     pub const fn hadron_pid(&self) -> i32 {
         self.meta.hadron_pid
+    }
+
+    /// The git version of the code that generated the PDF.
+    #[must_use]
+    pub const fn git_version(&self) -> &String {
+        &self.meta.git_version
+    }
+
+    /// The code version (CARGO_PKG_VERSION) that generated the PDF.
+    #[must_use]
+    pub const fn code_version(&self) -> &String {
+        &self.meta.code_version
     }
 }
 

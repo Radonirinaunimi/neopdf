@@ -663,6 +663,8 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
         interpolator_type: meta.interpolator_type.clone(),
         error_type,
         hadron_pid: meta.hadron_pid,
+        git_version: "None".to_string(), // placeholder to be overwritten
+        code_version: "None".to_string(), // placeholder to be overwritten
     })
 }
 
