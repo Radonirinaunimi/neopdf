@@ -19,6 +19,19 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Get data
+        id: cache-data
+        uses: actions/cache@v4
+        with:
+          path: neopdf-data
+          key: data-v2
+
+      - name: Download data
+        if: steps.cache-data.outputs.cache-hit != 'true'
+        run: |
+          cd maintainer
+          ./download-data.sh
+
       - name: Cache Criterion baseline
         uses: actions/cache@v4
         with:
@@ -30,6 +43,7 @@ jobs:
       - name: Run benchmarks and save clean output
         id: bench
         run: |
+          export NEOPDF_DATA_PATH=${PWD}/neopdf-data
           # The awk command filters out the verbose test summary before the benchmark results.
           cargo bench -p neopdf -- --nocapture | awk '/^test result: ok\./ {p=1; next} p' | tee benchmark_results.txt
 

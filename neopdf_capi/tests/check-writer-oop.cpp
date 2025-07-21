@@ -139,7 +139,7 @@ int main() {
     };
 
     // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.
-    const char* filename = "check-writer.neopdf.lz4";
+    const char* filename = "check-writer-oop.neopdf.lz4";
     const char* neopdf_path = std::getenv("NEOPDF_DATA_PATH");
     std::string output_path = neopdf_path
         ? std::string(neopdf_path) + (std::string(neopdf_path).back() == '/' ? "" : "/") + filename

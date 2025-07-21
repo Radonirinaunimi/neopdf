@@ -6,16 +6,16 @@ use pyo3::prelude::*;
 #[derive(Clone, PartialEq, Eq)]
 pub enum PySetType {
     /// Parton Distribution Function.
-    Pdf,
+    SpaceLike,
     /// Fragmentation Function.
-    Fragfn,
+    TimeLike,
 }
 
 impl From<&SetType> for PySetType {
     fn from(set_type: &SetType) -> Self {
         match set_type {
-            SetType::SpaceLike => Self::Pdf,
-            SetType::TimeLike => Self::Fragfn,
+            SetType::SpaceLike => Self::SpaceLike,
+            SetType::TimeLike => Self::TimeLike,
         }
     }
 }
@@ -23,8 +23,8 @@ impl From<&SetType> for PySetType {
 impl From<&PySetType> for SetType {
     fn from(set_type: &PySetType) -> Self {
         match set_type {
-            PySetType::Pdf => Self::SpaceLike,
-            PySetType::Fragfn => Self::TimeLike,
+            PySetType::SpaceLike => Self::SpaceLike,
+            PySetType::TimeLike => Self::TimeLike,
         }
     }
 }
@@ -97,7 +97,7 @@ impl PyMetaData {
         alphas_q_values = vec![],
         alphas_vals = vec![],
         polarised = false,
-        set_type = PySetType::Pdf,
+        set_type = PySetType::SpaceLike,
         interpolator_type = PyInterpolatorType::LogBicubic,
         error_type = "replicas".to_string(),
         hadron_pid = 2212
