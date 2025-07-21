@@ -266,7 +266,7 @@ below in the case the grid should explicitly depend on more parameters.
 
 - The grid axes are defined as vectors for $x$, $Q^2$, parton IDs, nucleons, and $\alpha_s$
   values.
-- The grid data is stored in a 5D array, with the layout `[nucleons][alphas][flavors][xs][q2s]`.
+- The grid data is stored in a 6D array, with the layout `[nucleons][alphas][pids][kT][xs][q2s]`.
 - The `GridWriter` class manages the collection of grids and handles compression and serialization to disk.
 - Metadata is filled in a `MetaData` object, which includes information about the set, axis ranges, flavors,
   and interpolation type. This metadata is essential for correct interpretation of the grid file.
@@ -281,7 +281,7 @@ below in the case the grid should explicitly depend on more parameters.
     is correct. However, this makes the codes very verbose. To easily spot the parts that
     actually fills the grid, some lines are highlighted.
 
-```cpp linenums="1" hl_lines="62-70 73-80 92 100 117-137 147"
+```cpp linenums="1" hl_lines="62-70 73-81 93 101 118-138 148"
 #include "neopdf_capi.h"
 #include <NeoPDF.hpp>
 #include <cassert>
@@ -358,6 +358,7 @@ int main() {
                 grid,
                 nucleons.data(), nucleons.size(),
                 alphas.data(), alphas.size(),
+                kts.data(), kts.size(),
                 xs.data(), xs.size(),
                 q2s.data(), q2s.size(),
                 grid_data.data(), grid_data.size()

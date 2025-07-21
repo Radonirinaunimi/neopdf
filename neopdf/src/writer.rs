@@ -20,14 +20,24 @@
 //! - [`LazyGridArrayIterator`]: Enables lazy, sequential iteration over grid members.
 //!
 //! See the documentation for each type for more details on available methods and usage patterns.
-use lz4_flex::frame::{FrameDecoder, FrameEncoder};
+use std::env;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::Path;
 
+use git_version::git_version;
+use lz4_flex::frame::{FrameDecoder, FrameEncoder};
+
 use super::gridpdf::GridArray;
 use super::metadata::MetaData;
 use std::sync::Arc;
+
+const GIT_VERSION: &str = git_version!(
+    args = ["--always", "--dirty", "--long", "--tags"],
+    cargo_prefix = "cargo:",
+    fallback = "unknown"
+);
+const CODE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Container for a [`GridArray`] with a shared reference to its associated metadata.
 ///
@@ -65,8 +75,10 @@ impl GridArrayCollection {
         let buf_writer = BufWriter::new(file);
         let mut encoder = FrameEncoder::new(buf_writer);
 
-        // Write metadata
-        let metadata_serialized = bincode::serialize(metadata)?;
+        let mut metadata_mut = metadata.clone();
+        metadata_mut.git_version = GIT_VERSION.to_string();
+        metadata_mut.code_version = CODE_VERSION.to_string();
+        let metadata_serialized = bincode::serialize(&metadata_mut)?;
         let metadata_size = metadata_serialized.len() as u64;
 
         let metadata_size_bytes = bincode::serialize(&metadata_size)?;
@@ -93,7 +105,7 @@ impl GridArrayCollection {
         for serialized in &serialized_grids {
             offsets.push(current_offset);
             current_offset += 8; // size field
-            current_offset += serialized.len() as u64; // data
+            current_offset += serialized.len() as u64;
         }
 
         // Write offset table size and offsets
@@ -421,9 +433,10 @@ impl ExactSizeIterator for LazyGridArrayIterator {}
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::metadata::{InterpolatorType, SetType};
     use ndarray::Array1;
     use tempfile::NamedTempFile;
+
+    use crate::metadata::{InterpolatorType, SetType};
 
     #[test]
     fn test_collection_with_metadata() {
@@ -440,10 +453,12 @@ mod tests {
             alphas_q_values: vec![],
             alphas_vals: vec![],
             polarised: false,
-            set_type: SetType::Pdf,
+            set_type: SetType::SpaceLike,
             interpolator_type: InterpolatorType::LogBicubic,
             error_type: "replicas".into(),
             hadron_pid: 2212,
+            git_version: "".into(),
+            code_version: "".into(),
         };
 
         let test_grid = test_grid();

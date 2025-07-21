@@ -102,11 +102,13 @@ int main() {
             auto q2s = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_SCALE, subgrid_idx, num_subgrids);
             auto alphas = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_ALPHAS, subgrid_idx, num_subgrids);
             auto nucleons = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_NUCLEONS, subgrid_idx, num_subgrids);
+            auto kts = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_KT, subgrid_idx, num_subgrids);
 
             // Compute grid_data: [q2s][xs][flavors], instead of [nucleons][alphas][q2s][xs][flavors]
             // NOTE: This assumes that there is no 'A' and `alphas` dependence.
             assert(nucleons.size() == 1);
             assert(alphas.size() == 1);
+            assert(kts.size() == 1);
             std::vector<double> grid_data;
             for (size_t xi = 0; xi < xs.size(); ++xi) {
                 for (size_t qi = 0; qi < q2s.size(); ++qi) {
@@ -123,6 +125,7 @@ int main() {
                 grid,
                 nucleons.data(), nucleons.size(),
                 alphas.data(), alphas.size(),
+                kts.data(), kts.size(),
                 xs.data(), xs.size(),
                 q2s.data(), q2s.size(),
                 grid_data.data(), grid_data.size()
@@ -178,7 +181,7 @@ int main() {
         .alphas_vals = alphas_vals,
         .num_alphas_vals = 1,
         .polarised = false,
-        .set_type = SET_TYPE_PDF,
+        .set_type = SET_TYPE_SPACE_LIKE,
         .interpolator_type = INTERPOLATOR_TYPE_LOG_BICUBIC,
         .error_type = "replicas",
         .hadron_pid = 2212,

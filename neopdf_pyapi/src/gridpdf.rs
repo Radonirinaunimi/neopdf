@@ -1,6 +1,6 @@
 use ndarray::Array1;
 use neopdf::gridpdf::{GridArray, ParamRange, SubGrid};
-use numpy::{PyArrayMethods, PyReadonlyArray5};
+use numpy::{PyArrayMethods, PyReadonlyArray6};
 use pyo3::prelude::*;
 
 /// Python wrapper for the `SubGrid` struct.
@@ -17,9 +17,10 @@ impl PySubGrid {
     ///
     /// - `xs`: The x-axis values.
     /// - `q2s`: The Q^2-axis values.
+    /// - `kts`: The kT-axis values.
     /// - `nucleons`: The nucleon number axis values.
     /// - `alphas`: The alpha_s axis values.
-    /// - `grid`: The 5D grid data as a NumPy array.
+    /// - `grid`: The 6D grid data as a NumPy array.
     ///
     /// # Returns
     ///
@@ -37,23 +38,27 @@ impl PySubGrid {
     pub fn new(
         xs: Vec<f64>,
         q2s: Vec<f64>,
+        kts: Vec<f64>,
         nucleons: Vec<f64>,
         alphas: Vec<f64>,
-        grid: PyReadonlyArray5<f64>,
+        grid: PyReadonlyArray6<f64>,
     ) -> PyResult<Self> {
         let alphas_range = ParamRange::new(*alphas.first().unwrap(), *alphas.last().unwrap());
         let x_range = ParamRange::new(*xs.first().unwrap(), *xs.last().unwrap());
         let q2_range = ParamRange::new(*q2s.first().unwrap(), *q2s.last().unwrap());
+        let kt_range = ParamRange::new(*kts.first().unwrap(), *kts.last().unwrap());
         let nucleons_range = ParamRange::new(*nucleons.first().unwrap(), *nucleons.last().unwrap());
 
         let subgrid = SubGrid {
             xs: Array1::from(xs),
             q2s: Array1::from(q2s),
+            kts: Array1::from(kts),
             grid: grid.to_owned_array(),
             nucleons: Array1::from(nucleons),
             alphas: Array1::from(alphas),
             nucleons_range,
             alphas_range,
+            kt_range,
             x_range,
             q2_range,
         };
@@ -81,7 +86,7 @@ impl PySubGrid {
 
     /// Returns the shape of the subgrid
     #[must_use]
-    pub fn grid_shape(&self) -> (usize, usize, usize, usize, usize) {
+    pub fn grid_shape(&self) -> (usize, usize, usize, usize, usize, usize) {
         self.subgrid.grid.dim()
     }
 }

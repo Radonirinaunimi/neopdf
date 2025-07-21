@@ -116,12 +116,13 @@ pub fn combine_lhapdf_npdfs<P: AsRef<std::path::Path>>(
             // Check x, q2, alphas shapes match
             let xs = &subgrids[0].xs;
             let q2s = &subgrids[0].q2s;
+            let kts = &subgrids[0].kts;
             let alphas = &subgrids[0].alphas;
             if !subgrids
                 .iter()
-                .all(|sg| sg.xs == *xs && sg.q2s == *q2s && sg.alphas == *alphas)
+                .all(|sg| sg.xs == *xs && sg.q2s == *q2s && sg.alphas == *alphas && sg.kts == *kts)
             {
-                return Err("All sets must have the same x, q2, and alphas grids".into());
+                return Err("All sets must have the same x, q2, kT, and alphas grids".into());
             }
 
             // Concatenate along the nucleons axis to get [nucleons=pdf_names.len(), ...]
@@ -131,11 +132,13 @@ pub fn combine_lhapdf_npdfs<P: AsRef<std::path::Path>>(
             let new_subgrid = SubGrid {
                 xs: xs.clone(),
                 q2s: q2s.clone(),
+                kts: kts.clone(),
                 grid: concatenated,
                 nucleons,
                 alphas: alphas.clone(),
                 nucleons_range: subgrids[0].nucleons_range,
                 alphas_range: subgrids[0].alphas_range,
+                kt_range: subgrids[0].kt_range,
                 x_range: subgrids[0].x_range,
                 q2_range: subgrids[0].q2_range,
             };

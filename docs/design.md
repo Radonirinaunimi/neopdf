@@ -3,28 +3,29 @@
 ## PDF Object Construction: Multi-dimensional Grid Representation
 
 The core of `NeoPDF`'s data model is the representation of Parton Distribution Functions (PDFs)
-as multi-dimensional arrays. This is implemented via the `GridArray` and `SubGrid` structures
-in the `neopdf::gridpdf` module.
+and Transverse Momentum Distributions (TMDs) as multi-dimensional arrays. This is implemented
+via the `GridArray` and `SubGrid` structures in the `neopdf::gridpdf` module.
 
 - **GridArray**: Stores the full set of subgrids and flavor IDs. Each subgrid represents a region
-  of phase space with a consistent grid of variables ($A$, $\alpha_s$, $x$, $Q^2$).
-- **SubGrid**: Contains a 5-dimensional array: `[nucleons, alphas, pids, x, Q²]`. This allows for
+  of phase space with a consistent grid of variables ($A$, $\alpha_s$, $k_T$, $x$, $Q^2$).
+- **SubGrid**: Contains a 6-dimensional array: `[nucleons, alphas, pids, kT, x, Q²]`. This allows for
   efficient storage and interpolation across all relevant physical parameters.
-- **Interpolation**: The library supports 2D, 3D, and 4D interpolation strategies, automatically
+- **Interpolation**: The library supports up to 5D interpolation strategies, automatically
   selecting the appropriate method based on the grid structure and metadata. Interpolators are
   built for each subgrid and flavor, supporting log-space and linear strategies for high accuracy.
 
 This design enables:
-- Efficient access to PDF values at arbitrary kinematic points.
-- Support for advanced use cases, such as nuclear PDFs and variable alpha_s.
+
+- Efficient access to PDF/TMD values at arbitrary kinematic points.
+- Support for advanced use cases, such as nuclear PDFs and variable $\alpha_s$.
 - Modular extension to new interpolation strategies or additional dimensions.
 
 ## NeoPDF File Format: Compression, Metadata, and Lazy Loading
 
-The `NeoPDF` file format is designed for efficient storage and fast, random access to large collections
-of PDF grids. Due to various technical reasons (see below), the format is **not human-readable**.
+The `NeoPDF` file format is designed for efficient storage and fast, random access to large
+collections of grids. For technical reasons (see below), the format is **not human-readable**.
 However, `NeoPDF` provides a [CLI tool](/docs/cli-tutorials.md) that allows the user to easily and
-quickly inspect the contents of a given PDF set. The implementation of the logics is found in
+quickly inspect the contents of a given PDF/TMD set. The implementation of the logics is found in
 `neopdf::writer`.
 
 - **Serialization & Compression**: All grid data (`GridArray`), along with shared metadata, are

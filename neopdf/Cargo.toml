@@ -26,3 +26,11 @@ reqwest.workspace = true
 tar.workspace = true
 itertools.workspace = true
 regex.workspace = true
+git-version.workspace = true
+
+[dev-dependencies]
+criterion.workspace = true
+
+[[bench]]
+name = "bench_pdf"
+harness = false

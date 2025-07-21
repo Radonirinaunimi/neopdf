@@ -6,16 +6,16 @@ use pyo3::prelude::*;
 #[derive(Clone, PartialEq, Eq)]
 pub enum PySetType {
     /// Parton Distribution Function.
-    Pdf,
+    SpaceLike,
     /// Fragmentation Function.
-    Fragfn,
+    TimeLike,
 }
 
 impl From<&SetType> for PySetType {
     fn from(set_type: &SetType) -> Self {
         match set_type {
-            SetType::Pdf => Self::Pdf,
-            SetType::Fragfn => Self::Fragfn,
+            SetType::SpaceLike => Self::SpaceLike,
+            SetType::TimeLike => Self::TimeLike,
         }
     }
 }
@@ -23,8 +23,8 @@ impl From<&SetType> for PySetType {
 impl From<&PySetType> for SetType {
     fn from(set_type: &PySetType) -> Self {
         match set_type {
-            PySetType::Pdf => Self::Pdf,
-            PySetType::Fragfn => Self::Fragfn,
+            PySetType::SpaceLike => Self::SpaceLike,
+            PySetType::TimeLike => Self::TimeLike,
         }
     }
 }
@@ -97,7 +97,7 @@ impl PyMetaData {
         alphas_q_values = vec![],
         alphas_vals = vec![],
         polarised = false,
-        set_type = PySetType::Pdf,
+        set_type = PySetType::SpaceLike,
         interpolator_type = PyInterpolatorType::LogBicubic,
         error_type = "replicas".to_string(),
         hadron_pid = 2212
@@ -120,6 +120,8 @@ impl PyMetaData {
         error_type: String,
         hadron_pid: i32,
     ) -> Self {
+        let git_version = "Unknown".to_string();
+        let code_version = "Unknown".to_string();
         let meta = MetaData {
             set_desc,
             set_index,
@@ -137,6 +139,8 @@ impl PyMetaData {
             interpolator_type: InterpolatorType::from(&interpolator_type),
             error_type,
             hadron_pid,
+            git_version,  // placeholder to be overwritten
+            code_version, // placeholder to be overwritten
         };
 
         Self { meta }
@@ -151,8 +155,8 @@ impl PyMetaData {
         let dict = pyo3::types::PyDict::new(py);
 
         let set_type = match &self.meta.set_type {
-            SetType::Pdf => "PDF",
-            SetType::Fragfn => "FragFn",
+            SetType::SpaceLike => "PDF",
+            SetType::TimeLike => "FragFn",
         };
 
         let interpolator_type = match &self.meta.interpolator_type {
@@ -179,6 +183,8 @@ impl PyMetaData {
         dict.set_item("interpolator_type", interpolator_type)?;
         dict.set_item("error_type", &self.meta.error_type)?;
         dict.set_item("hadron_pid", self.meta.hadron_pid)?;
+        dict.set_item("git_version", &self.meta.git_version)?;
+        dict.set_item("code_version", &self.meta.code_version)?;
 
         Ok(dict.into())
     }
@@ -277,6 +283,18 @@ impl PyMetaData {
     #[must_use]
     pub const fn hadron_pid(&self) -> i32 {
         self.meta.hadron_pid
+    }
+
+    /// The git version of the code that generated the PDF.
+    #[must_use]
+    pub const fn git_version(&self) -> &String {
+        &self.meta.git_version
+    }
+
+    /// The code version (CARGO_PKG_VERSION) that generated the PDF.
+    #[must_use]
+    pub const fn code_version(&self) -> &String {
+        &self.meta.code_version
     }
 }
 

@@ -1,7 +1,7 @@
 # Installation
 
 This guide provides detailed instructions for installing `NeoPDF `and its APIs for Rust, Python,
-Fortran, and C/C++.
+Fortran, and C/C++, as well as the command line interface (CLI).
 
 !!! note "Where to store PDF sets?"
 
@@ -62,7 +62,7 @@ cargo install cargo-c
 Then go into the `neopdf_capi` directory and run the following command:
 
 ```bash
-export CARGO_C_INSTALL_PREFIX=${prefix} # Needed if you want the OOP C++ header
+export CARGO_C_INSTALL_PREFIX=${prefix} # Required for the OOP C++ header
 cargo cinstall --release --prefix=${prefix}
 ```
 

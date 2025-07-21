@@ -29,9 +29,9 @@
 
 use core::panic;
 
-use ndarray::{s, Array1, Array2, Array5, ArrayView2, OwnedRepr};
+use ndarray::{s, Array1, Array2, Array6, ArrayView2, OwnedRepr};
 use ninterp::error::InterpolateError;
-use ninterp::interpolator::{Extrapolate, Interp2D, InterpND};
+use ninterp::interpolator::{Extrapolate, Interp2D, Interp3D, InterpND};
 use ninterp::prelude::*;
 use ninterp::strategy::traits::{Strategy2D, Strategy3D, StrategyND};
 use ninterp::strategy::Linear;
@@ -70,14 +70,23 @@ pub enum Error {
 pub enum InterpolationConfig {
     /// 2D interpolation, typically in `x` (momentum fraction) and `Q²` (energy scale).
     TwoD,
-    /// 3D interpolation, including a dimension for varying nucleon numbers,
+    /// 3D interpolation, including a dimension for varying nucleon numbers `A`,
     /// in addition to `x` and `Q²`.
     ThreeDNucleons,
-    /// 3D interpolation, including a dimension for varying alpha_s values,
+    /// 3D interpolation, including a dimension for varying `alpha_s` values,
     /// in addition to `x` and `Q²`.
     ThreeDAlphas,
-    /// 4D interpolation, covering nucleons, alpha_s, `x`, and `Q²`.
-    FourD,
+    /// 3D interpolation, including a dimension for varying `kT` values,
+    /// in addition to `x` and `Q²`.
+    ThreeDKt,
+    /// 4D interpolation, covering nucleon numbers `A`, `alpha_s`, `x`, and `Q²`.
+    FourDNucleonsAlphas,
+    /// 4D interpolation, covering nucleon numbers `A`, kT, `x`, and `Q²`.
+    FourDNucleonsKt,
+    /// 4D interpolation, covering `alpha_s`, kT, `x`, and `Q²`.
+    FourDAlphasKt,
+    /// 5D interpolation, covering nucleon numbers `A`, `alpha_s`, `kT`, `x`, and `Q²`.
+    FiveD,
 }
 
 impl InterpolationConfig {
@@ -86,16 +95,16 @@ impl InterpolationConfig {
     /// # Panics
     ///
     /// Panics if the combination of `n_nucleons` and `n_alphas` is not supported.
-    fn from_dimensions(n_nucleons: usize, n_alphas: usize) -> Self {
-        match (n_nucleons, n_alphas) {
-            (1, 1) => Self::TwoD,
-            (n, 1) if n > 1 => Self::ThreeDNucleons,
-            (1, n) if n > 1 => Self::ThreeDAlphas,
-            (n, a) if n > 1 && a > 1 => Self::FourD,
-            _ => panic!(
-                "Invalid dimensions: nucleons={}, alphas={}",
-                n_nucleons, n_alphas
-            ),
+    fn from_dimensions(n_nucleons: usize, n_alphas: usize, n_kts: usize) -> Self {
+        match (n_nucleons > 1, n_alphas > 1, n_kts > 1) {
+            (false, false, false) => Self::TwoD,
+            (true, false, false) => Self::ThreeDNucleons,
+            (false, true, false) => Self::ThreeDAlphas,
+            (false, false, true) => Self::ThreeDKt,
+            (true, true, false) => Self::FourDNucleonsAlphas,
+            (true, false, true) => Self::FourDNucleonsKt,
+            (false, true, true) => Self::FourDAlphasKt,
+            (true, true, true) => Self::FiveD,
         }
     }
 }
@@ -140,6 +149,8 @@ pub struct RangeParameters {
     pub nucleons: ParamRange,
     /// The range for the AlphaS values `as`.
     pub alphas: ParamRange,
+    /// The range for the transverse momentum `kT`.
+    pub kt: ParamRange,
     /// The range for the momentum fraction `x`.
     pub x: ParamRange,
     /// The range for the energy scale squared `q2`.
@@ -153,12 +164,20 @@ impl RangeParameters {
     ///
     /// * `nucleons` - The `ParamRange` for the nuleon numbers `A`.
     /// * `alphas` - The `ParamRange` for the strong coupling `as`.
+    /// * `kt` - The `ParamRange` for the transverse momentum `kT`.
     /// * `x` - The `ParamRange` for the momentum fraction `x`.
     /// * `q2` - The `ParamRange` for the energy scale `q2`.
-    pub fn new(nucleons: ParamRange, alphas: ParamRange, x: ParamRange, q2: ParamRange) -> Self {
+    pub fn new(
+        nucleons: ParamRange,
+        alphas: ParamRange,
+        kt: ParamRange,
+        x: ParamRange,
+        q2: ParamRange,
+    ) -> Self {
         Self {
             nucleons,
             alphas,
+            kt,
             x,
             q2,
         }
@@ -228,8 +247,10 @@ pub struct SubGrid {
     pub xs: Array1<f64>,
     /// Array of `Q²` values (energy scale squared).
     pub q2s: Array1<f64>,
-    /// 5-dimensional grid data: [nucleons, alphas, pids, x, Q²].
-    pub grid: Array5<f64>,
+    /// Array of `kT` values (transverse momentum).
+    pub kts: Array1<f64>,
+    /// 6-dimensional grid data: [nucleons, alphas, pids, kT, x, Q²].
+    pub grid: Array6<f64>,
     /// Array of nucleon number values.
     pub nucleons: Array1<f64>,
     /// Array of alpha_s values.
@@ -238,6 +259,8 @@ pub struct SubGrid {
     pub nucleons_range: ParamRange,
     /// The valid range for the `AlphaS` parameter in this subgrid.
     pub alphas_range: ParamRange,
+    /// The valid range for the `kT` parameter in this subgrid.
+    pub kt_range: ParamRange,
     /// The valid range for the `x` parameter in this subgrid.
     pub x_range: ParamRange,
     /// The valid range for the `q2` parameter in this subgrid.
@@ -251,6 +274,7 @@ impl SubGrid {
     ///
     /// * `nucleon_numbers` - A vector of nucleon numbers.
     /// * `alphas_values` - A vector of alpha_s values.
+    /// * `kt_subgrid` - A vector of `kT` values.
     /// * `xs` - A vector of `x` values.
     /// * `q2s` - A vector of `q2` values.
     /// * `nflav` - The number of quark flavors.
@@ -262,14 +286,16 @@ impl SubGrid {
     pub fn new(
         nucleon_numbers: Vec<f64>,
         alphas_values: Vec<f64>,
+        kt_subgrid: Vec<f64>,
         x_subgrid: Vec<f64>,
         q2_subgrid: Vec<f64>,
         nflav: usize,
         grid_data: Vec<f64>,
     ) -> Self {
-        let xsub_range = ParamRange::new(*x_subgrid.first().unwrap(), *x_subgrid.last().unwrap());
-        let qq_range = ParamRange::new(*q2_subgrid.first().unwrap(), *q2_subgrid.last().unwrap());
-        let nc_range = ParamRange::new(
+        let xs_range = ParamRange::new(*x_subgrid.first().unwrap(), *x_subgrid.last().unwrap());
+        let q2s_range = ParamRange::new(*q2_subgrid.first().unwrap(), *q2_subgrid.last().unwrap());
+        let kts_range = ParamRange::new(*kt_subgrid.first().unwrap(), *kt_subgrid.last().unwrap());
+        let ncs_range = ParamRange::new(
             *nucleon_numbers.first().unwrap(),
             *nucleon_numbers.last().unwrap(),
         );
@@ -278,10 +304,11 @@ impl SubGrid {
             *alphas_values.last().unwrap(),
         );
 
-        let subgrid = Array5::from_shape_vec(
+        let subgrid = Array6::from_shape_vec(
             (
                 nucleon_numbers.len(),
                 alphas_values.len(),
+                kt_subgrid.len(),
                 x_subgrid.len(),
                 q2_subgrid.len(),
                 nflav,
@@ -289,20 +316,22 @@ impl SubGrid {
             grid_data,
         )
         .expect("Failed to create grid")
-        .permuted_axes([0, 1, 4, 2, 3])
+        .permuted_axes([0, 1, 5, 2, 3, 4])
         .as_standard_layout()
         .to_owned();
 
         Self {
             xs: Array1::from_vec(x_subgrid),
             q2s: Array1::from_vec(q2_subgrid),
+            kts: Array1::from_vec(kt_subgrid),
             grid: subgrid,
             nucleons: Array1::from_vec(nucleon_numbers),
             alphas: Array1::from_vec(alphas_values),
-            nucleons_range: nc_range,
+            nucleons_range: ncs_range,
             alphas_range: as_range,
-            x_range: xsub_range,
-            q2_range: qq_range,
+            kt_range: kts_range,
+            x_range: xs_range,
+            q2_range: q2s_range,
         }
     }
 
@@ -322,7 +351,7 @@ impl SubGrid {
 
     /// Gets the interpolation configuration for this subgrid.
     pub fn interpolation_config(&self) -> InterpolationConfig {
-        InterpolationConfig::from_dimensions(self.nucleons.len(), self.alphas.len())
+        InterpolationConfig::from_dimensions(self.nucleons.len(), self.alphas.len(), self.kts.len())
     }
 
     /// Gets the parameter ranges for this subgrid.
@@ -330,6 +359,7 @@ impl SubGrid {
         RangeParameters::new(
             self.nucleons_range,
             self.alphas_range,
+            self.kt_range,
             self.x_range,
             self.q2_range,
         )
@@ -348,7 +378,7 @@ impl SubGrid {
     /// Panics if called on a subgrid that is not 2D.
     pub fn grid_slice(&self, pid_index: usize) -> ArrayView2<f64> {
         match self.interpolation_config() {
-            InterpolationConfig::TwoD => self.grid.slice(s![0, 0, pid_index, .., ..]),
+            InterpolationConfig::TwoD => self.grid.slice(s![0, 0, pid_index, 0, .., ..]),
             _ => panic!("grid_slice only valid for 2D interpolation"),
         }
     }
@@ -385,7 +415,21 @@ impl InterpolatorFactory {
             InterpolationConfig::ThreeDAlphas => {
                 Self::interpolator_xfxq2_alphas(interp_type, subgrid, pid_index)
             }
-            InterpolationConfig::FourD => Self::interpolator_ndim(interp_type, subgrid, pid_index),
+            InterpolationConfig::ThreeDKt => {
+                Self::interpolator_xfxq2_kts(interp_type, subgrid, pid_index)
+            }
+            InterpolationConfig::FourDNucleonsAlphas => {
+                Self::interpolator_xfxq2_nucleons_alphas(interp_type, subgrid, pid_index)
+            }
+            InterpolationConfig::FourDNucleonsKt => {
+                Self::interpolator_xfxq2_nucleons_kts(interp_type, subgrid, pid_index)
+            }
+            InterpolationConfig::FourDAlphasKt => {
+                Self::interpolator_xfxq2_alphas_kts(interp_type, subgrid, pid_index)
+            }
+            InterpolationConfig::FiveD => {
+                Self::interpolator_xfxq2_5dim(interp_type, subgrid, pid_index)
+            }
         }
     }
 
@@ -458,7 +502,10 @@ impl InterpolatorFactory {
         subgrid: &SubGrid,
         pid_index: usize,
     ) -> Box<dyn DynInterpolator> {
-        let grid_data = subgrid.grid.slice(s![.., .., pid_index, .., ..]).to_owned();
+        let grid_data = subgrid
+            .grid
+            .slice(s![.., 0, pid_index, 0, .., ..])
+            .to_owned();
         let reshaped_data = grid_data
             .into_shape_with_order((subgrid.nucleons.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
@@ -495,7 +542,10 @@ impl InterpolatorFactory {
         subgrid: &SubGrid,
         pid_index: usize,
     ) -> Box<dyn DynInterpolator> {
-        let grid_data = subgrid.grid.slice(s![.., .., pid_index, .., ..]).to_owned();
+        let grid_data = subgrid
+            .grid
+            .slice(s![0, .., pid_index, 0, .., ..])
+            .to_owned();
         let reshaped_data = grid_data
             .into_shape_with_order((subgrid.alphas.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
@@ -504,6 +554,46 @@ impl InterpolatorFactory {
             InterpolatorType::LogTricubic => Box::new(
                 Interp3D::new(
                     subgrid.alphas.to_owned(),
+                    subgrid.xs.to_owned(),
+                    subgrid.q2s.to_owned(),
+                    reshaped_data,
+                    LogTricubicInterpolation,
+                    Extrapolate::Error,
+                )
+                .expect("Failed to create 3D interpolator"),
+            ),
+            _ => panic!("Unsupported 3D interpolator: {:?}", interp_type),
+        }
+    }
+
+    /// Creates a 3D interpolator for kts, `x`, and `q2`.
+    ///
+    /// # Arguments
+    ///
+    /// * `interp_type` - The type of interpolation to use.
+    /// * `subgrid` - A reference to the `SubGrid`.
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Returns
+    ///
+    /// A `Box<dyn DynInterpolator>` for 3D interpolation over kts.
+    fn interpolator_xfxq2_kts(
+        interp_type: InterpolatorType,
+        subgrid: &SubGrid,
+        pid_index: usize,
+    ) -> Box<dyn DynInterpolator> {
+        let grid_data = subgrid
+            .grid
+            .slice(s![0, 0, pid_index, .., .., ..])
+            .to_owned();
+        let reshaped_data = grid_data
+            .into_shape_with_order((subgrid.kts.len(), subgrid.xs.len(), subgrid.q2s.len()))
+            .expect("Failed to reshape 3D data");
+
+        match interp_type {
+            InterpolatorType::LogTricubic => Box::new(
+                Interp3D::new(
+                    subgrid.kts.to_owned(),
                     subgrid.xs.to_owned(),
                     subgrid.q2s.to_owned(),
                     reshaped_data,
@@ -527,12 +617,15 @@ impl InterpolatorFactory {
     /// # Returns
     ///
     /// A `Box<dyn DynInterpolator>` for N-dimensional interpolation.
-    fn interpolator_ndim(
+    fn interpolator_xfxq2_nucleons_alphas(
         interp_type: InterpolatorType,
         subgrid: &SubGrid,
         pid_index: usize,
     ) -> Box<dyn DynInterpolator> {
-        let grid_data = subgrid.grid.slice(s![.., .., pid_index, .., ..]).to_owned();
+        let grid_data = subgrid
+            .grid
+            .slice(s![.., .., pid_index, 0, .., ..])
+            .to_owned();
         let coords = vec![
             subgrid.nucleons.to_owned(),
             subgrid.alphas.to_owned(),
@@ -554,6 +647,140 @@ impl InterpolatorFactory {
                     .expect("Failed to create 4D interpolator"),
             ),
             _ => panic!("Unsupported 4D interpolator: {:?}", interp_type),
+        }
+    }
+
+    /// Creates an N-dimensional interpolator for nucleons, kt, x, and q2.
+    ///
+    /// # Arguments
+    ///
+    /// * `interp_type` - The type of interpolation to use.
+    /// * `subgrid` - A reference to the `SubGrid`.
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Returns
+    ///
+    /// A `Box<dyn DynInterpolator>` for N-dimensional interpolation.
+    fn interpolator_xfxq2_nucleons_kts(
+        interp_type: InterpolatorType,
+        subgrid: &SubGrid,
+        pid_index: usize,
+    ) -> Box<dyn DynInterpolator> {
+        let grid_data = subgrid
+            .grid
+            .slice(s![.., 0, pid_index, .., .., ..])
+            .to_owned();
+        let coords = vec![
+            subgrid.nucleons.to_owned(),
+            subgrid.kts.to_owned(),
+            subgrid.xs.to_owned(),
+            subgrid.q2s.to_owned(),
+        ];
+        let reshaped_data = grid_data
+            .into_shape_with_order((
+                subgrid.nucleons.len(),
+                subgrid.kts.len(),
+                subgrid.xs.len(),
+                subgrid.q2s.len(),
+            ))
+            .expect("Failed to reshape 4D data");
+
+        match interp_type {
+            InterpolatorType::InterpNDLinear => Box::new(
+                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Error)
+                    .expect("Failed to create 4D interpolator"),
+            ),
+            _ => panic!("Unsupported 4D interpolator: {:?}", interp_type),
+        }
+    }
+
+    /// Creates an N-dimensional interpolator for alphas, kt, x, and q2.
+    ///
+    /// # Arguments
+    ///
+    /// * `interp_type` - The type of interpolation to use.
+    /// * `subgrid` - A reference to the `SubGrid`.
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Returns
+    ///
+    /// A `Box<dyn DynInterpolator>` for N-dimensional interpolation.
+    fn interpolator_xfxq2_alphas_kts(
+        interp_type: InterpolatorType,
+        subgrid: &SubGrid,
+        pid_index: usize,
+    ) -> Box<dyn DynInterpolator> {
+        let grid_data = subgrid
+            .grid
+            .slice(s![0, .., pid_index, .., .., ..])
+            .to_owned();
+        let coords = vec![
+            subgrid.alphas.to_owned(),
+            subgrid.kts.to_owned(),
+            subgrid.xs.to_owned(),
+            subgrid.q2s.to_owned(),
+        ];
+        let reshaped_data = grid_data
+            .into_shape_with_order((
+                subgrid.alphas.len(),
+                subgrid.kts.len(),
+                subgrid.xs.len(),
+                subgrid.q2s.len(),
+            ))
+            .expect("Failed to reshape 4D data");
+
+        match interp_type {
+            InterpolatorType::InterpNDLinear => Box::new(
+                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Error)
+                    .expect("Failed to create 4D interpolator"),
+            ),
+            _ => panic!("Unsupported 4D interpolator: {:?}", interp_type),
+        }
+    }
+
+    /// Creates an N-dimensional interpolator for nucleons, alpha_s, kt, x, and q2.
+    ///
+    /// # Arguments
+    ///
+    /// * `interp_type` - The type of interpolation to use.
+    /// * `subgrid` - A reference to the `SubGrid`.
+    /// * `pid_index` - The index of the particle ID (flavor).
+    ///
+    /// # Returns
+    ///
+    /// A `Box<dyn DynInterpolator>` for N-dimensional interpolation.
+    fn interpolator_xfxq2_5dim(
+        interp_type: InterpolatorType,
+        subgrid: &SubGrid,
+        pid_index: usize,
+    ) -> Box<dyn DynInterpolator> {
+        let grid_data = subgrid
+            .grid
+            .slice(s![.., .., pid_index, .., .., ..])
+            .to_owned();
+        let coords = vec![
+            subgrid.nucleons.to_owned(),
+            subgrid.alphas.to_owned(),
+            subgrid.kts.to_owned(),
+            subgrid.xs.to_owned(),
+            subgrid.q2s.to_owned(),
+        ];
+        let reshaped_data = grid_data
+            .into_shape_with_order((
+                subgrid.nucleons.len(),
+                subgrid.alphas.len(),
+                subgrid.kts.len(),
+                subgrid.xs.len(),
+                subgrid.q2s.len(),
+            ))
+            .expect("Failed to reshape 5D data");
+
+        match interp_type {
+            InterpolatorType::InterpNDLinear => Box::new(
+                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Error)
+                    .expect("Failed to create 5D interpolator"),
+            ),
+            _ => panic!("Unsupported 5D interpolator: {:?}", interp_type),
         }
     }
 }
@@ -582,6 +809,7 @@ impl GridArray {
                 SubGrid::new(
                     data.nucleons,
                     data.alphas,
+                    data.kts,
                     data.xs,
                     data.q2s,
                     nflav,
@@ -602,6 +830,7 @@ impl GridArray {
     ///
     /// * `nucleon_idx` - The index of the nucleon.
     /// * `alpha_idx` - The index of the alpha_s value.
+    /// * `kt_idx` - The index of the `kT` value.
     /// * `x_idx` - The index of the `x` value.
     /// * `q2_idx` - The index of the `q2` value.
     /// * `flavor_id` - The particle flavor ID.
@@ -614,17 +843,19 @@ impl GridArray {
     /// # Panics
     ///
     /// Panics if the `flavor_id` is invalid.
+    #[allow(clippy::too_many_arguments)]
     pub fn xf_from_index(
         &self,
         nucleon_idx: usize,
         alpha_idx: usize,
+        kt_idx: usize,
         x_idx: usize,
         q2_idx: usize,
         flavor_id: i32,
         subgrid_idx: usize,
     ) -> f64 {
         let pid_idx = self.pid_index(flavor_id).expect("Invalid flavor ID");
-        self.subgrids[subgrid_idx].grid[[nucleon_idx, alpha_idx, pid_idx, x_idx, q2_idx]]
+        self.subgrids[subgrid_idx].grid[[nucleon_idx, alpha_idx, pid_idx, kt_idx, x_idx, q2_idx]]
     }
 
     /// Finds the index of the subgrid that contains the given `(x, q2)` point.
@@ -674,6 +905,7 @@ impl GridArray {
         RangeParameters::new(
             global_range(&self.subgrids, |sg| &sg.nucleons_range),
             global_range(&self.subgrids, |sg| &sg.alphas_range),
+            global_range(&self.subgrids, |sg| &sg.kt_range),
             global_range(&self.subgrids, |sg| &sg.x_range),
             global_range(&self.subgrids, |sg| &sg.q2_range),
         )
@@ -810,7 +1042,7 @@ impl GridPDF {
     pub fn get_x_q2(&self, points: &[f64]) -> (f64, f64) {
         match points {
             [.., x, q2] => (*x, *q2),
-            _ => panic!("The inputs must at least be x and Q2.",),
+            _ => panic!("The inputs must at least be x and Q2."),
         }
     }
 
@@ -852,20 +1084,36 @@ mod tests {
     #[test]
     fn test_interpolation_config() {
         assert!(matches!(
-            InterpolationConfig::from_dimensions(1, 1),
+            InterpolationConfig::from_dimensions(1, 1, 1),
             InterpolationConfig::TwoD
         ));
         assert!(matches!(
-            InterpolationConfig::from_dimensions(2, 1),
+            InterpolationConfig::from_dimensions(2, 1, 1),
             InterpolationConfig::ThreeDNucleons
         ));
         assert!(matches!(
-            InterpolationConfig::from_dimensions(1, 2),
+            InterpolationConfig::from_dimensions(1, 2, 1),
             InterpolationConfig::ThreeDAlphas
         ));
         assert!(matches!(
-            InterpolationConfig::from_dimensions(2, 2),
-            InterpolationConfig::FourD
+            InterpolationConfig::from_dimensions(1, 1, 2),
+            InterpolationConfig::ThreeDKt
+        ));
+        assert!(matches!(
+            InterpolationConfig::from_dimensions(2, 2, 1),
+            InterpolationConfig::FourDNucleonsAlphas
+        ));
+        assert!(matches!(
+            InterpolationConfig::from_dimensions(2, 1, 2),
+            InterpolationConfig::FourDNucleonsKt
+        ));
+        assert!(matches!(
+            InterpolationConfig::from_dimensions(1, 2, 2),
+            InterpolationConfig::FourDAlphasKt
+        ));
+        assert!(matches!(
+            InterpolationConfig::from_dimensions(2, 2, 2),
+            InterpolationConfig::FiveD
         ));
     }
 
@@ -874,6 +1122,7 @@ mod tests {
         let subgrid_data = vec![SubgridData {
             nucleons: vec![1.0],
             alphas: vec![0.118],
+            kts: vec![0.0],
             xs: vec![1.0, 2.0, 3.0],
             q2s: vec![4.0, 5.0],
             grid_data: vec![
@@ -883,7 +1132,7 @@ mod tests {
         let flavors = vec![21, 22];
         let grid_array = GridArray::new(subgrid_data, flavors);
 
-        assert_eq!(grid_array.subgrids[0].grid.shape(), &[1, 1, 2, 3, 2]);
+        assert_eq!(grid_array.subgrids[0].grid.shape(), &[1, 1, 2, 1, 3, 2]);
         assert!(grid_array.find_subgrid(1.5, 4.5).is_some());
     }
 }

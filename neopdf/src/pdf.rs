@@ -264,6 +264,7 @@ impl PDF {
     ///
     /// * `i_nucleons` - The index of the nucleon.
     /// * `i_alphas` - The index of the alpha_s value.
+    /// * `i_kt` - The index of the `kT` value.
     /// * `ix` - The index of the x-value.
     /// * `iq2` - The index of the Q2-value.
     /// * `id` - The flavor ID.
@@ -272,10 +273,12 @@ impl PDF {
     /// # Returns
     ///
     /// The PDF value at the specified knot.
+    #[allow(clippy::too_many_arguments)]
     pub fn xf_from_index(
         &self,
         i_nucleons: usize,
         i_alphas: usize,
+        i_kt: usize,
         ix: usize,
         iq2: usize,
         id: i32,
@@ -283,6 +286,6 @@ impl PDF {
     ) -> f64 {
         self.grid_pdf
             .knot_array
-            .xf_from_index(i_nucleons, i_alphas, ix, iq2, id, subgrid_id)
+            .xf_from_index(i_nucleons, i_alphas, i_kt, ix, iq2, id, subgrid_id)
     }
 }

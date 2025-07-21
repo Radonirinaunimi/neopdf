@@ -238,6 +238,7 @@ class GridWriter {
         void add_grid(
             const std::vector<double>& nucleons,
             const std::vector<double>& alphas,
+            const std::vector<double>& kts,
             const std::vector<double>& xs,
             const std::vector<double>& q2s,
             const std::vector<double>& grid_data,
@@ -252,6 +253,7 @@ class GridWriter {
                 grid,
                 nucleons.data(), nucleons.size(),
                 alphas.data(), alphas.size(),
+                kts.data(), kts.size(),
                 xs.data(), xs.size(),
                 q2s.data(), q2s.size(),
                 grid_data.data(), grid_data.size()

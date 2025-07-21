@@ -25,4 +25,4 @@ check-writer-oop: check-writer-oop.cpp
 .PHONY: clean
 
 clean:
-	rm -f $(PROGRAMS) *.neopdf
+	rm -f $(PROGRAMS) *.neopdf.lz4

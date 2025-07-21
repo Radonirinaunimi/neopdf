@@ -56,6 +56,7 @@ int main() {
             auto q2s = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_SCALE, subgrid_idx);
             auto alphas = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_ALPHAS, subgrid_idx);
             auto nucleons = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_NUCLEONS, subgrid_idx);
+            auto kts = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_KT, subgrid_idx);
 
             // Compute grid_data: [q2s][xs][flavors], instead of [nucleons][alphas][q2s][xs][flavors]
             // NOTE: This assumes that there is no 'A' and `alphas` dependence.
@@ -74,6 +75,7 @@ int main() {
                 grid,
                 nucleons.data(), nucleons.size(),
                 alphas.data(), alphas.size(),
+                kts.data(), kts.size(),
                 xs.data(), xs.size(),
                 q2s.data(), q2s.size(),
                 grid_data.data(), grid_data.size()
@@ -130,14 +132,14 @@ int main() {
         .alphas_vals = alphas_vals,
         .num_alphas_vals = 1,
         .polarised = false,
-        .set_type = SET_TYPE_PDF,
+        .set_type = SET_TYPE_SPACE_LIKE,
         .interpolator_type = INTERPOLATOR_TYPE_LOG_BICUBIC,
         .error_type = "replicas",
         .hadron_pid = 2212,
     };
 
     // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.
-    const char* filename = "check-writer.neopdf.lz4";
+    const char* filename = "check-writer-oop.neopdf.lz4";
     const char* neopdf_path = std::getenv("NEOPDF_DATA_PATH");
     std::string output_path = neopdf_path
         ? std::string(neopdf_path) + (std::string(neopdf_path).back() == '/' ? "" : "/") + filename

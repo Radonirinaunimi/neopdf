@@ -1,8 +1,9 @@
 # NeoPDF
 
 `NeoPDF` is a fast, reliable, and scalable interpolation library for Parton Distribution Functions
-(PDFs), designed for both present and future hadron collider experiments. It aims to be a modern,
-high-performance alternative to LHAPDF, focusing on:
+(PDFs) and Transverse Momentum Distributions (TMDs), designed for both present and future hadron
+collider experiments. It aims to be a modern, high-performance alternative to both
+[LHAPDF](https://www.lhapdf.org/) and [TMDlib](https://tmdlib.hepforge.org/), focusing on:
 
 - **Performance**: Written in Rust for speed and safety, with zero-cost abstractions and efficient
     memory management.
@@ -15,8 +16,8 @@ high-performance alternative to LHAPDF, focusing on:
 ## Motivation
 
 The need for a fast and reliable PDF interpolation is critical in high-energy physics, especially
-for precision calculations at hadron colliders. Existing solutions like LHAPDF, while widely used,
-have limitations in terms of extensibility and features. `NeoPDF` addresses these by:
+for precision calculations at hadron colliders. Existing solutions like LHAPDF or TMDlib, while
+widely used, have limitations in terms of extensibility and features. `NeoPDF` addresses these by:
 
 - Providing a modern, modular codebase.
 - Enabling easy integration into new and existing workflows.
@@ -24,21 +25,14 @@ have limitations in terms of extensibility and features. `NeoPDF` addresses thes
 
 ## High-Level Architecture
 
-- **Core Library (Rust)**: Implements all interpolation logic, grid management, and PDF metadata handling.
-- **FFI Bindings**: Exposes the core functionality to Python, Fortran, C, and C++.
-- **CLI Tools**: (Planned) Command-line utilities for PDF inspection and conversion.
-
-```mermaid
-graph TD
-    A[User Code (Rust/Python/C/C++)] --> B[NeoPDF API];
-    B --> C[Core Interpolation Engine (Rust)];
-    C --> D[PDF Grid Data & Metadata];
-```
+- **Core Library (Rust)**: Implements all the interpolation logics, grid management, and PDF
+    metadata handling.
+- **FFI Bindings**: Exposes the core functionalities to Python, Fortran, C, and C++, enabling
+    easier interoperability with other codes that can link to these programming languages.
+- **CLI Tools**: Command-line utilities that allow users to inspect the contents of a gird,
+    convert LHAPDF/TMDlib format into `NeoPDF`, and perform interpolations.
 
 ## Source Code & Bug Report
 
 - [GitHub Repository](https://github.com/radonirinaunimi/neopdf)
 - Issues and feature requests welcome!
-- [Features](design-and-features.md)
-- [Design](design.md)
-- [CLI Tutorials](cli-tutorials.md)
