@@ -318,6 +318,96 @@ impl PyMetaData {
 
         Ok(dict.into())
     }
+
+    /// The index of the grid.
+    #[must_use]
+    pub const fn set_index(&self) -> u32 {
+        self.meta.set_index
+    }
+
+    /// The number of sets in the grid.
+    #[must_use]
+    pub const fn number_sets(&self) -> u32 {
+        self.meta.num_members
+    }
+
+    /// The minimum value of `x` in the grid.
+    #[must_use]
+    pub const fn x_min(&self) -> f64 {
+        self.meta.x_min
+    }
+
+    /// The maximum value of `x` in the grid.
+    #[must_use]
+    pub const fn x_max(&self) -> f64 {
+        self.meta.x_max
+    }
+
+    /// The minimum value of `q` in the grid.
+    #[must_use]
+    pub const fn q_min(&self) -> f64 {
+        self.meta.q_min
+    }
+
+    /// The maximum value of `q` in the grid.
+    #[must_use]
+    pub const fn q_max(&self) -> f64 {
+        self.meta.q_max
+    }
+
+    /// The particle IDs of the grid.
+    #[must_use]
+    pub const fn pids(&self) -> &Vec<i32> {
+        &self.meta.flavors
+    }
+
+    /// The format of the grid.
+    #[must_use]
+    pub const fn format(&self) -> &String {
+        &self.meta.format
+    }
+
+    /// The values of `q` for the running of the strong coupling constant.
+    #[must_use]
+    pub const fn alphas_q(&self) -> &Vec<f64> {
+        &self.meta.alphas_q_values
+    }
+
+    /// The values of the running of the strong coupling constant.
+    #[must_use]
+    pub const fn alphas_values(&self) -> &Vec<f64> {
+        &self.meta.alphas_vals
+    }
+
+    /// Whether the grid is polarised.
+    #[must_use]
+    pub const fn is_polarised(&self) -> bool {
+        self.meta.polarised
+    }
+
+    /// The type of the set.
+    #[must_use]
+    pub fn set_type(&self) -> PySetType {
+        PySetType::from(&self.meta.set_type)
+    }
+
+    /// The interpolation method used for the grid.
+    #[must_use]
+    pub fn interpolator_type(&self) -> PyInterpolatorType {
+        PyInterpolatorType::from(&self.meta.interpolator_type)
+    }
+
+    /// The type of error.
+    #[must_use]
+    pub const fn error_type(&self) -> &String {
+        &self.meta.error_type
+    }
+
+    /// The hadron PID.
+    #[must_use]
+    pub const fn hadron_pid(&self) -> i32 {
+        self.meta.hadron_pid
+    }
 }
 
 /// Registers the `metadata` submodule with the parent Python module.
