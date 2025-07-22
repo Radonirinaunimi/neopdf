@@ -588,6 +588,33 @@ pub unsafe extern "C" fn neopdf_grid_free(grid: *mut NeoPDFGrid) {
     }
 }
 
+/// Physical Parameters of the PDF set.
+#[repr(C)]
+pub struct NeoPDFPhysicsParameters {
+    /// The flavor scheme used for the PDF set.
+    pub flavor_scheme: *const c_char,
+    /// Number of QCD loops in the calculation of PDF evolution.
+    pub order_qcd: u32,
+    /// Number of QCD loops in the calculation of `alpha_s`.
+    pub alphas_order_qcd: u32,
+    /// Value of the W boson mass.
+    pub m_w: f64,
+    /// Value of the Z boson mass.
+    pub m_z: f64,
+    /// Value of the `u` quark mass.
+    pub m_up: f64,
+    /// Value of the `d` quark mass.
+    pub m_down: f64,
+    /// Value of the `s` quark mass.
+    pub m_strange: f64,
+    /// Value of the `c` quark mass.
+    pub m_charm: f64,
+    /// Value of the `b` quark mass.
+    pub m_bottom: f64,
+    /// Value of the `t` quark mass.
+    pub m_top: f64,
+}
+
 /// Metadata for PDF grids
 #[repr(C)]
 pub struct NeoPDFMetaData {
@@ -610,6 +637,7 @@ pub struct NeoPDFMetaData {
     interpolator_type: InterpolatorType,
     error_type: *const c_char,
     hadron_pid: c_int,
+    phys_params: NeoPDFPhysicsParameters,
 }
 
 /// Safely converts C string to Rust string
@@ -645,8 +673,9 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
     let alphas_q_values = unsafe { carray_to_vec(meta.alphas_q_values, meta.num_alphas_q) }?;
     let alphas_vals = unsafe { carray_to_vec(meta.alphas_vals, meta.num_alphas_vals) }?;
     let error_type = unsafe { cstr_to_string(meta.error_type) }?;
+    let flavor_scheme = unsafe { cstr_to_string(meta.phys_params.flavor_scheme) }?;
 
-    Some(MetaData {
+    let metadata = MetaData {
         set_desc,
         set_index: meta.set_index,
         num_members: meta.num_members,
@@ -663,9 +692,22 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
         interpolator_type: meta.interpolator_type.clone(),
         error_type,
         hadron_pid: meta.hadron_pid,
-        git_version: "None".to_string(), // placeholder to be overwritten
-        code_version: "None".to_string(), // placeholder to be overwritten
-    })
+        git_version: String::new(),  // placeholder to be overwritten
+        code_version: String::new(), // placeholder to be overwritten
+        flavor_scheme,
+        order_qcd: meta.phys_params.order_qcd,
+        alphas_order_qcd: meta.phys_params.alphas_order_qcd,
+        m_w: meta.phys_params.m_w,
+        m_z: meta.phys_params.m_z,
+        m_up: meta.phys_params.m_up,
+        m_down: meta.phys_params.m_down,
+        m_strange: meta.phys_params.m_strange,
+        m_charm: meta.phys_params.m_charm,
+        m_bottom: meta.phys_params.m_bottom,
+        m_top: meta.phys_params.m_top,
+    };
+
+    Some(metadata)
 }
 
 /// Represents a dynamically-sized collection of `NeoPDFGrid` pointers.

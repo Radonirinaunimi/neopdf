@@ -69,6 +69,111 @@ impl From<&PyInterpolatorType> for InterpolatorType {
     }
 }
 
+/// Physical Parameters of the PDF set.
+#[pyclass(name = "PhysicsParameters")]
+#[derive(Debug, Clone)]
+pub struct PyPhysicsParameters {
+    pub(crate) flavor_scheme: String,
+    pub(crate) order_qcd: u32,
+    pub(crate) alphas_order_qcd: u32,
+    pub(crate) m_w: f64,
+    pub(crate) m_z: f64,
+    pub(crate) m_up: f64,
+    pub(crate) m_down: f64,
+    pub(crate) m_strange: f64,
+    pub(crate) m_charm: f64,
+    pub(crate) m_bottom: f64,
+    pub(crate) m_top: f64,
+}
+
+#[pymethods]
+impl PyPhysicsParameters {
+    /// Constructor for PyPhysicsParameters.
+    #[new]
+    #[must_use]
+    #[allow(clippy::too_many_arguments)]
+    #[pyo3(signature = (
+        flavor_scheme = "None".to_string(),
+        order_qcd = 0,
+        alphas_order_qcd = 0,
+        m_w = 0.0,
+        m_z = 0.0,
+        m_up = 0.0,
+        m_down = 0.0,
+        m_strange = 0.0,
+        m_charm = 0.0,
+        m_bottom = 0.0,
+        m_top = 0.0
+    ))]
+    pub const fn new(
+        flavor_scheme: String,
+        order_qcd: u32,
+        alphas_order_qcd: u32,
+        m_w: f64,
+        m_z: f64,
+        m_up: f64,
+        m_down: f64,
+        m_strange: f64,
+        m_charm: f64,
+        m_bottom: f64,
+        m_top: f64,
+    ) -> Self {
+        Self {
+            flavor_scheme,
+            order_qcd,
+            alphas_order_qcd,
+            m_w,
+            m_z,
+            m_up,
+            m_down,
+            m_strange,
+            m_charm,
+            m_bottom,
+            m_top,
+        }
+    }
+
+    /// Convert to Python dictionary.
+    ///
+    /// # Errors
+    ///
+    /// Raises an error if the values are not Python compatible.
+    pub fn to_dict(&self, py: Python) -> PyResult<PyObject> {
+        let dict = pyo3::types::PyDict::new(py);
+        dict.set_item("flavor_scheme", &self.flavor_scheme)?;
+        dict.set_item("order_qcd", self.order_qcd)?;
+        dict.set_item("alphas_order_qcd", self.alphas_order_qcd)?;
+        dict.set_item("m_w", self.m_w)?;
+        dict.set_item("m_z", self.m_z)?;
+        dict.set_item("m_up", self.m_up)?;
+        dict.set_item("m_down", self.m_down)?;
+        dict.set_item("m_strange", self.m_strange)?;
+        dict.set_item("m_charm", self.m_charm)?;
+        dict.set_item("m_bottom", self.m_bottom)?;
+        dict.set_item("m_top", self.m_top)?;
+
+        Ok(dict.into())
+    }
+}
+
+impl Default for PyPhysicsParameters {
+    fn default() -> Self {
+        Self {
+            flavor_scheme: String::new(),
+            order_qcd: 0,
+            alphas_order_qcd: 0,
+            m_w: 0.0,
+            m_z: 0.0,
+            m_up: 0.0,
+            m_down: 0.0,
+            m_strange: 0.0,
+            m_charm: 0.0,
+            m_bottom: 0.0,
+            m_top: 0.0,
+        }
+    }
+}
+
 /// Grid metadata.
 #[pyclass(name = "MetaData")]
 #[derive(Debug, Clone)]
@@ -100,7 +205,8 @@ impl PyMetaData {
         set_type = PySetType::SpaceLike,
         interpolator_type = PyInterpolatorType::LogBicubic,
         error_type = "replicas".to_string(),
-        hadron_pid = 2212
+        hadron_pid = 2212,
+        phys_params = PyPhysicsParameters::default(),
     ))]
     pub fn new(
         set_desc: String,
@@ -119,9 +225,11 @@ impl PyMetaData {
         interpolator_type: PyInterpolatorType,
         error_type: String,
         hadron_pid: i32,
+        phys_params: PyPhysicsParameters,
     ) -> Self {
-        let git_version = "Unknown".to_string();
-        let code_version = "Unknown".to_string();
+        let git_version = String::new();
+        let code_version = String::new();
+
         let meta = MetaData {
             set_desc,
             set_index,
@@ -141,6 +249,17 @@ impl PyMetaData {
             hadron_pid,
             git_version,  // placeholder to be overwritten
             code_version, // placeholder to be overwritten
+            flavor_scheme: phys_params.flavor_scheme,
+            order_qcd: phys_params.order_qcd,
+            alphas_order_qcd: phys_params.alphas_order_qcd,
+            m_w: phys_params.m_w,
+            m_z: phys_params.m_z,
+            m_up: phys_params.m_up,
+            m_down: phys_params.m_down,
+            m_strange: phys_params.m_strange,
+            m_charm: phys_params.m_charm,
+            m_bottom: phys_params.m_bottom,
+            m_top: phys_params.m_top,
         };
 
         Self { meta }
@@ -185,14 +304,19 @@ impl PyMetaData {
         dict.set_item("hadron_pid", self.meta.hadron_pid)?;
         dict.set_item("git_version", &self.meta.git_version)?;
         dict.set_item("code_version", &self.meta.code_version)?;
+        dict.set_item("flavor_scheme", &self.meta.flavor_scheme)?;
+        dict.set_item("order_qcd", self.meta.order_qcd)?;
+        dict.set_item("alphas_order_qcd", self.meta.alphas_order_qcd)?;
+        dict.set_item("m_w", self.meta.m_w)?;
+        dict.set_item("m_z", self.meta.m_z)?;
+        dict.set_item("m_up", self.meta.m_up)?;
+        dict.set_item("m_down", self.meta.m_down)?;
+        dict.set_item("m_strange", self.meta.m_strange)?;
+        dict.set_item("m_charm", self.meta.m_charm)?;
+        dict.set_item("m_bottom", self.meta.m_bottom)?;
+        dict.set_item("m_top", self.meta.m_top)?;
 
         Ok(dict.into())
-    }
-
-    /// The description of the grid.
-    #[must_use]
-    pub const fn description(&self) -> &String {
-        &self.meta.set_desc
     }
 
     /// The index of the grid.
@@ -284,18 +408,6 @@ impl PyMetaData {
     pub const fn hadron_pid(&self) -> i32 {
         self.meta.hadron_pid
     }
-
-    /// The git version of the code that generated the PDF.
-    #[must_use]
-    pub const fn git_version(&self) -> &String {
-        &self.meta.git_version
-    }
-
-    /// The code version (CARGO_PKG_VERSION) that generated the PDF.
-    #[must_use]
-    pub const fn code_version(&self) -> &String {
-        &self.meta.code_version
-    }
 }
 
 /// Registers the `metadata` submodule with the parent Python module.
@@ -324,6 +436,7 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     );
     m.add_class::<PySetType>()?;
     m.add_class::<PyInterpolatorType>()?;
+    m.add_class::<PyPhysicsParameters>()?;
     m.add_class::<PyMetaData>()?;
     parent_module.add_submodule(&m)
 }

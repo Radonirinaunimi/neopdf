@@ -215,7 +215,7 @@ the process of constructing a grid for each PDF member and serializing the colle
     is correct. However, this makes the codes very verbose. To easily spot the parts that
     actually fills the grid, some lines are highlighted.
 
-```cpp linenums="1" hl_lines="110-119 122-130 139 147 166-186 196"
+```cpp linenums="1" hl_lines="112-121 124-132 141 149 168-180 182-203 213"
 #include <cstddef>
 #include <neopdf_capi.h>
 #include <cassert>
@@ -320,11 +320,13 @@ int main() {
             auto q2s = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_SCALE, subgrid_idx, num_subgrids);
             auto alphas = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_ALPHAS, subgrid_idx, num_subgrids);
             auto nucleons = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_NUCLEONS, subgrid_idx, num_subgrids);
+            auto kts = extract_subgrid_params(pdf, NEOPDF_SUBGRID_PARAMS_KT, subgrid_idx, num_subgrids);
 
             // Compute grid_data: [q2s][xs][flavors], instead of [nucleons][alphas][q2s][xs][flavors]
             // NOTE: This assumes that there is no 'A' and `alphas` dependence.
             assert(nucleons.size() == 1);
             assert(alphas.size() == 1);
+            assert(kts.size() == 1);
             std::vector<double> grid_data;
             for (size_t xi = 0; xi < xs.size(); ++xi) {
                 for (size_t qi = 0; qi < q2s.size(); ++qi) {
@@ -381,6 +383,20 @@ int main() {
     neopdf_pdf_param_range(neo_pdfs.pdfs[0], NEOPDF_SUBGRID_PARAMS_MOMENTUM, x_range.data());
     neopdf_pdf_param_range(neo_pdfs.pdfs[0], NEOPDF_SUBGRID_PARAMS_SCALE, q2_range.data());
 
+    NeoPDFPhysicsParameters phys_params = {
+        .flavor_scheme = "variable",
+        .order_qcd = 2,
+        .alphas_order_qcd = 2,
+        .m_w = 80.352,
+        .m_z = 91.1876,
+        .m_up = 0.0,
+        .m_down = 0.0,
+        .m_strange = 0.0,
+        .m_charm = 1.51,
+        .m_bottom = 4.92,
+        .m_top = 172.5,
+    };
+
     NeoPDFMetaData meta = {
         .set_desc = "NNPDF40_nnlo_as_01180 collection",
         .set_index = 0,
@@ -397,10 +413,11 @@ int main() {
         .alphas_vals = alphas_vals,
         .num_alphas_vals = 1,
         .polarised = false,
-        .set_type = SET_TYPE_PDF,
+        .set_type = SET_TYPE_SPACE_LIKE,
         .interpolator_type = INTERPOLATOR_TYPE_LOG_BICUBIC,
         .error_type = "replicas",
         .hadron_pid = 2212,
+        .phys_params = phys_params,
     };
 
     // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.
@@ -439,7 +456,7 @@ int main() {
         neopdf_pdf_free(wpdf);
     }
 
-    // Remove objects from memory.
+    // Cleanup
     neopdf_gridarray_collection_free(collection);
     neopdf_pdf_array_free(neo_pdfs);
 

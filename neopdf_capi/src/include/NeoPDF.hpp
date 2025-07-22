@@ -12,6 +12,38 @@
 /** @brief Object Oriented interface to NeoPDF. */
 namespace neopdf {
 
+/** @brief C++ representation of PhysicsParameters. */
+struct PhysicsParameters {
+    std::string flavor_scheme;
+    uint32_t order_qcd;
+    uint32_t alphas_order_qcd;
+    double m_w;
+    double m_z;
+    double m_up;
+    double m_down;
+    double m_strange;
+    double m_charm;
+    double m_bottom;
+    double m_top;
+
+    // Conversion to C struct
+    NeoPDFPhysicsParameters to_c() const {
+        NeoPDFPhysicsParameters c_params;
+        c_params.flavor_scheme = flavor_scheme.c_str();
+        c_params.order_qcd = order_qcd;
+        c_params.alphas_order_qcd = alphas_order_qcd;
+        c_params.m_w = m_w;
+        c_params.m_z = m_z;
+        c_params.m_up = m_up;
+        c_params.m_down = m_down;
+        c_params.m_strange = m_strange;
+        c_params.m_charm = m_charm;
+        c_params.m_bottom = m_bottom;
+        c_params.m_top = m_top;
+        return c_params;
+    }
+};
+
 /** @brief C++ representation of NeoPDFMetaData. */
 struct MetaData {
     std::string set_desc;
@@ -30,6 +62,7 @@ struct MetaData {
     InterpolatorType interpolator_type;
     std::string error_type;
     int32_t hadron_pid;
+    PhysicsParameters phys_params;
 
     // Conversion to C struct
     NeoPDFMetaData to_c() const {
@@ -53,6 +86,7 @@ struct MetaData {
         c_meta.interpolator_type = interpolator_type;
         c_meta.error_type = error_type.c_str();
         c_meta.hadron_pid = hadron_pid;
+        c_meta.phys_params = phys_params.to_c();
         return c_meta;
     }
 };

@@ -457,8 +457,19 @@ mod tests {
             interpolator_type: InterpolatorType::LogBicubic,
             error_type: "replicas".into(),
             hadron_pid: 2212,
-            git_version: "".into(),
-            code_version: "".into(),
+            git_version: String::new(),
+            code_version: String::new(),
+            flavor_scheme: String::new(),
+            order_qcd: 0,
+            alphas_order_qcd: 0,
+            m_w: 0.0,
+            m_z: 0.0,
+            m_up: 0.0,
+            m_down: 0.0,
+            m_strange: 0.0,
+            m_charm: 0.0,
+            m_bottom: 0.0,
+            m_top: 0.0,
         };
 
         let test_grid = test_grid();

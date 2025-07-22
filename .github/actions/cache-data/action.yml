@@ -1,0 +1,19 @@
+# .github/actions/cache-data/action.yml
+
+name: Cache Data for the Tests
+description: Caches and downloads data
+runs:
+  using: "composite"
+  steps:
+    - name: Cache data
+      id: cache-data
+      uses: actions/cache@v4
+      with:
+        path: neopdf-data
+        key: data-v4
+    - name: Download data if cache miss
+      if: steps.cache-data.outputs.cache-hit != 'true'
+      run: |
+        cd maintainer
+        ./download-data.sh
+      shell: bash

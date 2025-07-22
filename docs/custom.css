@@ -11,3 +11,18 @@ body {
 .md-content__inner li {
   text-align: justify;
 }
+
+/* Hide Jupyter input/output prompts in mkdocs-jupyter */
+.jp-InputPrompt, .jp-OutputPrompt, .prompt, .nbinput .prompt, .nboutput .prompt {
+    display: none !important;
+}
+
+/* Slightly increase font size in notebook code cells for mkdocs-jupyter and similar renderers */
+div.nbinput .input_area pre,
+div.input_area pre,
+div.jp-InputArea-editor,
+div.jp-CodeCell .jp-InputArea-editor,
+div.highlight pre,
+pre {
+    font-size: 1.06em !important;
+}

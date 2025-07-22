@@ -165,6 +165,20 @@ int main() {
     neopdf_pdf_param_range(neo_pdfs.pdfs[0], NEOPDF_SUBGRID_PARAMS_MOMENTUM, x_range.data());
     neopdf_pdf_param_range(neo_pdfs.pdfs[0], NEOPDF_SUBGRID_PARAMS_SCALE, q2_range.data());
 
+    NeoPDFPhysicsParameters phys_params = {
+        .flavor_scheme = "variable",
+        .order_qcd = 2,
+        .alphas_order_qcd = 2,
+        .m_w = 80.352,
+        .m_z = 91.1876,
+        .m_up = 0.0,
+        .m_down = 0.0,
+        .m_strange = 0.0,
+        .m_charm = 1.51,
+        .m_bottom = 4.92,
+        .m_top = 172.5,
+    };
+
     NeoPDFMetaData meta = {
         .set_desc = "NNPDF40_nnlo_as_01180 collection",
         .set_index = 0,
@@ -185,6 +199,7 @@ int main() {
         .interpolator_type = INTERPOLATOR_TYPE_LOG_BICUBIC,
         .error_type = "replicas",
         .hadron_pid = 2212,
+        .phys_params = phys_params,
     };
 
     // Check if `NEOPDF_DATA_PATH` is defined and store the Grid there.

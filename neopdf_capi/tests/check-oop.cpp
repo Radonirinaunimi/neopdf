@@ -1,6 +1,5 @@
 #include <LHAPDF/PDF.h>
 #include <LHAPDF/GridPDF.h>
-#include <neopdf_capi.h>
 #include <NeoPDF.hpp>
 #include <cassert>
 #include <cmath>
@@ -203,14 +202,6 @@ void test_all_pdf_members() {
     std::cout << "Std Dev: " << std_dev << "\n";
     std::cout << "Relative Std Dev: " << std_dev / mean << "\n";
 }
-
-void test_raw_load_all() {
-    std::cout << "=== Test raw neopdf_pdf_load_all ===\n";
-    NeoPDFMembers raw_pdfs = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
-    std::cout << "Loaded " << raw_pdfs.size << " PDF members (raw call)\n";
-    neopdf_pdf_array_free(raw_pdfs);
-}
-
 
 int main() {
     // Test the computation of the PDF interpolations

@@ -19,16 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Get data
-        id: cache-data
-        uses: actions/cache@v4
-        with:
-          path: neopdf-data
-          key: data-v3
-      - name: Download data
-        if: steps.cache-data.outputs.cache-hit != 'true'
-        run: |
-          cd maintainer
-          ./download-data.sh
+        uses: ./.github/actions/cache-data
       - name: Build NeoPDF crate 🦀
         run: cargo build --release
       - name: Run tests 🚀
