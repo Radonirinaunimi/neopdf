@@ -81,6 +81,39 @@ pub struct MetaData {
     /// The code version (CARGO_PKG_VERSION) that generated the PDF.
     #[serde(rename = "CodeVersion", default)]
     pub code_version: String,
+    /// Scheme for the treatment of heavy flavors
+    #[serde(rename = "FlavorScheme", default)]
+    pub flavor_scheme: String,
+    /// Number of QCD loops in the calculation of PDF evolution.
+    #[serde(rename = "OrderQCD", default)]
+    pub order_qcd: u32,
+    /// Number of QCD loops in the calculation of `alpha_s`.
+    #[serde(rename = "AlphaS OrderQCD", default)]
+    pub alphas_order_qcd: u32,
+    /// Value of the W boson mass.
+    #[serde(rename = "MW", default)]
+    pub m_w: f64,
+    /// Value of the Z boson mass.
+    #[serde(rename = "MZ", default)]
+    pub m_z: f64,
+    /// Value of the Up quark mass.
+    #[serde(rename = "MUp", default)]
+    pub m_up: f64,
+    /// Value of the Down quark mass.
+    #[serde(rename = "MDown", default)]
+    pub m_down: f64,
+    /// Value of the Strange quark mass.
+    #[serde(rename = "MStrange", default)]
+    pub m_strange: f64,
+    /// Value of the Charm quark mass.
+    #[serde(rename = "MCharm", default)]
+    pub m_charm: f64,
+    /// Value of the Bottom quark mass.
+    #[serde(rename = "MBottom", default)]
+    pub m_bottom: f64,
+    /// Value of the Top quark mass.
+    #[serde(rename = "MTop", default)]
+    pub m_top: f64,
 }
 
 impl fmt::Display for MetaData {
