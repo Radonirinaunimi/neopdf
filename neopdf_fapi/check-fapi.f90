@@ -16,7 +16,7 @@ program check_fapi
     q2 = 10.0
     id = 21
 
-    pdf = neopdf_pdf_load(pdf_name // c_null_char, member)
+    pdf = neopdf_pdf_load(trim(pdf_name) // c_null_char, member)
     result = neopdf_pdf_xfxq2(pdf, id, x, q2)
     print *, "xfxq2 result: ", result
     call neopdf_pdf_free(pdf)

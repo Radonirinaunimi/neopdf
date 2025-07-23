@@ -10,7 +10,7 @@ module neopdf
         type (c_ptr) :: ptr = c_null_ptr
     end type
 
-    type neopdf_pdf_members
+    type, bind(c) :: neopdf_pdf_members
         type (c_ptr) :: pdfs = c_null_ptr
         integer (c_size_t) :: size
     end type
@@ -35,83 +35,83 @@ module neopdf
             integer (c_size_t)  :: strlen
         end function strlen
 
-        type (c_ptr) function neopdf_pdf_load(pdf_name, member) bind(c)
+        type (c_ptr) function c_neopdf_pdf_load(pdf_name, member) bind(c, name="neopdf_pdf_load")
             use iso_c_binding
             character (c_char) :: pdf_name(*)
             integer (c_size_t), value :: member
         end function
 
-        subroutine neopdf_pdf_free(pdf) bind(c)
+        subroutine c_neopdf_pdf_free(pdf) bind(c, name="neopdf_pdf_free")
             use iso_c_binding
             type (c_ptr), value :: pdf
         end subroutine
 
-        function neopdf_pdf_xfxq2(pdf, id, x, q2) bind(c)
+        function c_neopdf_pdf_xfxq2(pdf, id, x, q2) bind(c, name="neopdf_pdf_xfxq2")
             use iso_c_binding
             type (c_ptr), value :: pdf
             integer (c_int), value :: id
             real (c_double), value :: x, q2
-            real (c_double) :: neopdf_pdf_xfxq2
+            real (c_double) :: c_neopdf_pdf_xfxq2
         end function
 
-        function neopdf_pdf_alphas_q2(pdf, q2) bind(c)
+        function c_neopdf_pdf_alphas_q2(pdf, q2) bind(c, name="neopdf_pdf_alphas_q2")
             use iso_c_binding
             type (c_ptr), value :: pdf
             real (c_double), value :: q2
-            real (c_double) :: neopdf_pdf_alphas_q2
+            real (c_double) :: c_neopdf_pdf_alphas_q2
         end function
 
-        function neopdf_pdf_x_min(pdf) bind(c)
+        function c_neopdf_pdf_x_min(pdf) bind(c, name="neopdf_pdf_x_min")
             use iso_c_binding
             type (c_ptr), value :: pdf
-            real (c_double) :: neopdf_pdf_x_min
+            real (c_double) :: c_neopdf_pdf_x_min
         end function
 
-        function neopdf_pdf_x_max(pdf) bind(c)
+        function c_neopdf_pdf_x_max(pdf) bind(c, name="neopdf_pdf_x_max")
             use iso_c_binding
             type (c_ptr), value :: pdf
-            real (c_double) :: neopdf_pdf_x_max
+            real (c_double) :: c_neopdf_pdf_x_max
         end function
 
-        function neopdf_pdf_q2_min(pdf) bind(c)
+        function c_neopdf_pdf_q2_min(pdf) bind(c, name="neopdf_pdf_q2_min")
             use iso_c_binding
             type (c_ptr), value :: pdf
-            real (c_double) :: neopdf_pdf_q2_min
+            real (c_double) :: c_neopdf_pdf_q2_min
         end function
 
-        function neopdf_pdf_q2_max(pdf) bind(c)
+        function c_neopdf_pdf_q2_max(pdf) bind(c, name="neopdf_pdf_q2_max")
             use iso_c_binding
             type (c_ptr), value :: pdf
-            real (c_double) :: neopdf_pdf_q2_max
+            real (c_double) :: c_neopdf_pdf_q2_max
         end function
 
-        function neopdf_pdf_num_pids(pdf) bind(c)
+        function c_neopdf_pdf_num_pids(pdf) bind(c, name="neopdf_pdf_num_pids")
             use iso_c_binding
             type (c_ptr), value :: pdf
-            integer (c_size_t) :: neopdf_pdf_num_pids
+            integer (c_size_t) :: c_neopdf_pdf_num_pids
         end function
 
-        subroutine neopdf_pdf_pids(pdf, pids, num_pids) bind(c)
+        subroutine c_neopdf_pdf_pids(pdf, pids, num_pids) bind(c, name="neopdf_pdf_pids")
             use iso_c_binding
             type (c_ptr), value :: pdf
             integer (c_int) :: pids(*)
             integer (c_size_t), value :: num_pids
         end subroutine
 
-        function neopdf_pdf_num_subgrids(pdf) bind(c)
+        function c_neopdf_pdf_num_subgrids(pdf) bind(c, name="neopdf_pdf_num_subgrids")
             use iso_c_binding
             type (c_ptr), value :: pdf
-            integer (c_size_t) :: neopdf_pdf_num_subgrids
+            integer (c_size_t) :: c_neopdf_pdf_num_subgrids
         end function
 
-        subroutine neopdf_pdf_param_range(pdf, param, param_range) bind(c)
+        subroutine c_neopdf_pdf_param_range(pdf, param, param_range) bind(c, name="neopdf_pdf_param_range")
             use iso_c_binding
             type (c_ptr), value :: pdf
             integer (c_int), value :: param
             real (c_double) :: param_range(*)
         end subroutine
 
-        subroutine neopdf_pdf_subgrids_shape_for_param(pdf, subgrid_shape, num_subgrid, subgrid_param) bind(c)
+        subroutine c_neopdf_pdf_subgrids_shape_for_param(pdf, subgrid_shape, num_subgrid, subgrid_param) bind(c, name="neopdf_pdf_subgrids_shape_for_param")
             use iso_c_binding
             type (c_ptr), value :: pdf
             integer (c_size_t) :: subgrid_shape(*)
@@ -119,7 +119,7 @@ module neopdf
             integer (c_int), value :: subgrid_param
         end subroutine
 
-        subroutine neopdf_pdf_subgrids_for_param(pdf, subgrid, subgrid_param, num_subgrid, subgrid_shape, subgrid_index) bind(c)
+        subroutine c_neopdf_pdf_subgrids_for_param(pdf, subgrid, subgrid_param, num_subgrid, subgrid_shape, subgrid_index) bind(c, name="neopdf_pdf_subgrids_for_param")
             use iso_c_binding
             type (c_ptr), value :: pdf
             real (c_double) :: subgrid(*)
@@ -129,23 +129,25 @@ module neopdf
             integer (c_size_t), value :: subgrid_index
         end subroutine
 
-        type (neopdf_pdf_members) function neopdf_pdf_load_all(pdf_name) bind(c)
+        type (neopdf_pdf_members) function c_neopdf_pdf_load_all(pdf_name) bind(c, name="neopdf_pdf_load_all")
             use iso_c_binding
+            import :: neopdf_pdf_members
             character (c_char) :: pdf_name(*)
         end function
 
-        subroutine neopdf_pdf_array_free(array) bind(c)
+        subroutine c_neopdf_pdf_array_free(array) bind(c, name="neopdf_pdf_array_free")
             use iso_c_binding
+            import :: neopdf_pdf_members
             type (neopdf_pdf_members), value :: array
         end subroutine
 
-        function neopdf_pdf_xfxq2_nd(pdf, id, params, num_params) bind(c)
+        function c_neopdf_pdf_xfxq2_nd(pdf, id, params, num_params) bind(c, name="neopdf_pdf_xfxq2_nd")
             use iso_c_binding
             type (c_ptr), value :: pdf
             integer (c_int), value :: id
             real (c_double) :: params(*)
             integer (c_size_t), value :: num_params
-            real (c_double) :: neopdf_pdf_xfxq2_nd
+            real (c_double) :: c_neopdf_pdf_xfxq2_nd
         end function
     end interface
 
@@ -179,7 +181,7 @@ contains
         character (*), intent(in) :: pdf_name
         integer, intent(in) :: member
 
-        neopdf_pdf_load = neopdf_pdf(neopdf_pdf_load(pdf_name // c_null_char, int(member, c_size_t)))
+        neopdf_pdf_load = neopdf_pdf(c_neopdf_pdf_load(pdf_name // c_null_char, int(member, c_size_t)))
     end function
 
     subroutine neopdf_pdf_free(pdf)
@@ -187,83 +189,91 @@ contains
 
         type (neopdf_pdf), intent(in) :: pdf
 
-        call neopdf_pdf_free(pdf%ptr)
+        call c_neopdf_pdf_free(pdf%ptr)
     end subroutine
 
-    function neopdf_pdf_xfxq2(pdf, id, x, q2)
+    function neopdf_pdf_xfxq2(pdf, id, x, q2) result(res)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
         integer, intent(in) :: id
         real (dp), intent(in) :: x, q2
+        real (dp) :: res
 
-        neopdf_pdf_xfxq2 = neopdf_pdf_xfxq2(pdf%ptr, id, x, q2)
+        res = c_neopdf_pdf_xfxq2(pdf%ptr, id, x, q2)
     end function
 
-    function neopdf_pdf_alphas_q2(pdf, q2)
+    function neopdf_pdf_alphas_q2(pdf, q2) result(res)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
         real (dp), intent(in) :: q2
+        real (dp) :: res
 
-        neopdf_pdf_alphas_q2 = neopdf_pdf_alphas_q2(pdf%ptr, q2)
+        res = c_neopdf_pdf_alphas_q2(pdf%ptr, q2)
     end function
 
-    function neopdf_pdf_x_min(pdf)
+    function neopdf_pdf_x_min(pdf) result(res)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
+        real (dp) :: res
 
-        neopdf_pdf_x_min = neopdf_pdf_x_min(pdf%ptr)
+        res = c_neopdf_pdf_x_min(pdf%ptr)
     end function
 
-    function neopdf_pdf_x_max(pdf)
+    function neopdf_pdf_x_max(pdf) result(res)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
+        real (dp) :: res
 
-        neopdf_pdf_x_max = neopdf_pdf_x_max(pdf%ptr)
+        res = c_neopdf_pdf_x_max(pdf%ptr)
     end function
 
-    function neopdf_pdf_q2_min(pdf)
+    function neopdf_pdf_q2_min(pdf) result(res)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
+        real (dp) :: res
 
-        neopdf_pdf_q2_min = neopdf_pdf_q2_min(pdf%ptr)
+        res = c_neopdf_pdf_q2_min(pdf%ptr)
     end function
 
-    function neopdf_pdf_q2_max(pdf)
+    function neopdf_pdf_q2_max(pdf) result(res)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
+        real (dp) :: res
 
-        neopdf_pdf_q2_max = neopdf_pdf_q2_max(pdf%ptr)
+        res = c_neopdf_pdf_q2_max(pdf%ptr)
     end function
 
-    function neopdf_pdf_num_pids(pdf)
+    function neopdf_pdf_num_pids(pdf) result(res)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
+        integer :: res
 
-        neopdf_pdf_num_pids = int(neopdf_pdf_num_pids(pdf%ptr))
+        res = int(c_neopdf_pdf_num_pids(pdf%ptr))
     end function
 
     subroutine neopdf_pdf_pids(pdf, pids)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
-        integer, intent(out) :: pids(*)
+        integer, intent(out) :: pids(:)
 
-        call neopdf_pdf_pids(pdf%ptr, pids, int(size(pids), c_size_t))
+        call c_neopdf_pdf_pids(pdf%ptr, pids, int(size(pids), c_size_t))
     end subroutine
 
-    function neopdf_pdf_num_subgrids(pdf)
+    function neopdf_pdf_num_subgrids(pdf) result(res)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
+        integer :: res
 
-        neopdf_pdf_num_subgrids = int(neopdf_pdf_num_subgrids(pdf%ptr))
+        res = int(c_neopdf_pdf_num_subgrids(pdf%ptr))
     end function
 
     subroutine neopdf_pdf_param_range(pdf, param, param_range)
@@ -273,17 +283,17 @@ contains
         integer, intent(in) :: param
         real (dp), intent(out) :: param_range(2)
 
-        call neopdf_pdf_param_range(pdf%ptr, param, param_range)
+        call c_neopdf_pdf_param_range(pdf%ptr, param, param_range)
     end subroutine
 
     subroutine neopdf_pdf_subgrids_shape_for_param(pdf, subgrid_shape, subgrid_param)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
-        integer, intent(out) :: subgrid_shape(*)
+        integer(c_size_t), intent(out) :: subgrid_shape(:)
         integer, intent(in) :: subgrid_param
 
-        call neopdf_pdf_subgrids_shape_for_param(pdf%ptr, subgrid_shape, int(size(subgrid_shape), c_size_t), subgrid_param)
+        call c_neopdf_pdf_subgrids_shape_for_param(pdf%ptr, subgrid_shape, int(size(subgrid_shape), c_size_t), subgrid_param)
     end subroutine
 
     subroutine neopdf_pdf_subgrids_for_param(pdf, subgrid, subgrid_param, subgrid_shape, subgrid_index)
@@ -292,10 +302,10 @@ contains
         type (neopdf_pdf), intent(in) :: pdf
         real (dp), intent(out) :: subgrid(*)
         integer, intent(in) :: subgrid_param
-        integer, intent(in) :: subgrid_shape(*)
+        integer(c_size_t), intent(in) :: subgrid_shape(:)
         integer, intent(in) :: subgrid_index
 
-        call neopdf_pdf_subgrids_for_param(pdf%ptr, subgrid, subgrid_param, int(size(subgrid_shape), c_size_t), subgrid_shape, int(subgrid_index, c_size_t))
+        call c_neopdf_pdf_subgrids_for_param(pdf%ptr, subgrid, subgrid_param, int(size(subgrid_shape), c_size_t), subgrid_shape, int(subgrid_index, c_size_t))
     end subroutine
 
     type (neopdf_pdf_members) function neopdf_pdf_load_all(pdf_name)
@@ -303,7 +313,7 @@ contains
 
         character (*), intent(in) :: pdf_name
 
-        neopdf_pdf_load_all = neopdf_pdf_load_all(pdf_name // c_null_char)
+        neopdf_pdf_load_all = c_neopdf_pdf_load_all(pdf_name // c_null_char)
     end function
 
     subroutine neopdf_pdf_array_free(array)
@@ -311,18 +321,18 @@ contains
 
         type (neopdf_pdf_members), intent(in) :: array
 
-        call neopdf_pdf_array_free(array)
+        call c_neopdf_pdf_array_free(array)
     end subroutine
 
-    function neopdf_pdf_xfxq2_nd(pdf, id, params, num_params)
+    function neopdf_pdf_xfxq2_nd(pdf, id, params) result(res)
         implicit none
 
         type (neopdf_pdf), intent(in) :: pdf
         integer, intent(in) :: id
-        real (dp), intent(in) :: params(*)
-        integer, intent(in) :: num_params
+        real (dp), intent(in) :: params(:)
+        real (dp) :: res
 
-        neopdf_pdf_xfxq2_nd = neopdf_pdf_xfxq2_nd(pdf%ptr, id, params, int(num_params, c_size_t))
+        res = c_neopdf_pdf_xfxq2_nd(pdf%ptr, id, params, int(size(params), c_size_t))
     end function
 
 end module
