@@ -11,8 +11,41 @@
 use ndarray::{s, Array1, Array6, ArrayView2};
 use serde::{Deserialize, Serialize};
 
-use super::gridpdf::ParamRange;
 use super::interpolator::InterpolationConfig;
+
+/// Represents the valid range of a parameter, with a minimum and maximum value.
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+pub struct ParamRange {
+    /// The minimum value of the parameter.
+    pub min: f64,
+    /// The maximum value of the parameter.
+    pub max: f64,
+}
+
+impl ParamRange {
+    /// Creates a new `ParamRange`.
+    ///
+    /// # Arguments
+    ///
+    /// * `min` - The minimum value.
+    /// * `max` - The maximum value.
+    pub fn new(min: f64, max: f64) -> Self {
+        Self { min, max }
+    }
+
+    /// Checks if a given value is within the parameter range (inclusive).
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The value to check.
+    ///
+    /// # Returns
+    ///
+    /// `true` if the value is within the range, `false` otherwise.
+    pub fn contains(&self, value: f64) -> bool {
+        value >= self.min && value <= self.max
+    }
+}
 
 /// Represents the parameter ranges for `x` and `q2`.
 pub struct RangeParameters {
@@ -199,5 +232,17 @@ impl SubGrid {
             InterpolationConfig::TwoD => self.grid.slice(s![0, 0, pid_index, 0, .., ..]),
             _ => panic!("grid_slice only valid for 2D interpolation"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_param_range() {
+        let range = ParamRange::new(1.0, 10.0);
+        assert!(range.contains(5.0));
+        assert!(!range.contains(15.0));
     }
 }

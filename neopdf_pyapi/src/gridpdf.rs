@@ -2,8 +2,8 @@ use ndarray::Array1;
 use numpy::{PyArrayMethods, PyReadonlyArray6};
 use pyo3::prelude::*;
 
-use neopdf::gridpdf::{GridArray, ParamRange};
-use neopdf::subgrid::SubGrid;
+use neopdf::gridpdf::GridArray;
+use neopdf::subgrid::{ParamRange, SubGrid};
 
 /// Python wrapper for the `SubGrid` struct.
 #[pyclass(name = "SubGrid")]
