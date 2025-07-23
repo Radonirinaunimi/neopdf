@@ -2,11 +2,8 @@
 //!
 //! # Contents
 //!
+//! - [`ParamRange`], [`RangeParameters`]: Parameter range types for grid axes.
 //! - [`SubGrid`]: Represents a region of phase space with a consistent grid and provides methods for subgrid logic.
-//!
-//! # Note
-//!
-//! Parameter range types are defined in `gridpdf.rs`.
 
 use ndarray::{s, Array1, Array6, ArrayView2};
 use serde::{Deserialize, Serialize};

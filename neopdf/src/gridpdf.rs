@@ -4,12 +4,6 @@
 //!
 //! - [`GridPDF`]: High-level interface for PDF grid interpolation and metadata access.
 //! - [`GridArray`]: Stores the full set of subgrids and flavor IDs.
-//! - [`ParamRange`], [`RangeParameters`]: Parameter range types for grid axes.
-//!
-//! # Note
-//!
-//! The [`SubGrid`] struct is now defined in `subgrid.rs`.
-//! All interpolation logic is now in `interpolator.rs` and `strategy.rs`.
 
 use core::panic;
 
