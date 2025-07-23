@@ -22,9 +22,10 @@
 use ndarray::{Array1, Array2};
 use rayon::prelude::*;
 
-use super::gridpdf::{GridArray, GridPDF, RangeParameters, SubGrid};
+use super::gridpdf::{GridArray, GridPDF};
 use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
+use super::subgrid::{RangeParameters, SubGrid};
 
 /// Trait for abstracting over different PDF set backends (e.g., LHAPDF, NeoPDF).
 ///
