@@ -78,6 +78,24 @@ Remember to source your shell configuration or restart your terminal for the cha
 
 ---
 
+## Fortran API
+
+In order to use the Fortran API, you have to install first the C/C++ API. Then, simply copy the
+`neopdf_fapi/neopdf.f90` in your working directory and generate the Fortran module:
+
+```bash
+gfortran -c neopdf.f90
+```
+
+If everything went fine, this will generate a `neopdf.mod` file. You can now the module in your
+fortran program by including the following:
+
+```fortran
+use neopdf
+```
+
+---
+
 ## CLI Tool
 
 To build and install the NeoPDF command-line interface (CLI) from source, simply run:
