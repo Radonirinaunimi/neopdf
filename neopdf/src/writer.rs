@@ -7,7 +7,8 @@
 //!
 //! # Main Features
 //!
-//! - Compression and decompression of multiple [`GridArray`]s with shared metadata using LZ4 and bincode serialization.
+//! - Compression and decompression of multiple [`GridArray`]s with shared metadata using LZ4 and bincode
+//!   serialization.
 //! - Random access to individual grid members without loading the entire collection into memory.
 //! - Lazy iteration over grid members for memory-efficient processing of large sets.
 //! - Extraction of metadata without full decompression.
