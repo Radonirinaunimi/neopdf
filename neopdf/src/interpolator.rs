@@ -1,4 +1,5 @@
-//! This module contains the dynamic interpolation traits, InterpolatorFactory, and dynamic dispatch logic for PDF grids.
+//! This module contains the dynamic interpolation traits, InterpolatorFactory, and dynamic
+//! dispatch logic for PDF grids.
 //!
 //! # Contents
 //!

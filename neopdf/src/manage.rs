@@ -1,3 +1,7 @@
+//! This module provides management utilities for PDF set installation, download, and path resolution.
+//!
+//! It defines types and methods for ensuring that PDF sets are available locally, downloading them if
+//! necessary, and handling different PDF set formats (LHAPDF, NeoPDF).
 use flate2::read::GzDecoder;
 use reqwest::blocking::get;
 use serde::{Deserialize, Serialize};

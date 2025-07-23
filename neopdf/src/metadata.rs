@@ -1,3 +1,7 @@
+//! This module defines metadata structures and types for describing PDF sets.
+//!
+//! It includes the `MetaData` struct (deserialized from .info files), PDF set
+//! and interpolator type enums, and related utilities for handling PDF set information.
 use serde::{Deserialize, Serialize};
 use std::fmt;
 

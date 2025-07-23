@@ -1,4 +1,8 @@
-/// Finds the index of the interval in a sorted coordinate array that contains the given value.
+//! This module provides utility functions for interpolation and grid operations.
+//!
+//! It includes helpers for finding interval indices in coordinate arrays and for
+//! performing 1D cubic interpolation using Hermite basis functions. Finds the index
+//! of the interval in a sorted coordinate array that contains the given value.
 ///
 /// This function performs a binary search to efficiently locate the correct interval.
 ///

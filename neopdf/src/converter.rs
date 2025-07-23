@@ -1,3 +1,10 @@
+//! This module provides utilities for converting LHAPDF sets to the NeoPDF format and for
+//! combining multiple nuclear PDF sets into a single NeoPDF file.
+//!
+//! Main functions:
+//! - `convert_lhapdf`: Converts an LHAPDF set to NeoPDF format and writes it to disk.
+//! - `combine_lhapdf_npdfs`: Combines several nuclear PDF sets (with different nucleon
+//!   numbers) into a single NeoPDF file with explicit A dependence.
 use ndarray::{concatenate, Array1, Axis};
 use regex::Regex;
 

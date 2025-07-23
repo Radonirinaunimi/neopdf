@@ -3,7 +3,8 @@
 //! # Contents
 //!
 //! - [`ParamRange`], [`RangeParameters`]: Parameter range types for grid axes.
-//! - [`SubGrid`]: Represents a region of phase space with a consistent grid and provides methods for subgrid logic.
+//! - [`SubGrid`]: Represents a region of phase space with a consistent grid and provides
+//!   methods for subgrid logic.
 
 use ndarray::{s, Array1, Array6, ArrayView2};
 use serde::{Deserialize, Serialize};

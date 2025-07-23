@@ -1,3 +1,7 @@
+//! This module provides parsing utilities for reading and interpreting PDF set data files.
+//!
+//! It defines types and methods for loading, parsing, and representing both LHAPDF and NeoPDF
+//! set formats, including subgrid data extraction and metadata reading.
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
