@@ -1,9 +1,11 @@
-use crate::gridpdf::{GridArray, SubGrid};
-use crate::metadata::{InterpolatorType, MetaData};
-use crate::parser::LhapdfSet;
-use crate::writer::GridArrayCollection;
 use ndarray::{concatenate, Array1, Axis};
 use regex::Regex;
+
+use super::gridpdf::GridArray;
+use super::metadata::{InterpolatorType, MetaData};
+use super::parser::LhapdfSet;
+use super::subgrid::SubGrid;
+use super::writer::GridArrayCollection;
 
 /// Converts an LHAPDF set to the NeoPDF format and writes it to disk.
 ///
