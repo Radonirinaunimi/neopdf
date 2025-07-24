@@ -28,8 +28,8 @@ test = ["pytest", "pytest-cov"]
 
 [project.urls]
 homepage = "https://github.com/Radonirinaunimi/neopdf"
-documentation = ""
-changelog = ""
+documentation = "https://radonirinaunimi.github.io/neopdf/"
+changelog = "https://github.com/Radonirinaunimi/neopdf/blob/master/CHANGELOG.md"
 
 [tool.maturin]
 bindings = "pyo3"

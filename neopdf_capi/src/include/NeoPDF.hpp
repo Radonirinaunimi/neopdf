@@ -58,8 +58,8 @@ struct MetaData {
     std::vector<double> alphas_q_values;
     std::vector<double> alphas_vals;
     bool polarised;
-    SetType set_type;
-    InterpolatorType interpolator_type;
+    neopdf_set_type set_type;
+    neopdf_interpolator_type interpolator_type;
     std::string error_type;
     int32_t hadron_pid;
     PhysicsParameters phys_params;
