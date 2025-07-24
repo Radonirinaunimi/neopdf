@@ -46,7 +46,7 @@ int main() {
             auto nucleons = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_NUCLEONS, subgrid_idx);
             auto kts = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_KT, subgrid_idx);
 
-            // Compute grid_data: [q2s][xs][flavors], instead of [nucleons][alphas][q2s][xs][flavors]
+            // Compute grid_data: [q2][x][flavor], instead of [nucleon][alphas][kt][q2][x][flavor]
             // NOTE: This assumes that there is no 'A' and `alphas` dependence.
             std::vector<double> grid_data;
             for (double x : xs) {
@@ -140,7 +140,7 @@ int main() {
         double ref1 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test1);
         double ref2 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test2);
 
-        NeoPDF wpdf(pdfname);
+        NeoPDF wpdf(filename);
         double res1 = wpdf.xfxQ2(pid_test, x_test, q2_test1);
         double res2 = wpdf.xfxQ2(pid_test, x_test, q2_test2);
 

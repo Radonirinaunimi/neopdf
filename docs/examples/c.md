@@ -445,7 +445,7 @@ int main() {
         double ref1 = neopdf_pdf_xfxq2(neo_pdfs.pdfs[0], pid_test, x_test, q2_test1);
         double ref2 = neopdf_pdf_xfxq2(neo_pdfs.pdfs[0], pid_test, x_test, q2_test2);
 
-        NeoPDFWrapper* wpdf = neopdf_pdf_load(pdfname, 0);
+        NeoPDFWrapper* wpdf = neopdf_pdf_load(filename, 0);
         double res1 = neopdf_pdf_xfxq2(wpdf, pid_test, x_test, q2_test1);
         double res2 = neopdf_pdf_xfxq2(wpdf, pid_test, x_test, q2_test2);
 
