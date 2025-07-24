@@ -140,7 +140,7 @@ int main() {
         double ref1 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test1);
         double ref2 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test2);
 
-        NeoPDF wpdf(filename);
+        NeoPDF wpdf(pdfname);
         double res1 = wpdf.xfxQ2(pid_test, x_test, q2_test1);
         double res2 = wpdf.xfxQ2(pid_test, x_test, q2_test2);
 
