@@ -1,5 +1,5 @@
 //! CLI logic for `NeoPDF` conversion utilities.
-//!
+//_!
 //! This module defines the command-line interface for converting LHAPDF sets to `NeoPDF` format
 //! and for combining multiple nuclear PDFs into a single `NeoPDF` file with explicit A dependence.
 
@@ -30,8 +30,24 @@ pub enum Commands {
         output: String,
     },
     /// Combine multiple nuclear PDFs into a single `NeoPDF` with A dependence.
-    Combine {
+    CombineNpdfs {
         /// List of PDF set names (each with a different A).
+        #[arg(
+            short = 'n',
+            long = "pdf-names",
+            required_unless_present = "names_file"
+        )]
+        pdf_names: Option<Vec<String>>,
+        /// Path to a file containing PDF set names, one per line.
+        #[arg(short = 'f', long = "names-file", conflicts_with = "pdf_names")]
+        names_file: Option<String>,
+        /// Output path for the combined `NeoPDF` file.
+        #[arg(short, long)]
+        output: String,
+    },
+    /// Combine multiple PDFs with different `alpha_s` values into a single `NeoPDF`.
+    CombineAlphas {
+        /// List of PDF set names (each with a different `alpha_s`).
         #[arg(
             short = 'n',
             long = "pdf-names",
@@ -101,7 +117,7 @@ pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Commands::Convert { pdf_name, output } => {
             converter::convert_lhapdf(pdf_name, output)?;
         }
-        Commands::Combine {
+        Commands::CombineNpdfs {
             pdf_names,
             names_file,
             output,
@@ -109,6 +125,15 @@ pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             let names = load_pdf_names(pdf_names.as_deref(), names_file.as_deref())?;
             let names_str: Vec<&str> = names.iter().map(String::as_str).collect();
             converter::combine_lhapdf_npdfs(&names_str, output)?;
+        }
+        Commands::CombineAlphas {
+            pdf_names,
+            names_file,
+            output,
+        } => {
+            let names = load_pdf_names(pdf_names.as_deref(), names_file.as_deref())?;
+            let names_str: Vec<&str> = names.iter().map(String::as_str).collect();
+            converter::combine_lhapdf_alphas(&names_str, output)?;
         }
     }
     Ok(())

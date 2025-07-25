@@ -254,9 +254,9 @@ pub fn combine_lhapdf_alphas<P: AsRef<std::path::Path>>(
                 return Err("All sets must have the same x, q2, kT, and nucleons grids".into());
             }
 
-            // Concatenate along the alphas axis to get [alphas=pdf_names.len(), ...]
+            // Concatenate along the alphas axis to get [..., alphas=pdf_names.len(), ...]
             let grid_views: Vec<_> = subgrids.iter().map(|sg| sg.grid.view()).collect();
-            let concatenated = concatenate(Axis(0), &grid_views.to_vec())?;
+            let concatenated = concatenate(Axis(1), &grid_views.to_vec())?;
             let alphas = Array1::from(alphas_values.clone());
             let new_subgrid = SubGrid {
                 xs: xs.clone(),
