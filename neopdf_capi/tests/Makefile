@@ -1,10 +1,7 @@
-CXX = c++ -std=c++11
+iCXX = c++ -std=c++11
 CXXFLAGS = -O3 -Wall -Wextra -Werror
 NEOPDF_DEPS != pkg-config --cflags --libs neopdf_capi
 LHAPDF_DEPS != pkg-config --cflags --libs lhapdf
-GSL_DEPS != pkg-config --cflags --libs gsl
-TMDLHA_DEPS != lhapdf-config --cflags --libs
-TMDLIB_DEPS != TMDlib-config --cppflags --ldflags
 
 PROGRAMS = check-capi check-oop check-writer check-writer-oop
 
@@ -24,15 +21,6 @@ check-oop: check-oop.cpp
 
 check-writer-oop: check-writer-oop.cpp
 	$(CXX) $(CXXFLAGS) $< $(LHAPDF_DEPS) $(NEOPDF_DEPS) -o $@
-
-tmd: check-tmd.cpp
-	$(CXX) $(CXXFLAGS) $< -I/usr/include -L/usr/lib -lLHAPDF $(NEOPDF_DEPS) $(GSL_DEPS) $(TMDLIB_DEPS) -o $@
-
-uncs: TMDlib_uncertainty.cc
-	$(CXX) $(CXXFLAGS) $< -I/usr/include -L/usr/lib -lLHAPDF $(NEOPDF_DEPS) $(GSL_DEPS) $(TMDLIB_DEPS) -o $@
-
-xtmd: xtmd.cpp
-	$(CXX) $(CXXFLAGS) $< -I/usr/include -L/usr/lib -lLHAPDF $(NEOPDF_DEPS) $(GSL_DEPS) $(TMDLIB_DEPS) -o $@
 
 .PHONY: clean
 
