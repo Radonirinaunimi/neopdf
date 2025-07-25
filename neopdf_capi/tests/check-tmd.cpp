@@ -52,7 +52,7 @@ std::vector<double> parse_array(const std::string& line) {
 
 Kinematics read_kinematics() {
     // Parse the Kinematics separately as it is difficult to retrieve
-    std::ifstream input_kins("SV19_nnlo.kinematics");
+    std::ifstream input_kins("MAP22_N3LL.kinematics");
 
     if (!input_kins.is_open()) {
         input_kins.open("raw.data");
@@ -74,7 +74,7 @@ Kinematics read_kinematics() {
 }
 
 int main() {
-    std::string setname = "SV19_nnlo";
+    std::string setname = "MAP22_grids_FF_Km_N3LL";
 
     TMD tmd;
     tmd.setVerbosity(0);
@@ -109,6 +109,9 @@ int main() {
         tmd.TMDinit(setname, m);
         std::cout << "Member " << m << " loaded!" << "\n";
 
+        // Start a new grid for the current member
+        neopdf_writer.new_grid();
+
         std::vector<double> grid_data;
         for (double kt : kts) {
             for (double x : xs) {
@@ -122,16 +125,18 @@ int main() {
         }
 
         // Add subgrid member to the Grid
-        neopdf_writer.add_grid(
+        neopdf_writer.add_subgrid(
             nucleons,
             alphas,
             kts,
             xs,
             q2s,
-            grid_data,
-            pids
+            grid_data
         );
-    } // Loop over replicas
+
+        // Finalize the Grid (inc. its subgrids) for this member.
+        neopdf_writer.push_grid(pids);
+    }
 
     // Fill the running of alphas with some random values
     std::vector<double> alphas_qs = { 91.1876 };

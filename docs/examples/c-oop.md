@@ -468,7 +468,7 @@ In the following example, we are going to see how to fill TMD grids which contai
 a dependence on the transverse momentum $k_T$. The following example makes use of
 the [TMDlib](https://tmdlib.hepforge.org/) library to provide the TMD distributions.
 
-```cpp linenums="1" hl_lines="112-122 125-133 141-153 155-173 184"
+```cpp linenums="1" hl_lines="106 112 115-125 128-135 146-158 160-178 189"
 #include "neopdf_capi.h"
 #include "tmdlib/TMDlib.h"
 #include <NeoPDF.hpp>
@@ -523,7 +523,7 @@ std::vector<double> parse_array(const std::string& line) {
 
 Kinematics read_kinematics() {
     // Parse the Kinematics separately as it is difficult to retrieve
-    std::ifstream input_kins("SV19_nnlo.kinematics");
+    std::ifstream input_kins("MAP22_N3LL.kinematics");
 
     if (!input_kins.is_open()) {
         input_kins.open("raw.data");
@@ -545,7 +545,7 @@ Kinematics read_kinematics() {
 }
 
 int main() {
-    std::string setname = "SV19_nnlo";
+    std::string setname = "MAP22_grids_FF_Km_N3LL";
 
     TMD tmd;
     tmd.setVerbosity(0);
@@ -580,6 +580,9 @@ int main() {
         tmd.TMDinit(setname, m);
         std::cout << "Member " << m << " loaded!" << "\n";
 
+        // Start a new grid for the current member
+        neopdf_writer.new_grid();
+
         std::vector<double> grid_data;
         for (double kt : kts) {
             for (double x : xs) {
@@ -593,16 +596,18 @@ int main() {
         }
 
         // Add subgrid member to the Grid
-        neopdf_writer.add_grid(
+        neopdf_writer.add_subgrid(
             nucleons,
             alphas,
             kts,
             xs,
             q2s,
-            grid_data,
-            pids
+            grid_data
         );
-    } // Loop over replicas
+
+        // Finalize the Grid (inc. its subgrids) for this member.
+        neopdf_writer.push_grid(pids);
+    }
 
     // Fill the running of alphas with some random values
     std::vector<double> alphas_qs = { 91.1876 };
