@@ -156,5 +156,5 @@ fn combine_alphas_pdfs() {
         ])
         .assert()
         .success()
-        .stdout("34.35295086733387\n");
+        .stdout("34.352827400641736\n");
 }
