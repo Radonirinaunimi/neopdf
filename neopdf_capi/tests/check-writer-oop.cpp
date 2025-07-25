@@ -37,6 +37,9 @@ int main() {
     for (size_t m = 0; m < neo_pdfs.size(); ++m) {
         NeoPDF& pdf = neo_pdfs[m];
 
+        // Start a new grid for the current member
+        writer.new_grid();
+
         // Loop over the Subgrids
         for (std::size_t subgrid_idx = 0; subgrid_idx != num_subgrids; subgrid_idx++) {
             // Extract the knot values of the parameters for the subgrid
@@ -58,17 +61,19 @@ int main() {
                 }
             }
 
-            // Add grid
-            writer.add_grid(
+            // Add subgrid
+            writer.add_subgrid(
                 nucleons,
                 alphas,
                 kts,
                 xs,
                 q2s,
-                grid_data,
-                pids
+                grid_data
             );
         }
+
+        // Finalize the Grid (inc. its subgrids) for this member.
+        writer.push_grid(pids);
         std::cout << "Added grid for member " << m << "\n";
     }
 
@@ -140,7 +145,7 @@ int main() {
         double ref1 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test1);
         double ref2 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test2);
 
-        NeoPDF wpdf(pdfname);
+        NeoPDF wpdf(filename);
         double res1 = wpdf.xfxQ2(pid_test, x_test, q2_test1);
         double res2 = wpdf.xfxQ2(pid_test, x_test, q2_test2);
 

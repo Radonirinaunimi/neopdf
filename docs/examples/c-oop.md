@@ -281,7 +281,7 @@ below in the case the grid should explicitly depend on more parameters.
     is correct. However, this makes the codes very verbose. To easily spot the parts that
     actually fills the grid, some lines are highlighted.
 
-```cpp linenums="1" hl_lines="62-70 51-59 62-70 83-95 97-115 126"
+```cpp linenums="1" hl_lines="34 38 41 54-62 65-72 76 88-100 102-120 131"
 #include <NeoPDF.hpp>
 #include <cassert>
 #include <cmath>
@@ -321,6 +321,9 @@ int main() {
     for (size_t m = 0; m < neo_pdfs.size(); ++m) {
         NeoPDF& pdf = neo_pdfs[m];
 
+        // Start a new grid for the current member
+        writer.new_grid();
+
         // Loop over the Subgrids
         for (std::size_t subgrid_idx = 0; subgrid_idx != num_subgrids; subgrid_idx++) {
             // Extract the knot values of the parameters for the subgrid
@@ -330,7 +333,7 @@ int main() {
             auto nucleons = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_NUCLEONS, subgrid_idx);
             auto kts = pdf.subgrid_for_param(NEOPDF_SUBGRID_PARAMS_KT, subgrid_idx);
 
-            // Compute grid_data: [q2s][xs][flavors], instead of [nucleons][alphas][q2s][xs][flavors]
+            // Compute grid_data: [q2][x][flavor], instead of [nucleon][alphas][kt][q2][x][flavor]
             // NOTE: This assumes that there is no 'A' and `alphas` dependence.
             std::vector<double> grid_data;
             for (double x : xs) {
@@ -342,17 +345,19 @@ int main() {
                 }
             }
 
-            // Add grid
-            writer.add_grid(
+            // Add subgrid
+            writer.add_subgrid(
                 nucleons,
                 alphas,
                 kts,
                 xs,
                 q2s,
-                grid_data,
-                pids
+                grid_data
             );
         }
+
+        // Finalize the Grid (inc. its subgrids) for this member.
+        writer.push_grid(pids);
         std::cout << "Added grid for member " << m << "\n";
     }
 
@@ -424,7 +429,7 @@ int main() {
         double ref1 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test1);
         double ref2 = neo_pdfs[0].xfxQ2(pid_test, x_test, q2_test2);
 
-        NeoPDF wpdf(pdfname);
+        NeoPDF wpdf(filename);
         double res1 = wpdf.xfxQ2(pid_test, x_test, q2_test1);
         double res2 = wpdf.xfxQ2(pid_test, x_test, q2_test2);
 

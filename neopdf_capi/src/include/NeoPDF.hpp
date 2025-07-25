@@ -242,10 +242,11 @@ class NeoPDFs {
 class GridWriter {
     private:
         NeoPDFGridArrayCollection* collection_raw;
+        NeoPDFGrid* current_grid;
 
     public:
         /** @brief Constructor. */
-        GridWriter() {
+        GridWriter() : current_grid(nullptr) {
             collection_raw = neopdf_gridarray_collection_new();
             if (!collection_raw) {
                 throw std::runtime_error("Failed to create `NeoPDFGridArrayCollection`");
@@ -257,34 +258,48 @@ class GridWriter {
             if (collection_raw) {
                 neopdf_gridarray_collection_free(collection_raw);
             }
+            if (current_grid) {
+                neopdf_grid_free(current_grid);
+            }
         }
 
         /**
-         * @brief Adds a subgrid to the writer.
+         * @brief Starts a new grid for a new member.
+         */
+        void new_grid() {
+            if (current_grid) {
+                // Free the previous grid if it was not pushed
+                neopdf_grid_free(current_grid);
+            }
+            current_grid = neopdf_grid_new();
+            if (!current_grid) {
+                throw std::runtime_error("Failed to create `NeoPDFGrid`");
+            }
+        }
+
+        /**
+         * @brief Adds a subgrid to the current grid.
          *
          * @param nucleons Vector of nucleon numbers.
          * @param alphas Vector of alpha_s values.
+         * @param kts Vector of kt values.
          * @param xs Vector of x values.
          * @param q2s Vector of Q2 values.
          * @param grid_data Vector of grid data.
-         * @param flavors Vector of flavor IDs.
          */
-        void add_grid(
+        void add_subgrid(
             const std::vector<double>& nucleons,
             const std::vector<double>& alphas,
             const std::vector<double>& kts,
             const std::vector<double>& xs,
             const std::vector<double>& q2s,
-            const std::vector<double>& grid_data,
-            const std::vector<int32_t>& flavors
+            const std::vector<double>& grid_data
         ) {
-            NeoPDFGrid* grid = neopdf_grid_new();
-            if (!grid) {
-                throw std::runtime_error("Failed to create `NeoPDFGrid`");
+            if (!current_grid) {
+                throw std::runtime_error("No grid started. Call new_grid() first.");
             }
-
             NeopdfResult result = neopdf_grid_add_subgrid(
-                grid,
+                current_grid,
                 nucleons.data(), nucleons.size(),
                 alphas.data(), alphas.size(),
                 kts.data(), kts.size(),
@@ -293,21 +308,36 @@ class GridWriter {
                 grid_data.data(), grid_data.size()
             );
             if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
-                neopdf_grid_free(grid);
                 throw std::runtime_error("Failed to add subgrid");
             }
+        }
 
-            result = neopdf_grid_set_flavors(grid, flavors.data(), flavors.size());
+        /**
+         * @brief Finalizes the current grid, sets its flavors, and adds it to the collection.
+         *
+         * @param flavors Vector of flavor IDs.
+         */
+        void push_grid(const std::vector<int32_t>& flavors) {
+            if (!current_grid) {
+                throw std::runtime_error("No grid to commit. Call new_grid() and add_subgrid() first.");
+            }
+
+            NeopdfResult result = neopdf_grid_set_flavors(current_grid, flavors.data(), flavors.size());
             if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
-                neopdf_grid_free(grid);
+                neopdf_grid_free(current_grid);
+                current_grid = nullptr;
                 throw std::runtime_error("Failed to set flavors");
             }
 
-            result = neopdf_gridarray_collection_add_grid(collection_raw, grid);
+            result = neopdf_gridarray_collection_add_grid(collection_raw, current_grid);
             if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
-                neopdf_grid_free(grid);
+                neopdf_grid_free(current_grid);
+                current_grid = nullptr;
                 throw std::runtime_error("Failed to add grid to collection");
             }
+
+            // The collection now owns the grid, so we release it from GridWriter.
+            current_grid = nullptr;
         }
 
         /**
@@ -317,8 +347,15 @@ class GridWriter {
          * @param output_path The path to the output file.
          */
         void compress(const MetaData& metadata, const std::string& output_path) {
+            if (current_grid) {
+                neopdf_grid_free(current_grid);
+                current_grid = nullptr;
+                throw std::runtime_error("A grid was being built but was not committed before compress().");
+            }
+
             NeoPDFMetaData c_meta = metadata.to_c();
             NeopdfResult result = neopdf_grid_compress(collection_raw, &c_meta, output_path.c_str());
+
             if (result != NeopdfResult::NEOPDF_RESULT_SUCCESS) {
                 throw std::runtime_error("Failed to compress grid data");
             }
