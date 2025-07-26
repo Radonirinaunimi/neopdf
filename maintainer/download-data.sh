@@ -9,6 +9,11 @@ LHAPDF_SETS=(
   nNNPDF30_nlo_as_0118_A4_Z2
   nNNPDF30_nlo_as_0118_A6_Z3
   nNNPDF30_nlo_as_0118_A9_Z4
+  NNPDF40_nnlo_as_01160
+  NNPDF40_nnlo_as_01170
+  NNPDF40_nnlo_as_01175
+  NNPDF40_nnlo_as_01185
+  NNPDF40_nnlo_as_01190
 )
 
 NEOPDF_SETS=(

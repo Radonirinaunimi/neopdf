@@ -9,9 +9,10 @@ const HELP_STR: &str = "Conversion and combination of PDF sets
 Usage: neopdf write <COMMAND>
 
 Commands:
-  convert  Convert a single LHAPDF set to `NeoPDF` format
-  combine  Combine multiple nuclear PDFs into a single `NeoPDF` with A dependence
-  help     Print this message or the help of the given subcommand(s)
+  convert         Convert a single LHAPDF set to `NeoPDF` format
+  combine-npdfs   Combine multiple nuclear PDFs into a single `NeoPDF` with A dependence
+  combine-alphas  Combine multiple PDFs with different `alpha_s` values into a single `NeoPDF`
+  help            Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help     Print help
@@ -82,7 +83,7 @@ fn combine_nuclear_pdfs() {
         .unwrap()
         .args([
             "write",
-            "combine",
+            "combine-npdfs",
             "--names-file",
             temp_file.path().to_str().unwrap(),
             "--output",
@@ -109,4 +110,51 @@ fn combine_nuclear_pdfs() {
         .assert()
         .success()
         .stdout("63.389564472386645\n");
+}
+
+#[test]
+fn combine_alphas_pdfs() {
+    let output = assert_fs::NamedTempFile::new("nnpdf40-alphas.neopdf.lz4").unwrap();
+    let alphas_pdfs = [
+        "NNPDF40_nnlo_as_01160",
+        "NNPDF40_nnlo_as_01170",
+        "NNPDF40_nnlo_as_01175",
+        "NNPDF40_nnlo_as_01185",
+        "NNPDF40_nnlo_as_01190",
+    ];
+    let alphas_pdfs_str = alphas_pdfs.join("\n");
+    let mut temp_file = tempfile::NamedTempFile::new().unwrap();
+    write!(temp_file, "{alphas_pdfs_str}").unwrap();
+
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "write",
+            "combine-alphas",
+            "--names-file",
+            temp_file.path().to_str().unwrap(),
+            "--output",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "compute",
+            "xfx_q2",
+            "--pdf-name",
+            output.path().to_str().unwrap(),
+            "--member",
+            "10",
+            "--pid",
+            "21",
+            "0.1175",
+            "1e-5",
+            "50",
+        ])
+        .assert()
+        .success()
+        .stdout("34.352827400641736\n");
 }
