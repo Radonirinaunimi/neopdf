@@ -118,9 +118,9 @@ neopdf compute alphas_q2 --pdf-name NNPDF40_nnlo_as_01180 --member 0 --q2 10
 
 ---
 
-## Converting LHAPDF into NeoPDF Format
+## Converting LHAPDF Sets into NeoPDF Format
 
-### Convert LHAPDF set to NeoPDF format
+### Convert standard LHAPDF to NeoPDF format
 
 To convert a standard LHAPDF set into the new, compressed `NeoPDF` format:
 
@@ -135,7 +135,7 @@ neopdf write convert --pdf-name NNPDF40_nnlo_as_01180 --output NNPDF40_nnlo_as_0
 To combine several LHAPDF nuclear PDF sets into a single `NeoPDF` grid:
 
 ```bash
-neopdf write combine --pdf-names nNNPDF30_nlo_as_0118_p nNNPDF30_nlo_as_0118_A12 nNNPDF30_nlo_as_0118_A40 --output nNNPDF30_nlo_as_0118.neopdf.lz4
+neopdf write combine-npdfs --pdf-names nNNPDF30_nlo_as_0118_p nNNPDF30_nlo_as_0118_A12 nNNPDF30_nlo_as_0118_A40 --output nNNPDF30_nlo_as_0118.neopdf.lz4
 ```
 
 - `--pdf-names`: List of PDF set names to combine.
@@ -170,7 +170,7 @@ nNNPDF30_nlo_as_0118_A208_Z82
 the command now becomes:
 
 ```bash
-neopdf write combine --names-file nuclearpdfs.txt --output nNNPDF30_nlo_as_0118.neopdf.lz4
+neopdf write combine-npdfs --names-file nuclearpdfs.txt --output nNNPDF30_nlo_as_0118.neopdf.lz4
 ```
 
 This will generate a `nNNPDF30_nlo_as_0118.neopdf.lz4` PDF grid that also contains the $A$
@@ -179,3 +179,50 @@ dependence. One can now check the value of $xf(A, x, Q^2)$ for the Iron $^{56}_{
 ```bash
 neopdf compute xfx_q2 --pdf-name nNNPDF30_nlo_as_0118.neopdf.lz4 --member 0 --pid 21 56 1e-3 10.0
 ```
+
+### Combine multiple  $\alpha_s$ LHAPDF sets
+
+To combine multiple $\alpha_s$ LHAPDF sets into a single NeoPDF grid with an explicit dependence
+on $\alpha_s$, the procedure is the same as when combining multiple nuclear PDFs with the option
+`combine-npdfs` replaced with `combine-alphas`. That is, given an input file with the names of the
+PDF sets:
+
+```yaml title="alphaspdfs.txt"
+NNPDF40_nnlo_as_01160
+NNPDF40_nnlo_as_01170
+NNPDF40_nnlo_as_01175
+NNPDF40_nnlo_as_01185
+NNPDF40_nnlo_as_01190
+```
+
+The command to run is:
+
+```bash
+neopdf write combine-alphas --names-file alphaspdfs.txt --output NNPDF40_nnlo.neopdf.lz4
+```
+
+Note that the names of the PDF sets can be passed via the command line using the option
+`--pdf--name`. We can then interpolate the $\alpha_s = 0.1180$ value:
+
+```bash
+neopdf compute xfx_q2 --pdf-name NNPDF40_nnlo.neopdf.lz4 --member 0 --pid 21 0.1180 1e-3 10.0
+```
+
+!!! danger "Warning"
+
+    Given that LHAPDF doesn't provide specific attributes to extract the values of $A$ and $\alpha_s$,
+    their values are inferred from the set name. The extraction of these values are therefore set
+    dependent and we try to support as many sets as possible while keeping the implementation modular:
+
+    ```rust
+    // Regexes to extract A from the PDF set name
+    let re_nnpdf = Regex::new(r"_A(\d+)").unwrap();
+    let re_ncteq = Regex::new(r"_(\d+)_(\d+)$").unwrap();
+    let re_epps = Regex::new(r"[a-zA-Z]+(\d+)$").unwrap();
+
+    // Regexes to extract alpha_s from the PDF set name
+    let re_nnpdf_ct = Regex::new(r"_as_(\d+)_?").unwrap();
+    let re_msht = Regex::new(r"_as(\d+)").unwrap();
+    ```
+
+    This approach is not fullproof and some PDF sets might not be supported at all.
