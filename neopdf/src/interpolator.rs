@@ -409,6 +409,49 @@ impl InterpolatorFactory {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::subgrid::SubGrid;
+
+    fn mock_subgrid_2d() -> SubGrid {
+        let xs = vec![0.1, 0.2];
+        let q2s = vec![1.0, 2.0];
+        let grid_data = vec![1.0, 2.0, 3.0, 4.0];
+        SubGrid::new(vec![1.0], vec![0.118], vec![0.0], xs, q2s, 1, grid_data)
+    }
+
+    fn mock_subgrid_3d_nucleons() -> SubGrid {
+        let nucleons = vec![1.0, 2.0, 3.0, 4.0];
+        let xs = vec![0.1, 0.2, 0.3, 0.4];
+        let q2s = vec![1.0, 2.0, 3.0, 4.0];
+        let grid_data = (1..=64).map(|v| v as f64).collect();
+        SubGrid::new(nucleons, vec![0.118], vec![0.0], xs, q2s, 1, grid_data)
+    }
+
+    fn mock_subgrid_3d_alphas() -> SubGrid {
+        let alphas = vec![0.118, 0.120, 0.122, 0.124];
+        let xs = vec![0.1, 0.2, 0.3, 0.4];
+        let q2s = vec![1.0, 2.0, 3.0, 4.0];
+        let grid_data = (1..=64).map(|v| v as f64).collect();
+        SubGrid::new(vec![1.0], alphas, vec![0.0], xs, q2s, 1, grid_data)
+    }
+
+    fn mock_subgrid_3d_kts() -> SubGrid {
+        let kts = vec![0.5, 1.0, 1.5, 2.0];
+        let xs = vec![0.1, 0.2, 0.3, 0.4];
+        let q2s = vec![1.0, 2.0, 3.0, 4.0];
+        let grid_data = (1..=64).map(|v| v as f64).collect();
+        SubGrid::new(vec![1.0], vec![0.118], kts, xs, q2s, 1, grid_data)
+    }
+
+    fn mock_subgrid_4d_nucleons_alphas() -> SubGrid {
+        let nucleons = vec![1.0, 2.0];
+        let alphas = vec![0.118, 0.120];
+        let xs = vec![0.1, 0.2];
+        let q2s = vec![1.0, 2.0];
+        let grid_data = vec![
+            1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0,
+        ];
+        SubGrid::new(nucleons, alphas, vec![0.0], xs, q2s, 1, grid_data)
+    }
 
     #[test]
     fn test_interpolation_config() {
@@ -444,5 +487,55 @@ mod tests {
             InterpolationConfig::from_dimensions(2, 2, 2),
             InterpolationConfig::FiveD
         ));
+    }
+
+    #[test]
+    fn test_2d_bilinear_interpolation() {
+        let subgrid = mock_subgrid_2d();
+        let interpolator = InterpolatorFactory::create(InterpolatorType::Bilinear, &subgrid, 0);
+        let result = interpolator.interpolate_point(&[0.15, 1.5]).unwrap();
+        assert!((result - 2.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_3d_nucleons_interpolation() {
+        let subgrid = mock_subgrid_3d_nucleons();
+        let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
+        let result = interpolator.interpolate_point(&[2.0, 0.2, 2.0]).unwrap();
+        assert!((result - 22.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_3d_alphas_interpolation() {
+        let subgrid = mock_subgrid_3d_alphas();
+        let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
+        let result = interpolator.interpolate_point(&[0.120, 0.2, 2.0]).unwrap();
+        assert!((result - 22.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_3d_kts_interpolation() {
+        let subgrid = mock_subgrid_3d_kts();
+        let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
+        let result = interpolator.interpolate_point(&[1.0, 0.2, 2.0]).unwrap();
+        assert!((result - 22.0).abs() < 1e-6);
+    }
+
+    #[test]
+    fn test_4d_nucleons_alphas_interpolation() {
+        let subgrid = mock_subgrid_4d_nucleons_alphas();
+        let interpolator =
+            InterpolatorFactory::create(InterpolatorType::InterpNDLinear, &subgrid, 0);
+        let result = interpolator
+            .interpolate_point(&[1.5, 0.119, 0.15, 1.5])
+            .unwrap();
+        assert!((result - 8.5).abs() < 1e-6);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_unsupported_interpolator() {
+        let subgrid = mock_subgrid_2d();
+        InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
     }
 }
