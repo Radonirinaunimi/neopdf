@@ -20,7 +20,6 @@ class TestPDFInterpolations:
         neopdf = neo_pdf(pdfname)
         lhapdf = lha_pdf(pdfname)
 
-        # Construct (x, Q2) points using Grid boundaries
         params_range = {
             "xmin": lhapdf.xMin,
             "xmax": lhapdf.xMax,
@@ -40,7 +39,6 @@ class TestPDFInterpolations:
         neopdf = neo_pdf(pdfname)
         lhapdf = lha_pdf(pdfname)
 
-        # Construct (x, Q2) points using Grid boundaries
         params_range = {
             "xmin": lhapdf.xMin,
             "xmax": lhapdf.xMax,
@@ -58,7 +56,6 @@ class TestPDFInterpolations:
         neopdf = neo_pdf(pdfname)
         lhapdf = lha_pdf(pdfname)
         qs = neopdf.metadata().alphas_q()
-        # Currently, `neopdf.alphasQ2` fails with logarithmically spaced Q2
         q2_points = [q * q for q in np.linspace(qs[0], qs[-1], num=300)]
 
         for q2_point in q2_points:

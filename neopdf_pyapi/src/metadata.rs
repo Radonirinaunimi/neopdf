@@ -319,6 +319,12 @@ impl PyMetaData {
         Ok(dict.into())
     }
 
+    /// The description of the set.
+    #[must_use]
+    pub const fn set_desc(&self) -> &String {
+        &self.meta.set_desc
+    }
+
     /// The index of the grid.
     #[must_use]
     pub const fn set_index(&self) -> u32 {
