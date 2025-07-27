@@ -22,10 +22,6 @@ jobs:
       - name: Get data
         uses: ./.github/actions/cache-data
 
-      - name: Set RUSTDOCFLAGS
-        run: |
-          echo "RUSTDOCFLAGS=-Cinstrument-coverage -Z unstable-options --persist-doctests $(pwd)/target/debug/doctestbins" >> "$GITHUB_ENV"
-
       - name: Run tests 🦀
         env:
           RUSTFLAGS: '-Cinstrument-coverage -Clink-dead-code'
