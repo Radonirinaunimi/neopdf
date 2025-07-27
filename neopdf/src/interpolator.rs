@@ -411,6 +411,8 @@ mod tests {
     use super::*;
     use crate::subgrid::SubGrid;
 
+    const MAXDIFF: f64 = 1e-16;
+
     fn mock_subgrid_2d() -> SubGrid {
         let xs = vec![0.1, 0.2];
         let q2s = vec![1.0, 2.0];
@@ -494,7 +496,7 @@ mod tests {
         let subgrid = mock_subgrid_2d();
         let interpolator = InterpolatorFactory::create(InterpolatorType::Bilinear, &subgrid, 0);
         let result = interpolator.interpolate_point(&[0.15, 1.5]).unwrap();
-        assert!((result - 2.5).abs() < 1e-6);
+        assert!((result - 2.5).abs() < MAXDIFF);
     }
 
     #[test]
@@ -502,7 +504,7 @@ mod tests {
         let subgrid = mock_subgrid_3d_nucleons();
         let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
         let result = interpolator.interpolate_point(&[2.0, 0.2, 2.0]).unwrap();
-        assert!((result - 22.0).abs() < 1e-6);
+        assert!((result - 22.0).abs() < MAXDIFF);
     }
 
     #[test]
@@ -510,7 +512,7 @@ mod tests {
         let subgrid = mock_subgrid_3d_alphas();
         let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
         let result = interpolator.interpolate_point(&[0.120, 0.2, 2.0]).unwrap();
-        assert!((result - 22.0).abs() < 1e-6);
+        assert!((result - 22.0).abs() < MAXDIFF);
     }
 
     #[test]
@@ -518,7 +520,7 @@ mod tests {
         let subgrid = mock_subgrid_3d_kts();
         let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
         let result = interpolator.interpolate_point(&[1.0, 0.2, 2.0]).unwrap();
-        assert!((result - 22.0).abs() < 1e-6);
+        assert!((result - 22.0).abs() < MAXDIFF);
     }
 
     #[test]
@@ -529,7 +531,7 @@ mod tests {
         let result = interpolator
             .interpolate_point(&[1.5, 0.119, 0.15, 1.5])
             .unwrap();
-        assert!((result - 8.5).abs() < 1e-6);
+        assert!((result - 8.5).abs() < MAXDIFF);
     }
 
     #[test]
