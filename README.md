@@ -1,8 +1,10 @@
 <h1 align="center">NeoPDF</h1>
 <p align="center">
-  <img alt="Docs" src="https://assets.readthedocs.org/static/projects/badges/passing-flat.svg">
-  <img alt="Pre-commit" src="https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit">
-  <img alt="License" src="https://img.shields.io/github/license/Radonirinaunimi/neopdf">
+  <img alt="Codecov" src="https://img.shields.io/codecov/c/github/Radonirinaunimi/neopdf?style=flat-square&logo=codecov&logoColor=red">
+  <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Radonirinaunimi/neopdf/.github%2Fworkflows%2Frun-rust.yml?style=flat-square&logo=rust&logoColor=red">
+  <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Radonirinaunimi/neopdf/.github%2Fworkflows%2Frun-capi.yml?style=flat-square&logo=cplusplus&logoColor=blue">
+  <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Radonirinaunimi/neopdf/.github%2Fworkflows%2Frun-pyapi.yml?style=flat-square&logo=python&logColor=#3776AB">
+  <img alt="GitHub License" src="https://img.shields.io/github/license/Radonirinaunimi/neopdf?style=flat-square&logo=gplv3&logoColor=red">
 </p>
 
 <p align="justify">
@@ -14,7 +16,7 @@
     <li>
     <p align="justify">
       Beyond interpolations over the kinematic variables (<b>x</b>, <b>kT</b>, <b>Q2</b>), NeoPDF
-      also supports interpolations along the nucleon numbers <b>A</b> (relevant for nuclear PDFs
+      also supports interpolations along the nucleon numbers <b>A</b> (relevant for <b>nuclear</b> PDFs
       and TMDs) and the strong coupling <b>αs</b>.
     </p>
     </li>
