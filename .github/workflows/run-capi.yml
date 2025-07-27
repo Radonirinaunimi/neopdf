@@ -20,24 +20,38 @@ jobs:
           cd neopdf_capi
           # path to install the C++ OOP header
           export CARGO_C_INSTALL_PREFIX=/usr/local
-          cargo cinstall --release --prefix=/usr/local/ --libdir=/usr/local/lib
+          cargo cinstall --verbose --prefix=/usr/local/ --libdir=/usr/local/lib
           ldconfig
 
       - name: Test C/C++ examples 🚀
         run: |
           cd neopdf_capi/tests
-          # Use the PDF sets downloaded in the container
           export NEOPDF_DATA_PATH=/usr/share/LHAPDF
-          # if `make` is too old, it doesn't support the `!=` operator
           sed -i "s/\([a-zA-Z_]\+\) != \(.*\)$/echo \1 = \$(\2)/e" Makefile
-          # Because of LHAPDF, the tests cannot be run with sanitizer
           make test-examples
 
       - name: Test Fortran examples 🚀
         run: |
           cd neopdf_fapi
-          # Use the PDF sets downloaded in the container
           export NEOPDF_DATA_PATH=/usr/share/LHAPDF
-          # if `make` is too old, it doesn't support the `!=` operator
           sed -i "s/\([a-zA-Z_]\+\) != \(.*\)$/echo \1 = \$(\2)/e" Makefile
           make test-examples
+
+      - name: Generate code coverage 🚀
+        run: |
+          # from https://github.com/NNPDF/pineappl/blob/master/.github/workflows/capi.yaml
+          find . -name '*.profraw' -exec $(rustc --print target-libdir)/../bin/llvm-profdata merge -sparse -o neopdf.profdata {} +
+          $(rustc --print target-libdir)/../bin/llvm-cov export \
+                  --ignore-filename-regex='index.crates.io' \
+                  --ignore-filename-regex='rustc' \
+                  --instr-profile=neopdf.profdata \
+                  --skip-functions \
+                  --object /usr/local/lib/libneopdf_capi.so.*.*.* \
+                  --format lcov > lcov.info
+          grep SF lcov.info | sort -u | sed 's/SF://'
+
+      - name: Upload to codecov.io 🚀
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: capi
