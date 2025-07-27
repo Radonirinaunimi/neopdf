@@ -10,9 +10,11 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Set up Rust 🦀
         run: |
           rustup component add llvm-tools
+
       - name: Run the Python tests 🚀
         env:
           # `-C link-dead-code` is needed to prevent 'warning: XX functions have mismatched data' warnings
@@ -22,7 +24,23 @@ jobs:
           python3 -m venv --system-site-packages myenv
           . myenv/bin/activate
           pip install maturin
-          maturin develop --release --extras test
-          # Use the PDF sets downloaded in the container
+          maturin develop --extras test
           export NEOPDF_DATA_PATH=/usr/share/LHAPDF
           pytest
+
+          # from https://github.com/NNPDF/pineappl/blob/master/.github/workflows/python.yml
+          find . -name '*.profraw' -exec $(rustc --print target-libdir)/../bin/llvm-profdata merge -sparse -o neopdf.profdata {} +
+          $(rustc --print target-libdir)/../bin/llvm-cov export \
+              --ignore-filename-regex=index.crates.io \
+              --ignore-filename-regex=rustc \
+              --instr-profile=neopdf.profdata \
+              --skip-functions \
+              --object myenv/lib/python*/site-packages/neopdf/neopdf.*.so \
+              --format lcov > lcov.info
+          grep SF lcov.info | sort -u | sed 's/SF://'
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: python
