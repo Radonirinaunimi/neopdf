@@ -35,7 +35,7 @@ jobs:
               --ignore-filename-regex=rustc \
               --instr-profile=neopdf.profdata \
               --skip-functions \
-              --object env/lib/python*/site-packages/neopdf/neopdf.*.so \
+              --object myenv/lib/python*/site-packages/neopdf/neopdf.*.so \
               --format lcov > lcov.info
           grep SF lcov.info | sort -u | sed 's/SF://'
 
