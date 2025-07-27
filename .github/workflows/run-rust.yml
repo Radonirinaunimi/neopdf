@@ -22,21 +22,27 @@ jobs:
       - name: Get data
         uses: ./.github/actions/cache-data
 
+      - name: Switch to nightly Rust
+        run: |
+          rustup default nightly
+          rustup component add llvm-tools-preview
+
+      - name: Set RUSTDOCFLAGS
+        run: |
+          echo "RUSTDOCFLAGS=-Cinstrument-coverage -Z unstable-options --persist-doctests $(pwd)/target/debug/doctestbins" >> "$GITHUB_ENV"
+
       - name: Run tests 🦀
         env:
           RUSTFLAGS: '-Cinstrument-coverage -Clink-dead-code'
         run: |
           export NEOPDF_DATA_PATH=${PWD}/neopdf-data
-          # Run tests without doctests to avoid coverage instrumentation issues
-          cargo test --lib --bins --tests --no-fail-fast 2> >(tee stderr 1>&2)
-          # from https://stackoverflow.com/a/51141872/812178
+          cargo test --no-fail-fast 2> >(tee stderr 1>&2)
           sed -i 's/\x1B\[[0-9;]\{1,\}[A-Za-z]//g' stderr
 
       - name: Generate code coverage
         run: |
-          # from https://github.com/NNPDF/pineappl/blob/master/.github/workflows/rust.yml
           find . -name '*.profraw' -exec $(rustc --print target-libdir)/../bin/llvm-profdata merge -sparse -o neopdf.profdata {} +
-          ( sed -nE 's/[[:space:]]+Running( unittests|) [^[:space:]]+ \(([^)]+)\)/\2/p' stderr ) | \
+          ( sed -nE 's/[[:space:]]+Running( unittests|) [^[:space:]]+ \(([^)]+)\)/\2/p' stderr && echo target/debug/doctestbins/*/rust_out | tr ' ' "\n" ) | \
               xargs printf ' --object %s' | \
               xargs $(rustc --print target-libdir)/../bin/llvm-cov export \
                   --ignore-filename-regex=index.crates.io \
