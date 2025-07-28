@@ -70,6 +70,7 @@ pub fn main(cli: ReadCli) {
             let subgrid = pdf.subgrid(args.subgrid_index);
             println!("Nucleon Numbers A: {:?}", subgrid.nucleons);
             println!("Alphas values: {:?}", subgrid.alphas);
+            println!("kT values: {:?}", subgrid.kts);
             println!("x values: {:?}", subgrid.xs);
             println!("Q2 values: {:?}", subgrid.q2s);
         }
