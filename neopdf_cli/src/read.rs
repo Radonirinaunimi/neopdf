@@ -21,6 +21,9 @@ pub enum ReadCommands {
     /// Print the subgrid info (nucleons, alphas, x, Q2) for a given subgrid index.
     #[command(name = "subgrid_info")]
     SubgridInfo(SubgridInfoArgs),
+    /// Print the git version of the code that generated the PDF.
+    #[command(name = "git-version")]
+    GitVersion(PdfNameArgs),
 }
 
 /// Arguments for the metadata subcommand.
@@ -73,6 +76,10 @@ pub fn main(cli: ReadCli) {
             println!("kT values: {:?}", subgrid.kts);
             println!("x values: {:?}", subgrid.xs);
             println!("Q2 values: {:?}", subgrid.q2s);
+        }
+        ReadCommands::GitVersion(args) => {
+            let pdf = neopdf::pdf::PDF::load(&args.pdf_name, 0);
+            println!("{}", pdf.metadata().git_version);
         }
     }
 }

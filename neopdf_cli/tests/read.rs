@@ -11,6 +11,7 @@ Commands:
   metadata      Print the metadata of a PDF set
   num_subgrids  Print the number of subgrids in a PDF set
   subgrid_info  Print the subgrid info (nucleons, alphas, x, Q2) for a given subgrid index
+  git-version   Print the git version of the code that generated the PDF
   help          Print this message or the help of the given subcommand(s)
 
 Options:
@@ -94,6 +95,21 @@ fn read_metadata_neopdf() {
         .assert()
         .success()
         .stdout(METADATA);
+}
+
+#[test]
+fn read_gitversion_neopdf() {
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "read",
+            "git-version",
+            "--pdf-name",
+            "NNPDF40_nnlo_as_01180.neopdf.lz4",
+        ])
+        .assert()
+        .success()
+        .stdout("2121792-dirty\n");
 }
 
 #[test]
