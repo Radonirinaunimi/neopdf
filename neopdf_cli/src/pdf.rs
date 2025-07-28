@@ -9,6 +9,7 @@ use std::process;
 #[derive(Parser, Clone)]
 #[command(author, version, about, long_about = None)]
 pub struct PdfCli {
+    /// The subcommand to execute.
     #[command(subcommand)]
     pub command: PdfCommands,
 }

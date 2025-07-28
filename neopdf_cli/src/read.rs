@@ -5,6 +5,7 @@ use clap::{Args, Parser, Subcommand};
 /// Command-line interface for reading PDF set information.
 #[derive(Parser, Clone)]
 pub struct ReadCli {
+    /// The subcommand to execute.
     #[command(subcommand)]
     pub command: ReadCommands,
 }

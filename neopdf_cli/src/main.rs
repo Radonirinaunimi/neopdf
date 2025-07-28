@@ -1,10 +1,9 @@
 //! Launches the `NeoPDF` command-line interface (CLI).
 
-mod converter;
-mod pdf;
-mod read;
-
 use clap::{Parser, Subcommand};
+use neopdf_cli::converter;
+use neopdf_cli::pdf;
+use neopdf_cli::read;
 
 /// Top-level CLI for `NeoPDF`, supporting conversion and evaluation subcommands.
 #[derive(Parser)]
