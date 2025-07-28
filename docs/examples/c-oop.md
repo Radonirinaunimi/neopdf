@@ -468,7 +468,7 @@ In the following example, we are going to see how to fill TMD grids which contai
 a dependence on the transverse momentum $k_T$. The following example makes use of
 the [TMDlib](https://tmdlib.hepforge.org/) library to provide the TMD distributions.
 
-```cpp linenums="1" hl_lines="106 112 115-125 128-135 146-158 160-178 189"
+```cpp linenums="1" hl_lines="106 112 115-125 128-135 138 146-158 160-178 189"
 #include "neopdf_capi.h"
 #include "tmdlib/TMDlib.h"
 #include <NeoPDF.hpp>

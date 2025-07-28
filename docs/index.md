@@ -1,9 +1,10 @@
 # NeoPDF
 
-`NeoPDF` is a fast, reliable, and scalable interpolation library for Parton Distribution Functions
-(PDFs) and Transverse Momentum Distributions (TMDs), designed for both present and future hadron
-collider experiments. It aims to be a modern, high-performance alternative to both
-[LHAPDF](https://www.lhapdf.org/) and [TMDlib](https://tmdlib.hepforge.org/), focusing on:
+`NeoPDF` is a fast, reliable, and scalable interpolation library for both **Collinear** Parton
+Distribution Functions (PDFs) and **Transverse Momentum Dependent** Distributions (TMDs) with
+**modern features**, designed for both present and future hadron collider experiments. It aims
+to be a modern, high-performance alternative to both [LHAPDF](https://www.lhapdf.org/) and
+[TMDlib](https://tmdlib.hepforge.org/), focusing on:
 
 - **Performance**: Written in Rust for speed and safety, with zero-cost abstractions and efficient
     memory management.
@@ -11,7 +12,8 @@ collider experiments. It aims to be a modern, high-performance alternative to bo
     abstraction of the interpolation crate makes it easier and efficient to implement custom
     interpolation methods.
 - **Multi-language Support**: Native Rust API, with bindings for Python, Fortran, C, and C++.
-- **Safety**: Thread-safe and memory-safe by design, leveraging Rust's guarantees.
+- **Features and Extensibility**: `NeoPDF` is very extensible and therefore makes it easier
+    to introduce new (Physics) features without introducing **technical debts**.
 
 ## Motivation
 

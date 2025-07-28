@@ -105,12 +105,12 @@ and future plans.
 `NeoPDF` provides comprehensive support for different types of hadronic structure functions and most
 importantly distinguish between them, which is essential for precision QCD calculations.
 
-- **PDF vs TMD Distributions**:
+- **Collinear vs. Transverse Momentum Dependent Distributions**:
 
-    * **Parton Distribution Functions (PDFs)** describe the probability of finding a parton (quark or gluon)
-      carrying a fraction $x$ of the longitudinal momentum of the parent hadron at a given scale $Q^2$.
-      These are functions of $(x, Q^2)$ and are the standard objects used in collinear factorization for
-      high-energy processes.
+    * **Collinear Parton Distribution Functions (PDFs)** describe the probability of finding a parton
+      (quark or gluon) carrying a fraction $x$ of the longitudinal momentum of the parent hadron at a
+      given scale $Q^2$. These are functions of $(x, Q^2)$ and are the standard objects used in collinear
+      factorization for high-energy processes.
     * **Transverse Momentum Dependent Distributions (TMDs)**, or TMD PDFs, generalize the concept of PDFs by
       including the dependence on the parton's intrinsic transverse momentum $k_T$. TMDs are functions of
       $(x, k_T, Q^2)$ and are essential for describing processes sensitive to the transverse structure of
@@ -321,4 +321,4 @@ Lower-dimensional (bilinear, (log)-tricubic) are also available for performance 
     The difference between NeoPDF and LHAPDF, using the default interpolation, is **below machine
     precision** for floating-point numbers.
 
-![diff_NNPDF40_nnlo_as_01180_flav21](https://github.com/user-attachments/assets/d47bfa13-9930-4247-89fb-f2c2eab68bd7)
+    ![diff_NNPDF40_nnlo_as_01180_flav21](https://github.com/user-attachments/assets/d47bfa13-9930-4247-89fb-f2c2eab68bd7)

@@ -46,6 +46,7 @@ Format: lhagrid1
 Polarized: false
 Set Type: SpaceLike
 Interpolator Type: LogBicubic
+...
 ```
 
 ### Get the Number of Subgrids
@@ -79,6 +80,20 @@ kT values: [0.0], shape=[1], strides=[1], layout=CFcf (0xf), const ndim=1
 x values: [1e-9, 1.2970848e-9, ...], shape=[196], strides=[1], layout=CFcf (0xf), const ndim=1
 Q2 values: [2.7224999999999997, ...], shape=[12], strides=[1], layout=CFcf (0xf), const ndim=1
 ```
+
+### Updating Grid Metadata
+
+The metadata of a given `NeoPDF` grid can be updated by running the following command:
+
+```bash
+neopdf write metadata --path NNPDF40_nnlo_as_01180.neopdf.lz4 --key SetType --value TimeLike
+```
+
+- `--path`: Path to the `NeoPDF` set.
+- `--key`: The key value of the metadata to be updated, see the `rename` field of the
+  [MetaData](https://github.com/Radonirinaunimi/neopdf/blob/master/neopdf/src/metadata.rs#L33-L121)
+  struct for the available keys.
+- `--value`: The updated value of the metadata.
 
 ---
 
@@ -212,7 +227,8 @@ neopdf compute xfx_q2 --pdf-name NNPDF40_nnlo.neopdf.lz4 --member 0 --pid 21 0.1
 
     Given that LHAPDF doesn't provide specific attributes to extract the values of $A$ and $\alpha_s$,
     their values are inferred from the set name. The extraction of these values are therefore set
-    dependent and we try to support as many sets as possible while keeping the implementation modular:
+    dependent and we try to support as many sets as possible while keeping the implementation modular.
+    The current extraction of these values rely on the following regex:
 
     ```rust
     // Regexes to extract A from the PDF set name
