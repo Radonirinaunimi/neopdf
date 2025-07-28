@@ -5,6 +5,7 @@
 
 use clap::{Parser, Subcommand};
 use neopdf::converter;
+use neopdf::metadata::{InterpolatorType, SetType};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
 
@@ -60,6 +61,18 @@ pub enum Commands {
         /// Output path for the combined `NeoPDF` file.
         #[arg(short, long)]
         output: String,
+    },
+    /// Update the metadata of the `NeoPDF` grid.
+    Metadata {
+        /// Path to the `NeoPDF` file.
+        #[arg(short, long)]
+        path: String,
+        /// Key of the metadata to update.
+        #[arg(short, long)]
+        key: String,
+        /// Value to set for the metadata key.
+        #[arg(short, long)]
+        value: String,
     },
 }
 
@@ -134,6 +147,56 @@ pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             let names = load_pdf_names(pdf_names.as_deref(), names_file.as_deref())?;
             let names_str: Vec<&str> = names.iter().map(String::as_str).collect();
             converter::combine_lhapdf_alphas(&names_str, output)?;
+        }
+        Commands::Metadata { path, key, value } => {
+            let grids_with_metadata = neopdf::writer::GridArrayCollection::decompress(path)?;
+            let mut metadata = grids_with_metadata[0].metadata.as_ref().clone();
+            match key.as_str() {
+                "SetDesc" => metadata.set_desc = value.to_string(),
+                "SetIndex" => metadata.set_index = value.parse()?,
+                "NumMembers" => metadata.num_members = value.parse()?,
+                "XMin" => metadata.x_min = value.parse()?,
+                "XMax" => metadata.x_max = value.parse()?,
+                "QMin" => metadata.q_min = value.parse()?,
+                "QMax" => metadata.q_max = value.parse()?,
+                "Format" => metadata.format = value.to_string(),
+                "Polarized" => metadata.polarised = value.parse()?,
+                "SetType" => {
+                    metadata.set_type = match value.to_lowercase().as_str() {
+                        "spacelike" => SetType::SpaceLike,
+                        "timelike" => SetType::TimeLike,
+                        _ => return Err(format!("Unknown SetType: {value}").into()),
+                    }
+                }
+                "InterpolatorType" => {
+                    metadata.interpolator_type = match value.to_lowercase().as_str() {
+                        "bilinear" => InterpolatorType::Bilinear,
+                        "logbilinear" => InterpolatorType::LogBilinear,
+                        "logbicubic" => InterpolatorType::LogBicubic,
+                        "logtricubic" => InterpolatorType::LogTricubic,
+                        "interpndlinear" => InterpolatorType::InterpNDLinear,
+                        _ => return Err(format!("Unknown InterpolatorType: {value}").into()),
+                    }
+                }
+                "ErrorType" => metadata.error_type = value.to_string(),
+                "Particle" => metadata.hadron_pid = value.parse()?,
+                "GitVersion" => metadata.git_version = value.to_string(),
+                "CodeVersion" => metadata.code_version = value.to_string(),
+                "FlavorScheme" => metadata.flavor_scheme = value.to_string(),
+                "OrderQCD" => metadata.order_qcd = value.parse()?,
+                "AlphaS_OrderQCD" => metadata.alphas_order_qcd = value.parse()?,
+                "MW" => metadata.m_w = value.parse()?,
+                "MZ" => metadata.m_z = value.parse()?,
+                "MUp" => metadata.m_up = value.parse()?,
+                "MDown" => metadata.m_down = value.parse()?,
+                "MStrange" => metadata.m_strange = value.parse()?,
+                "MCharm" => metadata.m_charm = value.parse()?,
+                "MBottom" => metadata.m_bottom = value.parse()?,
+                "MTop" => metadata.m_top = value.parse()?,
+                _ => return Err(format!("Unknown metadata key: {key}").into()),
+            }
+            let grids_data: Vec<_> = grids_with_metadata.iter().map(|g| &g.grid).collect();
+            neopdf::writer::GridArrayCollection::compress(&grids_data, &metadata, path)?;
         }
     }
     Ok(())

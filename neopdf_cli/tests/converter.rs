@@ -12,11 +12,29 @@ Commands:
   convert         Convert a single LHAPDF set to `NeoPDF` format
   combine-npdfs   Combine multiple nuclear PDFs into a single `NeoPDF` with A dependence
   combine-alphas  Combine multiple PDFs with different `alpha_s` values into a single `NeoPDF`
+  metadata        Update the metadata of the `NeoPDF` grid
   help            Print this message or the help of the given subcommand(s)
 
 Options:
   -h, --help     Print help
   -V, --version  Print version
+";
+
+const MODIFIED_METADATA: &str = "Set Description: NNPDF4.0 NNLO global fit, alphas(MZ)=0.1180. mem=0 => average on replicas; mem=1-100 => PDF replicas
+Set Index: 331100
+Number of Members: 101
+XMin: 0.000000001
+XMax: 1
+QMin: 1.65
+QMax: 100000
+Flavors: [-5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5]
+Format: lhagrid1
+AlphaS Q Values: [1.65, 1.7874388, 1.9429053, 2.1193749, 2.32041, 2.5502944, 2.8142025, 3.1184122, 3.4705775, 3.8800751, 4.3584516, 4.92, 4.92, 5.5493622, 6.2897452, 7.1650687, 8.2052867, 9.4481248, 10.941378, 12.745972, 14.940062, 17.624572, 20.930715, 25.030298, 30.149928, 36.590777, 44.756282, 55.191298, 68.63794, 86.115921, 109.03923, 139.38725, 179.95815, 234.7482, 309.52544, 412.70732, 556.71861, 760.11795, 1050.9694, 1472.2574, 2090.6996, 3011.2909, 4401.6501, 6533.3918, 9853.5186, 15109.614, 23573.066, 37444.017, 60599.32, 100000.0]
+AlphaS Values: [0.33074891, 0.3176246, 0.30507081, 0.29305875, 0.28156114, 0.27055221, 0.26000761, 0.24990438, 0.24022086, 0.23093662, 0.22203241, 0.21377883, 0.21377883, 0.20671584, 0.19986334, 0.19321629, 0.1867697, 0.1805186, 0.17445809, 0.16858329, 0.16288942, 0.15737175, 0.15202563, 0.14684647, 0.14182979, 0.13697116, 0.13226626, 0.12771084, 0.12330074, 0.11903189, 0.11490031, 0.1109021, 0.10703345, 0.10329062, 0.099669997, 0.096168008, 0.092781186, 0.089506143, 0.086339571, 0.083278245, 0.080319017, 0.077458816, 0.074694649, 0.0720236, 0.069442824, 0.066949551, 0.064541082, 0.062214786, 0.059968105, 0.057798546]
+Polarized: false
+Set Type: TimeLike
+Interpolator Type: LogBicubic
+
 ";
 
 #[test]
@@ -63,6 +81,33 @@ fn convert_lhapdf() {
         .assert()
         .success()
         .stdout("7.1276606679158565\n");
+
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "write",
+            "metadata",
+            "--path",
+            output.path().to_str().unwrap(),
+            "--key",
+            "SetType",
+            "--value",
+            "TimeLike",
+        ])
+        .assert()
+        .success();
+
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "read",
+            "metadata",
+            "--pdf-name",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(MODIFIED_METADATA);
 }
 
 #[test]
