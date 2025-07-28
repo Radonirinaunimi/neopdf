@@ -10,7 +10,7 @@ def test_writer(pdf_name, tmp_path):
     metadata = lhapdf_set.info()
     grids = [m[1] for m in members]
 
-    output_path = tmp_path / f"{pdf_name}.neopdf"
+    output_path = tmp_path / f"{pdf_name}.neopdf.lz4"
     writer.compress(grids, metadata, str(output_path))
 
     decompressed_members = writer.decompress(str(output_path))
