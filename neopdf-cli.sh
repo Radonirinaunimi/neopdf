@@ -56,7 +56,7 @@ fi
 
 # --- Write Subcommands ---
 if [ "$COMMAND" == "write" ]; then
-    WRITE_COMMAND=$(gum choose "convert" "combine")
+    WRITE_COMMAND=$(gum choose "convert" "combine-npdfs" "combine-alphas" "metadata")
 
     case $WRITE_COMMAND in
         "convert")
@@ -64,18 +64,24 @@ if [ "$COMMAND" == "write" ]; then
             OUTPUT_PATH=$(gum input --placeholder "Enter the output file path for the NeoPDF file")
             neopdf write convert -p "$PDF_NAME" -o "$OUTPUT_PATH"
             ;;
-        "combine")
+        "combine-npdfs" | "combine-alphas")
             INPUT_METHOD=$(gum choose "direct" "file")
 
             if [ "$INPUT_METHOD" == "direct" ]; then
                 PDF_NAMES=$(gum input --placeholder "Enter PDF set names (space-separated)")
                 OUTPUT_PATH=$(gum input --placeholder "Enter the output file path for the combined NeoPDF file")
-                neopdf write combine -n $PDF_NAMES -o "$OUTPUT_PATH"
+                neopdf write $WRITE_COMMAND -n $PDF_NAMES -o "$OUTPUT_PATH"
             else
                 NAMES_FILE=$(gum input --placeholder "Enter the path to the file containing PDF set names")
                 OUTPUT_PATH=$(gum input --placeholder "Enter the output file path for the combined NeoPDF file")
-                neopdf write combine -f "$NAMES_FILE" -o "$OUTPUT_PATH"
+                neopdf write $WRITE_COMMAND -f "$NAMES_FILE" -o "$OUTPUT_PATH"
             fi
+            ;;
+        "metadata")
+            FILE_PATH=$(gum input --placeholder "Enter the path to the NeoPDF file")
+            KEY=$(gum input --placeholder "Enter the metadata key to update")
+            VALUE=$(gum input --placeholder "Enter the new value for the key")
+            neopdf write metadata --path "$FILE_PATH" --key "$KEY" --value "$VALUE"
             ;;
     esac
 fi
