@@ -173,10 +173,10 @@ impl LhapdfSet {
                 grid_data.extend(values);
             }
 
-            // TODO: extract the following information from the description
-            // in the `.info` file or from the name of the PDF set.
-            let nucleons: Vec<f64> = vec![1.0];
-            let alphas: Vec<f64> = vec![0.118];
+            // NOTE: given that there isn't really a proper way to extract the
+            // following values from LHAPDF, their defaults are set to zeros.
+            let nucleons: Vec<f64> = vec![0.0];
+            let alphas: Vec<f64> = vec![0.0];
             let kts: Vec<f64> = vec![0.0];
 
             subgrid_data.push(SubgridData {
