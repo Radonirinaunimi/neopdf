@@ -34,6 +34,19 @@ AlphaS Values: [0.33074891, 0.3176246, 0.30507081, 0.29305875, 0.28156114, 0.270
 Polarized: false
 Set Type: TimeLike
 Interpolator Type: LogBicubic
+Error Type: replicas
+Particle: 2212
+Flavor Scheme: variable
+Order QCD: 2
+AlphaS Order QCD: 0
+MW: 0
+MZ: 91.1876
+MUp: 0
+MDown: 0
+MStrange: 0
+MCharm: 1.51
+MBottom: 4.92
+MTop: 172.5
 
 ";
 

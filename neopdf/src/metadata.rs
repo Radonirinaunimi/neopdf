@@ -135,6 +135,19 @@ impl fmt::Display for MetaData {
         writeln!(f, "AlphaS Values: {:?}", self.alphas_vals)?;
         writeln!(f, "Polarized: {}", self.polarised)?;
         writeln!(f, "Set Type: {:?}", self.set_type)?;
-        writeln!(f, "Interpolator Type: {:?}", self.interpolator_type)
+        writeln!(f, "Interpolator Type: {:?}", self.interpolator_type)?;
+        writeln!(f, "Error Type: {}", self.error_type)?;
+        writeln!(f, "Particle: {}", self.hadron_pid)?;
+        writeln!(f, "Flavor Scheme: {}", self.flavor_scheme)?;
+        writeln!(f, "Order QCD: {}", self.order_qcd)?;
+        writeln!(f, "AlphaS Order QCD: {}", self.alphas_order_qcd)?;
+        writeln!(f, "MW: {}", self.m_w)?;
+        writeln!(f, "MZ: {}", self.m_z)?;
+        writeln!(f, "MUp: {}", self.m_up)?;
+        writeln!(f, "MDown: {}", self.m_down)?;
+        writeln!(f, "MStrange: {}", self.m_strange)?;
+        writeln!(f, "MCharm: {}", self.m_charm)?;
+        writeln!(f, "MBottom: {}", self.m_bottom)?;
+        writeln!(f, "MTop: {}", self.m_top)
     }
 }
