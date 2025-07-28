@@ -161,13 +161,6 @@ pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 "QMax" => metadata.q_max = value.parse()?,
                 "Format" => metadata.format = value.to_string(),
                 "Polarized" => metadata.polarised = value.parse()?,
-                "SetType" => {
-                    metadata.set_type = match value.to_lowercase().as_str() {
-                        "spacelike" => SetType::SpaceLike,
-                        "timelike" => SetType::TimeLike,
-                        _ => return Err(format!("Unknown SetType: {value}").into()),
-                    }
-                }
                 "InterpolatorType" => {
                     metadata.interpolator_type = match value.to_lowercase().as_str() {
                         "bilinear" => InterpolatorType::Bilinear,
@@ -193,6 +186,13 @@ pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 "MCharm" => metadata.m_charm = value.parse()?,
                 "MBottom" => metadata.m_bottom = value.parse()?,
                 "MTop" => metadata.m_top = value.parse()?,
+                "SetType" => {
+                    metadata.set_type = match value.to_lowercase().as_str() {
+                        "spacelike" => SetType::SpaceLike,
+                        "timelike" => SetType::TimeLike,
+                        _ => return Err(format!("Unknown SetType: {value}").into()),
+                    }
+                }
                 _ => return Err(format!("Unknown metadata key: {key}").into()),
             }
             let grids_data: Vec<_> = grids_with_metadata.iter().map(|g| &g.grid).collect();
