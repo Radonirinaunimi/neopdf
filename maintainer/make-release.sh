@@ -59,6 +59,7 @@ sed -i \
     -e "/^\[workspace\.package\]/,/^\[/ s:^version = \".*\":version = \"${version}\":" \
     -e "s:^neopdf = { path = \"[^\"]*\", version = \"[^\"]*\" }:neopdf = { path = \"./neopdf\", version = \"${version}\" }:" \
     Cargo.toml
+git add Cargo.toml
 
 echo ">>> Updating Cargo.lock ..."
 

@@ -70,6 +70,7 @@ jobs:
 
   cli-linux:
     runs-on: ubuntu-latest
+    container: ghcr.io/radonirinaunimi/neopdf-container:latest
     strategy:
       matrix:
         target: [x86_64-unknown-linux-gnu]
@@ -77,7 +78,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Compile binary
         run: |
-          cargo install --locked --release --path neopdf_cli --root=prefix --target=${{ matrix.target }} -vv
+          cargo install --locked --path neopdf_cli --root=prefix --target=${{ matrix.target }} -vv
           cd prefix
           tar czf ../neopdf_cli-${{ matrix.target }}.tar.gz .
       - name: Upload artifact
@@ -130,6 +131,7 @@ jobs:
 
   capi-linux:
     runs-on: ubuntu-latest
+    container: ghcr.io/radonirinaunimi/neopdf-container:latest
     strategy:
       matrix:
         target: [x86_64-unknown-linux-gnu]
@@ -166,6 +168,7 @@ jobs:
 
   publish-crates:
     runs-on: ubuntu-latest
+    container: ghcr.io/radonirinaunimi/neopdf-container:latest
     if: "startsWith(github.ref, 'refs/tags/')"
     steps:
       - uses: actions/checkout@v4
