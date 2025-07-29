@@ -1216,7 +1216,7 @@ dependencies = [
 
 [[package]]
 name = "neopdf"
-version = "0.1.0"
+version = "0.1.0-alpha3"
 dependencies = [
  "bincode",
  "criterion",
@@ -1238,7 +1238,7 @@ dependencies = [
 
 [[package]]
 name = "neopdf_capi"
-version = "0.1.0"
+version = "0.1.0-alpha3"
 dependencies = [
  "cbindgen",
  "ndarray",
@@ -1247,7 +1247,7 @@ dependencies = [
 
 [[package]]
 name = "neopdf_cli"
-version = "0.1.0"
+version = "0.1.0-alpha3"
 dependencies = [
  "assert_cmd",
  "assert_fs",
@@ -1259,7 +1259,7 @@ dependencies = [
 
 [[package]]
 name = "neopdf_pyapi"
-version = "0.1.0"
+version = "0.1.0-alpha3"
 dependencies = [
  "ndarray",
  "neopdf",
