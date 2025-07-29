@@ -4,6 +4,22 @@ import numpy as np
 from itertools import product
 
 
+@pytest.mark.parametrize("pdfname", ["NNPDF40_nnlo_as_01180", "MSHT20qed_an3lo"])
+class TestPDF:
+    def test_mkpdfs(self, neo_pdfs, pdfname):
+        pdfs = neo_pdfs(pdfname)
+        assert len(pdfs) > 0
+
+    def test_pdf_methods(self, neo_pdf, pdfname):
+        neopdf = neo_pdf(pdfname)
+        assert len(neopdf.pids()) > 0
+        assert len(neopdf.subgrids()) > 0
+        assert neopdf.x_min() > 0
+        assert neopdf.x_max() > 0
+        assert neopdf.q2_min() > 0
+        assert neopdf.q2_max() > 0
+
+
 class TestPDFInterpolations:
     @pytest.mark.parametrize(
         "pdfname",

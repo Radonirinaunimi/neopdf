@@ -2,16 +2,28 @@ import lhapdf
 import pytest
 import numpy as np
 
-from neopdf.pdf import PDF
+from neopdf.pdf import PDF as NeoPDF
 
 
 @pytest.fixture(scope="session")
 def neo_pdf():
     cached_pdf = {}
 
-    def _init_pdf(pdfname: str) -> PDF:
+    def _init_pdf(pdfname: str) -> NeoPDF:
         if pdfname not in cached_pdf:
-            cached_pdf[pdfname] = PDF(pdfname)
+            cached_pdf[pdfname] = NeoPDF(pdfname)
+        return cached_pdf[pdfname]
+
+    return _init_pdf
+
+
+@pytest.fixture(scope="session")
+def neo_pdfs():
+    cached_pdf = {}
+
+    def _init_pdf(pdfname: str) -> NeoPDF:
+        if pdfname not in cached_pdf:
+            cached_pdf[pdfname] = NeoPDF.mkPDFs(pdfname)
         return cached_pdf[pdfname]
 
     return _init_pdf
@@ -21,7 +33,7 @@ def neo_pdf():
 def lha_pdf():
     cached_pdf = {}
 
-    def _init_pdf(pdfname: str) -> PDF:
+    def _init_pdf(pdfname: str) -> lhapdf.PDF:
         if pdfname not in cached_pdf:
             cached_pdf[pdfname] = lhapdf.mkPDF(pdfname)
         return cached_pdf[pdfname]
@@ -33,7 +45,7 @@ def lha_pdf():
 def xq2_points():
     def _xq2_points(
         xmin: float, xmax: float, q2min: float, q2max: float
-    ) -> tuple[float, float]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         xs = np.geomspace(xmin, xmax, num=200)
         q2s = np.geomspace(q2min, q2max, num=200)
         return xs, q2s

@@ -43,3 +43,4 @@ addopts = [
   '--cov-report=xml',
   '--strict-markers',
 ]
+markers = ["multipleversions: test Python API with multiple versions"]
