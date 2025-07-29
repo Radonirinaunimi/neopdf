@@ -1,4 +1,4 @@
-name: Test different versions of Python 🐍
+name: Python Versions 🐍
 
 on: [push]
 
@@ -30,10 +30,10 @@ jobs:
         env:
           RUSTFLAGS: '-Cinstrument-coverage -Clink-dead-code'
         run: |
+          export NEOPDF_DATA_PATH=${PWD}/neopdf-data
           cd neopdf_pyapi
           python -m venv env
           . env/bin/activate
           pip install maturin
           maturin develop --extras test
-          export NEOPDF_DATA_PATH=${PWD}/neopdf-data
           pytest -m multipleversions benches/test_versions.py
