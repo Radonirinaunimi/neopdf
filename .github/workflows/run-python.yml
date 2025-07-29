@@ -1,0 +1,39 @@
+name: Test different versions of Python 🐍
+
+on: [push]
+
+jobs:
+  test:
+    # `ubuntu-24.04` doesn't support Python 3.7 anymore
+    runs-on: ubuntu-22.04
+
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 🐍
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up Rust 🦀
+        run: |
+          rustup component add llvm-tools
+
+      - name: Get data
+        uses: ./.github/actions/cache-data
+
+      - name: Test Python versions 🐍
+        env:
+          RUSTFLAGS: '-Cinstrument-coverage -Clink-dead-code'
+        run: |
+          cd neopdf_pyapi
+          python -m venv env
+          . env/bin/activate
+          pip install maturin
+          maturin develop --extras test
+          export NEOPDF_DATA_PATH=${PWD}/neopdf-data
+          pytest -m multipleversions benches/test_versions.py
