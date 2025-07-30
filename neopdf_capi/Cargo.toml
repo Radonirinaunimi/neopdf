@@ -13,6 +13,8 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+exclude = ["tests/*.output"]
+
 [dependencies]
 neopdf.workspace = true
 ndarray.workspace = true
