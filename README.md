@@ -1,9 +1,9 @@
 <h1 align="center">NeoPDF</h1>
 <p align="center">
-  <img alt="Codecov" src="https://img.shields.io/codecov/c/github/Radonirinaunimi/neopdf?style=flat-square&logo=codecov&logoColor=red">
-  <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Radonirinaunimi/neopdf/.github%2Fworkflows%2Frun-rust.yml?style=flat-square&logo=rust&logoColor=red">
-  <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Radonirinaunimi/neopdf/.github%2Fworkflows%2Frun-capi.yml?style=flat-square&logo=cplusplus&logoColor=blue">
-  <img alt="GitHub Actions Workflow Status" src="https://img.shields.io/github/actions/workflow/status/Radonirinaunimi/neopdf/.github%2Fworkflows%2Frun-pyapi.yml?style=flat-square&logo=python&logColor=#3776AB">
+  <img alt="Codecov" src="https://img.shields.io/codecov/c/github/Radonirinaunimi/neopdf?style=flat-square&logo=codecov&logoColor=red&color=blue">
+  <img alt="MSRV" src="https://img.shields.io/crates/msrv/neopdf?style=flat-square&logo=rust&color=red">
+  <img alt="Crates.io" src="https://img.shields.io/crates/v/neopdf?style=flat-square&logo=rust&color=blue">
+  <img alt="PyPI - Version" src="https://img.shields.io/pypi/v/neopdf-hep?style=flat-square&logo=python&logoColor=yellow&color=%1d881d">
   <img alt="GitHub License" src="https://img.shields.io/github/license/Radonirinaunimi/neopdf?style=flat-square&logo=gplv3&logoColor=red">
 </p>
 
@@ -32,7 +32,7 @@
 
 ## Quick Links
 
-- [Documentation](https://radonirinaunimi.github.io/neopdf/)
+- [Documentation](https://radonirinaunimi.github.io/neopdf/) | [Rust Crate Documentation](https://docs.rs/neopdf/0.1.1/neopdf/)
 - [Installation](https://radonirinaunimi.github.io/neopdf/installation/)
 - [Physics and technical features](https://radonirinaunimi.github.io/neopdf/design-and-features/)
 - [NeoPDF Design](https://radonirinaunimi.github.io/neopdf/design/)
