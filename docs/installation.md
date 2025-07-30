@@ -34,20 +34,24 @@ cargo build
 
 ## Python API
 
-To build the Python API from the source code, make sure that [maturin](https://www.maturin.rs/) is
-installed, go into the `neopdf_pyapi` directory, and then simply run:
+`NeoPDF` is available on the Python Packaged Index (PyPI) as `neopdf-hep` and therefore can be
+installed easily with any of the Python's package managers. For example, using
+[pipx](https://pipx.pypa.io/stable/):
 
 ```bash
-maturin develop --release
+pipx install neopdf-hep
 ```
 
-This will build and install the `NeoPDF` Python extension in your current environment. Alternatively,
-`neopdf` is  also available on the Python Package Index (PyPI) and therefore can be installed with
-your favourite Python's package manager. For example, using [pipx](https://pipx.pypa.io/stable/):
+!!! info "Development Option"
 
-```bash
-pipx install neopdf
-```
+    Alternatively, to build the Python API from source, make sure that [maturin](https://www.maturin.rs/)
+    is installed, go into the `neopdf_pyapi` directory, and then simply run:
+
+    ```bash
+    maturin develop --release --extras test
+    ```
+
+    This will build and install the `NeoPDF` Python extension in your current environment.
 
 ---
 
@@ -98,12 +102,22 @@ use neopdf
 
 ## CLI Tool
 
-To build and install the NeoPDF command-line interface (CLI) from source, simply run:
+The Command Line Interface (CLI) to the `NeoPDF` APIs is also available on the Python Packaged
+Index (PyPI) as `neopdf-cli` and therefore can be installed easily with any of the Python's
+package managers. For example, using [pipx](https://pipx.pypa.io/stable/):
 
 ```bash
-cargo install --path neopdf_cli --debug
+pipx install neopdf-cli
 ```
 
-This will compile the CLI in debug mode and make the `neopdf` command available in your
-cargo bin directory (usually `~/.cargo/bin`). You can then run `neopdf --help` to see
-the available commands.
+!!! info " Development Option"
+
+    To build and install the NeoPDF command-line interface (CLI) from source, simply run:
+
+    ```bash
+    cargo install --path neopdf_cli --debug
+    ```
+
+    This will compile the CLI in debug mode and make the `neopdf` command available in your
+    cargo bin directory (usually `~/.cargo/bin`). You can then run `neopdf --help` to see
+    the available commands.
