@@ -33,7 +33,7 @@ jobs:
       - name: Compile binary
         run: |
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-host=${{ matrix.target }}
-          cargo install --locked --release --path neopdf_cli --root=prefix --target=${{ matrix.target }}
+          cargo install --locked --path neopdf_cli --root=prefix --target=${{ matrix.target }}
           cd prefix
           tar czf ../neopdf_cli-${{ matrix.target }}.tar.gz .
       - name: Upload artifact
