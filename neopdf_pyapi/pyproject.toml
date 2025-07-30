@@ -3,10 +3,7 @@ requires = ["maturin>=0.13.4"]
 build-backend = "maturin"
 
 [project]
-name = "neopdf"
-# due to a bug in warehouse, https://github.com/pypi/warehouse/issues/8090, this file must be the
-# same across all wheels of a single version and therefore `requires-python` must give the minimum
-# Python version that we support
+name = "neopdf-hep"
 requires-python = ">=3.7"
 classifiers = [
   "Development Status :: 4 - Beta",

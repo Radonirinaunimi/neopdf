@@ -1,7 +1,7 @@
 [package]
 name = "neopdf_pyapi"
 authors = ["Tanjona R. Rabemananjara <tanjona.hepc@gmail.com>"]
-description = "Python bindings to neopdf"
+description = "Python bindings to NeoPDF Rust library"
 
 categories.workspace = true
 edition.workspace = true
@@ -15,7 +15,7 @@ version.workspace = true
 workspace = true
 
 [package.metadata.maturin]
-name = "neopdf"
+name = "neopdf-hep"
 
 [lib]
 name = "neopdf"
