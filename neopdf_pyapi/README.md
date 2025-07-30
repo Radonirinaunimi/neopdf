@@ -1,11 +1,18 @@
-# Python API for NeoPDF
+# NeoPDF-HEP
 
-This crate provides Python bindings for the `neopdf` Rust library,
-allowing Python users to access its PDF interpolation functionalities.
+![Static Badge](https://img.shields.io/badge/Python-3.7--3.13-00A800?style=flat-square&logo=python&logoColor=yellow)
+![GitHub Tag](https://img.shields.io/github/v/tag/Radonirinaunimi/neopdf?include_prereleases&style=flat-square&logo=github&color=blue)
+![Crates.io Version](https://img.shields.io/crates/v/neopdf?style=flat-square&logo=rust&color=blue)
+![GitHub License](https://img.shields.io/github/license/Radonirinaunimi/neopdf?style=flat-square&color=red)
 
-To install, make sure that [maturin](https://www.maturin.rs/) is
-installed, and then simply run:
+This crate uses [PyO3](https://pyo3.rs/v0.25.1/) to provide Python bindings to the
+[NeoPDF](https://crates.io/crates/neopdf) Rust's [APIs](https://docs.rs/neopdf/0.1.0/neopdf/index.html).
+The `neopdf-hep` package can be installed using a Python Package manager. For example
+using [pipx](https://pipx.pypa.io/stable/):
 
-```python
-maturin develop --extras test --release
+```sh
+pipx install neopdf-hep
 ```
+
+For detailed examples on how to use `neopdf-hep`, please head over the
+[tutorials](https://radonirinaunimi.github.io/neopdf/examples/neopdf-pyapi/) section.
