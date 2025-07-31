@@ -151,6 +151,14 @@ impl PDF {
         self.grid_pdf.set_force_positive(option);
     }
 
+    /// TODO
+    pub fn is_force_positive(&self) -> &ForcePositive {
+        self.grid_pdf
+            .force_positive
+            .as_ref()
+            .unwrap_or(&ForcePositive::NoClipping)
+    }
+
     /// Interpolates the PDF value (xf) for a given nucleon, alphas, flavor, x, and Q2.
     ///
     /// Abstraction to the `GridPDF::xfxq2` method.

@@ -173,6 +173,8 @@ pub enum ForcePositive {
     ClipNegative,
     /// If the calculated PDF value is less than 1e-10, it is set to 1e-10.
     ClipSmall,
+    /// No clipping is done, value is returned as it is.
+    NoClipping,
 }
 
 /// The main PDF grid interface, providing high-level methods for interpolation.
@@ -186,7 +188,7 @@ pub struct GridPDF {
     /// An interpolator for the running of alpha_s.
     alphas_interpolator: Interp1DOwned<f64, AlphaSCubicInterpolation>,
     /// Clip the values to positive definite numbers if negatives.
-    force_positive: Option<ForcePositive>,
+    pub force_positive: Option<ForcePositive>,
 }
 
 impl GridPDF {
@@ -219,6 +221,7 @@ impl GridPDF {
         match &self.force_positive {
             Some(ForcePositive::ClipNegative) => value.max(0.0),
             Some(ForcePositive::ClipSmall) => value.max(1e-10),
+            Some(ForcePositive::NoClipping) => value,
             None => value,
         }
     }
