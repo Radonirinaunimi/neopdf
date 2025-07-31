@@ -380,5 +380,6 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
         "import sys; sys.modules['neopdf.pdf'] = m"
     );
     m.add_class::<PyPDF>()?;
+    m.add_class::<PyForcePositive>()?;
     parent_module.add_submodule(&m)
 }
