@@ -167,6 +167,14 @@ impl GridArray {
     }
 }
 
+/// TODO
+pub enum ForcePositive {
+    /// If the calculated PDF value is negative, it is forced to 0.
+    ClipNegative,
+    /// If the calculated PDF value is less than 1e-10, it is set to 1e-10.
+    ClipSmall,
+}
+
 /// The main PDF grid interface, providing high-level methods for interpolation.
 pub struct GridPDF {
     /// The metadata associated with the PDF set.
@@ -177,6 +185,8 @@ pub struct GridPDF {
     interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
     /// An interpolator for the running of alpha_s.
     alphas_interpolator: Interp1DOwned<f64, AlphaSCubicInterpolation>,
+    /// Clip the values to positive definite numbers if negatives.
+    force_positive: Option<ForcePositive>,
 }
 
 impl GridPDF {
@@ -195,6 +205,21 @@ impl GridPDF {
             knot_array,
             interpolators,
             alphas_interpolator,
+            force_positive: None,
+        }
+    }
+
+    /// TODO
+    pub fn set_force_positive(&mut self, flag: ForcePositive) {
+        self.force_positive = Some(flag);
+    }
+
+    /// TODO
+    pub fn apply_force_positive(&self, value: f64) -> f64 {
+        match &self.force_positive {
+            Some(ForcePositive::ClipNegative) => value.max(0.0),
+            Some(ForcePositive::ClipSmall) => value.max(1e-10),
+            None => value,
         }
     }
 
@@ -253,9 +278,11 @@ impl GridPDF {
             Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
         })?;
 
-        self.interpolators[subgrid_idx][pid_idx]
+        let result = self.interpolators[subgrid_idx][pid_idx]
             .interpolate_point(points)
-            .map_err(|e| Error::InterpolationError(e.to_string()))
+            .map_err(|e| Error::InterpolationError(e.to_string()))?;
+
+        Ok(self.apply_force_positive(result))
     }
 
     /// Interpolates PDF values for multiple points in parallel.

@@ -22,7 +22,7 @@
 use ndarray::{Array1, Array2};
 use rayon::prelude::*;
 
-use super::gridpdf::{GridArray, GridPDF};
+use super::gridpdf::{ForcePositive, GridArray, GridPDF};
 use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
 use super::subgrid::{RangeParameters, SubGrid};
@@ -144,6 +144,11 @@ impl PDF {
         } else {
             pdfsets_loader(LhapdfSet::new(pdf_name))
         }
+    }
+
+    /// TODO
+    pub fn set_force_positive(&mut self, option: ForcePositive) {
+        self.grid_pdf.set_force_positive(option);
     }
 
     /// Interpolates the PDF value (xf) for a given nucleon, alphas, flavor, x, and Q2.
