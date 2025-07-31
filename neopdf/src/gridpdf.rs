@@ -125,7 +125,11 @@ impl GridArray {
 
     /// Gets the index corresponding to a given flavor ID.
     fn pid_index(&self, flavor_id: i32) -> Option<usize> {
-        self.pids.iter().position(|&pid| pid == flavor_id)
+        let normalize_pid = |pid| if pid == 0 { 21 } else { pid };
+        let normalized_pids = normalize_pid(flavor_id);
+        self.pids
+            .iter()
+            .position(|&pid| normalize_pid(pid) == normalized_pids)
     }
 
     /// Gets the overall parameter ranges across all subgrids.
