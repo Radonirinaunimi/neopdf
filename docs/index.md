@@ -1,5 +1,13 @@
 # NeoPDF
 
+![Codecov](https://img.shields.io/codecov/c/github/Radonirinaunimi/neopdf?style=flat-square&logo=codecov&logoColor=red&color=blue)
+![MSRV](https://img.shields.io/crates/msrv/neopdf?style=flat-square&logo=rust&color=red)
+![Crates.io](https://img.shields.io/crates/v/neopdf?style=flat-square&logo=rust&color=blue)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/neopdf-hep?style=flat-square&logo=python)
+![PyPI - Version](https://img.shields.io/pypi/v/neopdf-hep?style=flat-square&logo=python&logoColor=yellow&color=%1d881d)
+![GitHub License](https://img.shields.io/github/license/Radonirinaunimi/neopdf?style=flat-square&logo=gplv3&logoColor=red)
+![GitHub repo size](https://img.shields.io/github/repo-size/Radonirinaunimi/neopdf?style=flat-square&logo=github)
+
 `NeoPDF` is a fast, reliable, and scalable interpolation library for both **Collinear** Parton
 Distribution Functions (PDFs) and **Transverse Momentum Dependent** Distributions (TMDs) with
 **modern features**, designed for both present and future hadron collider experiments. It aims

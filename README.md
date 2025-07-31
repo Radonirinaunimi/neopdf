@@ -1,10 +1,20 @@
 <h1 align="center">NeoPDF</h1>
 <p align="center">
-  <img alt="Codecov" src="https://img.shields.io/codecov/c/github/Radonirinaunimi/neopdf?style=flat-square&logo=codecov&logoColor=red&color=blue">
-  <img alt="MSRV" src="https://img.shields.io/crates/msrv/neopdf?style=flat-square&logo=rust&color=red">
-  <img alt="Crates.io" src="https://img.shields.io/crates/v/neopdf?style=flat-square&logo=rust&color=blue">
-  <img alt="PyPI - Version" src="https://img.shields.io/pypi/v/neopdf-hep?style=flat-square&logo=python&logoColor=yellow&color=%1d881d">
-  <img alt="GitHub License" src="https://img.shields.io/github/license/Radonirinaunimi/neopdf?style=flat-square&logo=gplv3&logoColor=red">
+  <a href="https://app.codecov.io/gh/Radonirinaunimi/neopdf/tree/master">
+    <img alt="Codecov" src="https://img.shields.io/codecov/c/github/Radonirinaunimi/neopdf?style=flat-square&logo=codecov&logoColor=red&color=blue">
+  </a>
+  <a href="https://gribnau.dev/cargo-msrv/">
+    <img alt="MSRV" src="https://img.shields.io/crates/msrv/neopdf?style=flat-square&logo=rust&color=red">
+  </a>
+  <a href="https://crates.io/crates/neopdf">
+    <img alt="Crates.io" src="https://img.shields.io/crates/v/neopdf?style=flat-square&logo=rust&color=blue">
+  </a>
+  <a href="https://pypi.org/project/neopdf-hep/">
+    <img alt="PyPI - Version" src="https://img.shields.io/pypi/v/neopdf-hep?style=flat-square&logo=python&logoColor=yellow&color=%1d881d">
+  </a>
+  <a href="https://github.com/Radonirinaunimi/neopdf?tab=GPL-3.0-1-ov-file">
+    <img alt="GitHub License" src="https://img.shields.io/github/license/Radonirinaunimi/neopdf?style=flat-square&logo=gplv3&logoColor=red">
+  </a>
 </p>
 
 <p align="justify">

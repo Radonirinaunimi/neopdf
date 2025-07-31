@@ -2,6 +2,7 @@
 name = "neopdf_pyapi"
 authors = ["Tanjona R. Rabemananjara <tanjona.hepc@gmail.com>"]
 description = "Python bindings to NeoPDF Rust library"
+readme = "README.md"
 
 categories.workspace = true
 edition.workspace = true
