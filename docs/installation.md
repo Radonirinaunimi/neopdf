@@ -24,7 +24,7 @@ To use `neopdf` in your Rust project, simply add the following to your `Cargo.to
 neopdf = "0.1.0" # select the version
 ```
 
-Cargo will automatically fetch and compile the dependency the next time you build your project with:
+Cargo will automatically fetch and compile the dependencies the next time you build your project with:
 
 ```bash
 cargo build

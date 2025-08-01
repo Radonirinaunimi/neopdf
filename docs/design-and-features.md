@@ -105,7 +105,7 @@ and future plans.
 `NeoPDF` provides comprehensive support for different types of hadronic structure functions and most
 importantly distinguish between them, which is essential for precision QCD calculations.
 
-- **Collinear vs. Transverse Momentum Dependent Distributions**:
+- **<span style="color: #ff79c6;">Collinear vs. Transverse Momentum Dependent Distributions</span>**:
 
     * **Collinear Parton Distribution Functions (PDFs)** describe the probability of finding a parton
       (quark or gluon) carrying a fraction $x$ of the longitudinal momentum of the parent hadron at a
@@ -120,7 +120,7 @@ importantly distinguish between them, which is essential for precision QCD calcu
       distributions with or without $k_T$ dependence. The library automatically distinguishes between these
       types based on the grid metadata, ensuring correct usage in phenomenological applications.
 
-- **Parton vs Nuclear PDFs (Or TMDs, respectively)**:
+- **<span style="color: #ff79c6;">Parton vs Nuclear PDFs (Or TMDs, respectively)</span>**:
 
     * **Parton PDFs** describe the momentum distribution of quarks and gluons within protons and
       neutrons, fundamental for understanding the internal structure of hadrons. These are crucial
@@ -129,7 +129,7 @@ importantly distinguish between them, which is essential for precision QCD calcu
       for nuclear binding effects, shadowing, and anti-shadowing. These are essential for heavy-ion
       collisions and understanding nuclear structure effects in high-energy physics experiments.
 
-- **Polarized vs Unpolarized PDFs (Or TMDs, respectively)**:
+- **<span style="color: #ff79c6;">Polarized vs Unpolarized PDFs (Or TMDs, respectively)</span>**:
 
     * **Unpolarized PDFs** represent the standard momentum distributions and are used in most collider
       physics calculations.
@@ -140,7 +140,7 @@ importantly distinguish between them, which is essential for precision QCD calcu
     The difference between polarized and unpolarized PDFs provides direct insight into the proton's spin
     decomposition and tests of QCD in the spin sector.
 
-- **Timelike vs Spacelike PDFs (Or TMDs, respectively)**:
+- **<span style="color: #ff79c6;">Timelike vs Spacelike PDFs (Or TMDs, respectively)</span>**:
 
     - **Spacelike PDFs** (the standard case) describe parton distributions in deep-inelastic scattering
       and hadron-hadron collisions.
@@ -155,7 +155,7 @@ importantly distinguish between them, which is essential for precision QCD calcu
 
 `NeoPDF` supports interpolation across multiple physical parameters:
 
-- **$\alpha_s(M_Z)$ Dependence**:
+- **<span style="color: #ff79c6;">$\alpha_s(M_Z)$ Dependence</span>**:
   The strong coupling constant $\alpha_s(M_Z)$ is a fundamental parameter of QCD that affects PDF
   evolution and cross-section predictions. Different PDF sets use different values (typically
   ranging from 0.116 to 0.120), and interpolating between them allows for:
@@ -164,7 +164,7 @@ importantly distinguish between them, which is essential for precision QCD calcu
     * Consistent treatment of $\alpha_s$ variations in global fits
     * Testing the sensitivity of observables to the strong coupling constant
 
-- **Nuclear Dependence $(A, Z)$**:
+- **<span style="color: #ff79c6;">Nuclear Dependence $(A, Z)$</span>**:
   Nuclear PDFs depend on the atomic mass number $A$ and atomic number $Z$ of the target nucleus.
   Interpolating in $(A, Z)$ space enables:
 
@@ -172,7 +172,7 @@ importantly distinguish between them, which is essential for precision QCD calcu
     * Systematic studies of nuclear effects across the periodic table
     * Applications to heavy-ion physics and neutrino-nucleus scattering
 
-- **Transverse Momentum Dependence $k_T$**:
+- **<span style="color: #ff79c6;">Transverse Momentum Dependence $k_T$</span>**:
   `NeoPDF` provides full support for interpolation in the transverse momentum $k_T$ variable, enabling
   access to TMD PDFs and related distributions. Users can:
 
