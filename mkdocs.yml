@@ -4,10 +4,9 @@ theme:
   custom_dir: docs/overrides
   palette:
     scheme: slate
-    primary: indigo
-    accent: indigo
+    primary: custom
+    accent: custom
   features:
-    - navigation.tabs
     - navigation.sections
     - toc.integrate
     - navigation.top

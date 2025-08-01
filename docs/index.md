@@ -14,14 +14,24 @@ Distribution Functions (PDFs) and **Transverse Momentum Dependent** Distribution
 to be a modern, high-performance alternative to both [LHAPDF](https://www.lhapdf.org/) and
 [TMDlib](https://tmdlib.hepforge.org/), focusing on:
 
-- **Performance**: Written in Rust for speed and safety, with zero-cost abstractions and efficient
-    memory management.
-- **Flexibility**: Supports multiple interpolation strategies and is easily extensible. The
-    abstraction of the interpolation crate makes it easier and efficient to implement custom
-    interpolation methods.
-- **Multi-language Support**: Native Rust API, with bindings for Python, Fortran, C, and C++.
-- **Features and Extensibility**: `NeoPDF` is very extensible and therefore makes it easier
-    to introduce new (Physics) features without introducing **technical debts**.
+<div class="feature-grid">
+  <div class="feature-card">
+      <strong>🚀 Performance</strong>
+      <p>Written in Rust 🦀 for speed and safety, with zero-cost abstractions and efficient memory management.</p>
+  </div>
+  <div class="feature-card">
+      <strong>🧩 Flexibility</strong>
+      <p>Supports multiple interpolation strategies: allows for an efficient implementation of custom interpolations.</p>
+  </div>
+  <div class="feature-card">
+      <strong>🌐 Multi-Language Support</strong>
+      <p>Native Rust 🦀 API, with bindings for various programming languages such as Python 🐍, Fortran, C, and C++.</p>
+  </div>
+  <div class="feature-card">
+      <strong>📊 (Physics) Features & Extensibility</strong>
+      <p>Very extensible: makes it easy to introduce new (Physics) features without introducing <b>technical debts</b>.</p>
+  </div>
+</div>
 
 ## Motivation
 
