@@ -4,10 +4,9 @@ theme:
   custom_dir: docs/overrides
   palette:
     scheme: slate
-    primary: indigo
-    accent: indigo
+    primary: custom
+    accent: custom
   features:
-    - navigation.tabs
     - navigation.sections
     - toc.integrate
     - navigation.top
@@ -25,7 +24,7 @@ nav:
   - Home: index.md
   - Installation: installation.md
   - Features: design-and-features.md
-  - Design: design.md
+  - Design Rationale: design.md
   - CLI Tutorials: cli-tutorials.md
   - Examples:
       - 'Python API': 'examples/neopdf-pyapi.ipynb'
