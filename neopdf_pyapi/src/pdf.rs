@@ -41,6 +41,21 @@ impl From<&ForcePositive> for PyForcePositive {
     }
 }
 
+#[pymethods]
+impl PyForcePositive {
+    fn __eq__(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+
+    fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        std::mem::discriminant(self).hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
 /// Python wrapper for the `neopdf::pdf::PDF` struct.
 ///
 /// This class provides a Python-friendly interface to the core PDF
