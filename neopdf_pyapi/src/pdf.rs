@@ -1,5 +1,3 @@
-use core::panic;
-
 use numpy::{IntoPyArray, PyArray2};
 use pyo3::prelude::*;
 
@@ -54,6 +52,22 @@ impl PyForcePositive {
         std::mem::discriminant(self).hash(&mut hasher);
         hasher.finish()
     }
+}
+
+/// This enum contains the different parameters that a grid can depend on.
+#[pyclass(name = "GridParams")]
+#[derive(Clone)]
+pub enum PyGridParams {
+    /// The nucleon mass number A.
+    A,
+    /// The strong coupling `alpha_s`.
+    AlphaS,
+    /// The momentum fraction.
+    X,
+    /// The transverse momentum.
+    KT,
+    /// The energy scale `Q^2`.
+    Q2,
 }
 
 /// Python wrapper for the `neopdf::pdf::PDF` struct.
@@ -182,14 +196,14 @@ impl PyPDF {
     /// list[float]
     ///     The subgrid knots for a given parameter.
     #[must_use]
-    pub fn subgrid_knots(&self, param: &str, subgrid_index: usize) -> Vec<f64> {
+    pub fn subgrid_knots(&self, param: &PyGridParams, subgrid_index: usize) -> Vec<f64> {
         // TODO: Replace `param` from `&str` to an enum.
-        match param.to_lowercase().as_str() {
-            "alphas" => self.pdf.subgrid(subgrid_index).alphas.to_vec(),
-            "x" => self.pdf.subgrid(subgrid_index).xs.to_vec(),
-            "q2" => self.pdf.subgrid(subgrid_index).q2s.to_vec(),
-            "nucleons" => self.pdf.subgrid(subgrid_index).nucleons.to_vec(),
-            _ => panic!("The argument {param} is not a valid parameter."),
+        match param {
+            PyGridParams::AlphaS => self.pdf.subgrid(subgrid_index).alphas.to_vec(),
+            PyGridParams::X => self.pdf.subgrid(subgrid_index).xs.to_vec(),
+            PyGridParams::Q2 => self.pdf.subgrid(subgrid_index).q2s.to_vec(),
+            PyGridParams::A => self.pdf.subgrid(subgrid_index).nucleons.to_vec(),
+            PyGridParams::KT => self.pdf.subgrid(subgrid_index).kts.to_vec(),
         }
     }
 
@@ -396,5 +410,6 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     );
     m.add_class::<PyPDF>()?;
     m.add_class::<PyForcePositive>()?;
+    m.add_class::<PyGridParams>()?;
     parent_module.add_submodule(&m)
 }
