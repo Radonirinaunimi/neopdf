@@ -1,3 +1,4 @@
+#include "neopdf_capi.h"
 #include <NeoPDF.hpp>
 #include <cassert>
 #include <cmath>
@@ -152,6 +153,14 @@ int main() {
         assert(std::abs(res1 - ref1) < TOLERANCE);
         assert(std::abs(res2 - ref2) < TOLERANCE);
     }
+
+    // Clip the interpolated values to be zero if negatives.
+    neo_pdfs[0].set_force_positive(NEOPDF_FORCE_POSITIVE_CLIP_NEGATIVE);
+    assert(neo_pdfs[0].is_force_positive() == NEOPDF_FORCE_POSITIVE_CLIP_NEGATIVE);
+
+    // Clip all the PDF members to be positive definite
+    neo_pdfs.set_force_positive_members(NEOPDF_FORCE_POSITIVE_CLIP_SMALL);
+    assert(neo_pdfs[4].is_force_positive() == NEOPDF_FORCE_POSITIVE_CLIP_SMALL);
 
     return EXIT_SUCCESS;
 }

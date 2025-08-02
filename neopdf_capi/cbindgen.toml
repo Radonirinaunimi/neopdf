@@ -34,6 +34,7 @@ prefix_with_name = true
 rename_variants = "ScreamingSnakeCase"
 
 [export.rename]
+"ForcePositive" = "neopdf_force_positive"
 "InterpolatorType" = "neopdf_interpolator_type"
 "SetType" = "neopdf_set_type"
 

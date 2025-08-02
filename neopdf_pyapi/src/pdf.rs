@@ -1,11 +1,74 @@
-use core::panic;
-
-use neopdf::pdf::PDF;
 use numpy::{IntoPyArray, PyArray2};
 use pyo3::prelude::*;
 
+use neopdf::gridpdf::ForcePositive;
+use neopdf::pdf::PDF;
+
 use super::gridpdf::PySubGrid;
 use super::metadata::PyMetaData;
+
+/// Python wrapper for the `ForcePositive` enum.
+#[pyclass(name = "ForcePositive")]
+#[derive(Clone)]
+pub enum PyForcePositive {
+    /// If the calculated PDF value is negative, it is forced to 0.
+    ClipNegative,
+    /// If the calculated PDF value is less than 1e-10, it is set to 1e-10.
+    ClipSmall,
+    /// No clipping is done, value is returned as it is.
+    NoClipping,
+}
+
+impl From<PyForcePositive> for ForcePositive {
+    fn from(fmt: PyForcePositive) -> Self {
+        match fmt {
+            PyForcePositive::ClipNegative => Self::ClipNegative,
+            PyForcePositive::ClipSmall => Self::ClipSmall,
+            PyForcePositive::NoClipping => Self::NoClipping,
+        }
+    }
+}
+
+impl From<&ForcePositive> for PyForcePositive {
+    fn from(fmt: &ForcePositive) -> Self {
+        match fmt {
+            ForcePositive::ClipNegative => Self::ClipNegative,
+            ForcePositive::ClipSmall => Self::ClipSmall,
+            ForcePositive::NoClipping => Self::NoClipping,
+        }
+    }
+}
+
+#[pymethods]
+impl PyForcePositive {
+    fn __eq__(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+
+    fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        std::mem::discriminant(self).hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
+/// This enum contains the different parameters that a grid can depend on.
+#[pyclass(name = "GridParams")]
+#[derive(Clone)]
+pub enum PyGridParams {
+    /// The nucleon mass number A.
+    A,
+    /// The strong coupling `alpha_s`.
+    AlphaS,
+    /// The momentum fraction.
+    X,
+    /// The transverse momentum.
+    KT,
+    /// The energy scale `Q^2`.
+    Q2,
+}
 
 /// Python wrapper for the `neopdf::pdf::PDF` struct.
 ///
@@ -133,14 +196,26 @@ impl PyPDF {
     /// list[float]
     ///     The subgrid knots for a given parameter.
     #[must_use]
-    pub fn subgrid_knots(&self, param: &str, subgrid_index: usize) -> Vec<f64> {
-        match param.to_lowercase().as_str() {
-            "alphas" => self.pdf.subgrid(subgrid_index).alphas.to_vec(),
-            "x" => self.pdf.subgrid(subgrid_index).xs.to_vec(),
-            "q2" => self.pdf.subgrid(subgrid_index).q2s.to_vec(),
-            "nucleons" => self.pdf.subgrid(subgrid_index).nucleons.to_vec(),
-            _ => panic!("The argument {param} is not a valid parameter."),
+    pub fn subgrid_knots(&self, param: &PyGridParams, subgrid_index: usize) -> Vec<f64> {
+        // TODO: Replace `param` from `&str` to an enum.
+        match param {
+            PyGridParams::AlphaS => self.pdf.subgrid(subgrid_index).alphas.to_vec(),
+            PyGridParams::X => self.pdf.subgrid(subgrid_index).xs.to_vec(),
+            PyGridParams::Q2 => self.pdf.subgrid(subgrid_index).q2s.to_vec(),
+            PyGridParams::A => self.pdf.subgrid(subgrid_index).nucleons.to_vec(),
+            PyGridParams::KT => self.pdf.subgrid(subgrid_index).kts.to_vec(),
         }
+    }
+
+    /// TODO
+    pub fn set_force_positive(&mut self, option: PyForcePositive) {
+        self.pdf.set_force_positive(option.into());
+    }
+
+    /// TODO
+    #[must_use]
+    pub fn is_force_positive(&self) -> PyForcePositive {
+        self.pdf.is_force_positive().into()
     }
 
     /// Retrieves the minimum x-value for this PDF set.
@@ -334,5 +409,7 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
         "import sys; sys.modules['neopdf.pdf'] = m"
     );
     m.add_class::<PyPDF>()?;
+    m.add_class::<PyForcePositive>()?;
+    m.add_class::<PyGridParams>()?;
     parent_module.add_submodule(&m)
 }
