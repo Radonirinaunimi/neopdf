@@ -168,6 +168,8 @@ impl GridArray {
 }
 
 /// TODO
+#[repr(C)]
+#[derive(Debug, Clone)]
 pub enum ForcePositive {
     /// If the calculated PDF value is negative, it is forced to 0.
     ClipNegative,

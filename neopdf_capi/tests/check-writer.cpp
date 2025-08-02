@@ -238,6 +238,11 @@ int main() {
         neopdf_pdf_free(wpdf);
     }
 
+    // Clip the interpolated values to zero when negatives
+    neopdf_pdf_set_force_positive(neo_pdfs.pdfs[0], NEOPDF_FORCE_POSITIVE_CLIP_NEGATIVE);
+    neopdf_force_positive pos_clip = neopdf_pdf_is_force_positive(neo_pdfs.pdfs[0]);
+    assert( pos_clip == NEOPDF_FORCE_POSITIVE_CLIP_NEGATIVE);
+
     // Cleanup
     neopdf_gridarray_collection_free(collection);
     neopdf_pdf_array_free(neo_pdfs);

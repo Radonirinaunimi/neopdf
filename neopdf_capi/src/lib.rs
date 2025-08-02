@@ -4,7 +4,7 @@ use std::ffi::CStr;
 use std::os::raw::{c_char, c_double, c_int};
 use std::slice;
 
-use neopdf::gridpdf::GridArray;
+use neopdf::gridpdf::{ForcePositive, GridArray};
 use neopdf::metadata::{InterpolatorType, MetaData, SetType};
 use neopdf::parser::SubgridData;
 use neopdf::pdf::PDF;
@@ -124,12 +124,12 @@ pub unsafe extern "C" fn neopdf_pdf_free(pdf: *mut NeoPDFWrapper) {
 /// After calling this function, the array and all PDF objects it contains
 /// become invalid and must not be used.
 #[no_mangle]
-pub unsafe extern "C" fn neopdf_pdf_array_free(array: NeoPDFMembers) {
-    if array.pdfs.is_null() {
+pub unsafe extern "C" fn neopdf_pdf_array_free(pdfs: NeoPDFMembers) {
+    if pdfs.pdfs.is_null() {
         return;
     }
 
-    let pdf_pointers = unsafe { Vec::from_raw_parts(array.pdfs, array.size, array.size) };
+    let pdf_pointers = unsafe { Vec::from_raw_parts(pdfs.pdfs, pdfs.size, pdfs.size) };
 
     for pdf_ptr in pdf_pointers {
         if !pdf_ptr.is_null() {
@@ -244,6 +244,43 @@ pub unsafe extern "C" fn neopdf_pdf_xfxq2_nd(
     let params = unsafe { slice::from_raw_parts(params, num_params) };
 
     pdf_obj.xfxq2(id, params)
+}
+
+/// Clip the interpolated values if they turned out negatives.
+///
+/// # Panics
+///
+/// This function will panic if the `pdf` pointer is null.
+///
+/// # Safety
+///
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object.
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_set_force_positive(
+    pdf: *mut NeoPDFWrapper,
+    option: ForcePositive,
+) {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &mut (*pdf).0 };
+
+    pdf_obj.set_force_positive(option);
+}
+
+/// Returns the value of `ForcePositive` defining the PDF grid.
+///
+/// # Panics
+///
+/// This function will panic if the `pdf` pointer is null.
+///
+/// # Safety
+///
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object.
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_is_force_positive(pdf: *mut NeoPDFWrapper) -> ForcePositive {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &mut (*pdf).0 };
+
+    pdf_obj.is_force_positive().clone()
 }
 
 /// Computes the `alpha_s` value at a given Q2.

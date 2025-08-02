@@ -146,12 +146,32 @@ impl PDF {
         }
     }
 
-    /// TODO
+    /// Clip the negative values for the `PDF` object.
+    ///
+    /// # Arguments
+    ///
+    /// * `option` - The method used to clip negative values.
     pub fn set_force_positive(&mut self, option: ForcePositive) {
         self.grid_pdf.set_force_positive(option);
     }
 
-    /// TODO
+    /// Clip the negative values for all the `PDF` objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `pdfs` - A `Vec<PDF>` where each element is a `PDF` instance.
+    /// * `option` - The method used to clip negative values.
+    pub fn set_force_positive_members(pdfs: &mut [PDF], option: ForcePositive) {
+        for pdf in pdfs {
+            pdf.set_force_positive(option.clone());
+        }
+    }
+
+    /// Returns the clipping method used for a single `PDF` object.
+    ///
+    /// # Returns
+    ///
+    /// The clipping method given as a `ForcePositive` object.
     pub fn is_force_positive(&self) -> &ForcePositive {
         self.grid_pdf
             .force_positive
