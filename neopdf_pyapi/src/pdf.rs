@@ -216,6 +216,23 @@ impl PyPDF {
         self.pdf.set_force_positive(option.into());
     }
 
+    /// Clip the negative or small values for all the `PDF` objects.
+    ///
+    /// Parameters
+    /// ----------
+    /// pdfs : list[PDF]
+    ///     A list of `PDF` instances.
+    /// option : PyForcePositive
+    ///     The clipping method use to handle negative or small values.
+    #[staticmethod]
+    #[pyo3(name = "set_force_positive_members")]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn set_force_positive_members(pdfs: Vec<PyRefMut<Self>>, option: PyForcePositive) {
+        for mut pypdf in pdfs {
+            pypdf.set_force_positive(option.clone());
+        }
+    }
+
     /// Returns the clipping method used for a single `PDF` object.
     ///
     /// Returns

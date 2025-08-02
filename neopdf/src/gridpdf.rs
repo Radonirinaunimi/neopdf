@@ -333,11 +333,11 @@ impl GridPDF {
     ///
     /// # Arguments
     ///
-    /// TODO
+    /// * `points` - A slice where the last two elements are `x` and `q2`.
     ///
     /// # Returns
     ///
-    /// TODO
+    /// A tuple containing the `x` and `q2` values.
     pub fn get_x_q2(&self, points: &[f64]) -> (f64, f64) {
         match points {
             [.., x, q2] => (*x, *q2),
