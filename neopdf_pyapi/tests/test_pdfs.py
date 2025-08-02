@@ -2,6 +2,7 @@ import pytest
 import numpy as np
 
 from itertools import product
+from neopdf.pdf import ForcePositive
 
 
 @pytest.mark.parametrize("pdfname", ["NNPDF40_nnlo_as_01180", "MSHT20qed_an3lo"])
@@ -78,3 +79,23 @@ class TestPDFInterpolations:
             ref = lhapdf.alphasQ2(q2_point)
             res = neopdf.alphasQ2(q2_point)
             np.testing.assert_equal(res, ref)
+
+
+class TestForcePositive:
+    def test_force_positive(self, neo_pdf):
+        neopdf = neo_pdf("nNNPDF30_nlo_as_0118_A56_Z26")
+        assert neopdf.is_force_positive() == ForcePositive.NoClipping
+        neg_interp = neopdf.xfxQ2(21, 0.9, 1e2)
+        assert neg_interp < 0.0
+
+        # Clip negative values to zero
+        neopdf.set_force_positive(ForcePositive.ClipNegative)
+        assert neopdf.is_force_positive() == ForcePositive.ClipNegative
+        zero_interp = neopdf.xfxQ2(21, 0.9, 1e2)
+        assert zero_interp == 0.0
+
+        # Clip negative values to small positive definite
+        neopdf.set_force_positive(ForcePositive.ClipSmall)
+        assert neopdf.is_force_positive() == ForcePositive.ClipSmall
+        small_interp = neopdf.xfxQ2(21, 0.9, 1e2)
+        assert small_interp == 1e-10
