@@ -197,7 +197,6 @@ impl PyPDF {
     ///     The subgrid knots for a given parameter.
     #[must_use]
     pub fn subgrid_knots(&self, param: &PyGridParams, subgrid_index: usize) -> Vec<f64> {
-        // TODO: Replace `param` from `&str` to an enum.
         match param {
             PyGridParams::AlphaS => self.pdf.subgrid(subgrid_index).alphas.to_vec(),
             PyGridParams::X => self.pdf.subgrid(subgrid_index).xs.to_vec(),
@@ -207,12 +206,22 @@ impl PyPDF {
         }
     }
 
-    /// TODO
+    /// Clip the negative or small values for the `PDF` object.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : PyFrocePositive
+    ///     The clipping method use to handle negative or small values.
     pub fn set_force_positive(&mut self, option: PyForcePositive) {
         self.pdf.set_force_positive(option.into());
     }
 
-    /// TODO
+    /// Returns the clipping method used for a single `PDF` object.
+    ///
+    /// Returns
+    /// -------
+    /// PyForcePositive
+    ///     The clipping method used for the `PDF` object.
     #[must_use]
     pub fn is_force_positive(&self) -> PyForcePositive {
         self.pdf.is_force_positive().into()

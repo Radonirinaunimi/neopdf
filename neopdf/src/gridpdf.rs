@@ -167,7 +167,7 @@ impl GridArray {
     }
 }
 
-/// TODO
+/// Defines the methods for handling negative or small PDF values.
 #[repr(C)]
 #[derive(Debug, Clone)]
 pub enum ForcePositive {
@@ -213,12 +213,24 @@ impl GridPDF {
         }
     }
 
-    /// TODO
+    /// Sets the method for handling negative or small PDF values.
+    ///
+    /// # Arguments
+    ///
+    /// * `flag` - The `ForcePositive` enum variant specifying the clipping method.
     pub fn set_force_positive(&mut self, flag: ForcePositive) {
         self.force_positive = Some(flag);
     }
 
-    /// TODO
+    /// Applies the configured clipping method to a given PDF value.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The PDF value to which the clipping policy is applied.
+    ///
+    /// # Returns
+    ///
+    /// The clipped PDF value, according to the policy set by `set_force_positive`.
     pub fn apply_force_positive(&self, value: f64) -> f64 {
         match &self.force_positive {
             Some(ForcePositive::ClipNegative) => value.max(0.0),
