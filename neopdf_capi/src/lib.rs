@@ -266,6 +266,30 @@ pub unsafe extern "C" fn neopdf_pdf_set_force_positive(
     pdf_obj.set_force_positive(option);
 }
 
+/// Clip the interpolated values if they turned out negatives for all members.
+///
+/// # Panics
+///
+/// This function will panic if the `pdfs` pointer is null.
+///
+/// # Safety
+///
+/// The `pdfs` pointer must be a valid pointer to a `NeoPDFMembers` object.
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_set_force_positive_members(
+    pdfs: *mut NeoPDFMembers,
+    option: ForcePositive,
+) {
+    assert!(!pdfs.is_null());
+    let members = unsafe { &mut *pdfs };
+    let pdf_slice = unsafe { slice::from_raw_parts_mut(members.pdfs, members.size) };
+
+    for pdf_ptr in pdf_slice {
+        let pdf_obj = unsafe { &mut (**pdf_ptr).0 };
+        pdf_obj.set_force_positive(option.clone());
+    }
+}
+
 /// Returns the value of `ForcePositive` defining the PDF grid.
 ///
 /// # Panics

@@ -91,8 +91,11 @@ struct MetaData {
     }
 };
 
+class NeoPDFs; // Forward declaration
+
 /** @brief Base PDF class that instantiates the PDF object. */
 class NeoPDF {
+    friend class NeoPDFs; // Grant NeoPDFs access to private members
     private:
         /** @brief Underlying raw object. */
         NeoPDFWrapper* raw;
@@ -202,6 +205,16 @@ class NeoPDF {
             );
             return values;
         }
+
+        /** @brief Clip the interpolated values if they turned out negatives. */
+        void set_force_positive(neopdf_force_positive option) {
+            neopdf_pdf_set_force_positive(this->raw, option);
+        }
+
+        /** @brief Returns the value of `ForcePositive` defining the PDF grid. */
+        neopdf_force_positive is_force_positive() const {
+            return neopdf_pdf_is_force_positive(this->raw);
+        }
 };
 
 /** @brief Class to load and manage multiple PDF members. */
@@ -236,6 +249,18 @@ class NeoPDFs {
 
         /** @brief Access a specific PDF member by index with bounds checking (const version). */
         const NeoPDF& at(size_t index) const { return *pdf_members.at(index); }
+
+        /** @brief Clip the interpolated values if they turned out negatives for all members. */
+        void set_force_positive_members(neopdf_force_positive option) {
+            NeoPDFMembers members;
+            members.size = pdf_members.size();
+            std::vector<NeoPDFWrapper*> raw_pdfs;
+            for (const auto& pdf : pdf_members) {
+                raw_pdfs.push_back(pdf->raw);
+            }
+            members.pdfs = raw_pdfs.data();
+            neopdf_pdf_set_force_positive_members(&members, option);
+        }
 };
 
 /** @brief Class for writing NeoPDF grid data to a file. */
