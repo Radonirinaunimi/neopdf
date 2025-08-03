@@ -39,6 +39,16 @@ impl From<&ForcePositive> for PyForcePositive {
     }
 }
 
+/// Methods to load all the PDF members for a given set.
+#[pyclass(name = "LoaderMethod")]
+#[derive(Clone)]
+pub enum PyLoaderMethod {
+    /// Load the members in parallel using multi-threads.
+    Parallel,
+    /// Load the members in sequential.
+    Sequential,
+}
+
 #[pymethods]
 impl PyForcePositive {
     fn __eq__(&self, other: &Self) -> bool {
@@ -147,8 +157,14 @@ impl PyPDF {
     #[must_use]
     #[staticmethod]
     #[pyo3(name = "mkPDFs")]
-    pub fn mkpdfs(pdf_name: &str) -> Vec<Self> {
-        PDF::load_pdfs(pdf_name)
+    #[pyo3(signature = (pdf_name, method = &PyLoaderMethod::Parallel))]
+    pub fn mkpdfs(pdf_name: &str, method: &PyLoaderMethod) -> Vec<Self> {
+        let loader_method = match method {
+            PyLoaderMethod::Parallel => PDF::load_pdfs,
+            PyLoaderMethod::Sequential => PDF::load_pdfs_seq,
+        };
+
+        loader_method(pdf_name)
             .into_iter()
             .map(move |pdfobj| Self { pdf: pdfobj })
             .collect()
@@ -437,5 +453,6 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyPDF>()?;
     m.add_class::<PyForcePositive>()?;
     m.add_class::<PyGridParams>()?;
+    m.add_class::<PyLoaderMethod>()?;
     parent_module.add_submodule(&m)
 }
