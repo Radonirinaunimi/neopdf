@@ -1,5 +1,5 @@
 //! CLI logic for `NeoPDF` conversion utilities.
-//_!
+//!
 //! This module defines the command-line interface for converting LHAPDF sets to `NeoPDF` format
 //! and for combining multiple nuclear PDFs into a single `NeoPDF` file with explicit A dependence.
 
@@ -119,6 +119,10 @@ fn load_pdf_names(
 /// # Arguments
 ///
 /// * `cli` - The parsed command line interface structure containing the command and its arguments
+///
+/// # Errors
+///
+/// TODO
 ///
 /// # Returns
 ///

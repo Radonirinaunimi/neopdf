@@ -20,7 +20,6 @@
 //!
 //! See the documentation for [`PDF`] for more details on available methods and usage patterns.
 use ndarray::{Array1, Array2};
-use rayon::prelude::*;
 
 use super::gridpdf::{ForcePositive, GridArray, GridPDF};
 use super::metadata::MetaData;
@@ -32,27 +31,30 @@ use super::subgrid::{RangeParameters, SubGrid};
 /// Provides a unified interface for accessing the number of members and retrieving individual
 /// members as metadata and grid arrays.
 trait PdfSet: Send + Sync {
-    /// Returns the number of members in the PDF set.
-    fn num_members(&self) -> usize;
     /// Retrieves the metadata and grid array for the specified member index.
     fn member(&self, idx: usize) -> (MetaData, GridArray);
+
+    /// Retrieves the metadata and grid arrays for all members.
+    fn members(&self) -> Vec<(MetaData, GridArray)>;
 }
 
 impl PdfSet for LhapdfSet {
-    fn num_members(&self) -> usize {
-        self.info.num_members as usize
-    }
     fn member(&self, idx: usize) -> (MetaData, GridArray) {
         self.member(idx)
+    }
+
+    fn members(&self) -> Vec<(MetaData, GridArray)> {
+        self.members()
     }
 }
 
 impl PdfSet for NeopdfSet {
-    fn num_members(&self) -> usize {
-        self.info.num_members as usize
-    }
     fn member(&self, idx: usize) -> (MetaData, GridArray) {
         self.member(idx)
+    }
+
+    fn members(&self) -> Vec<(MetaData, GridArray)> {
+        self.members()
     }
 }
 
@@ -83,13 +85,10 @@ fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
 ///
 /// A vector of [`PDF`] instances, one for each member in the set.
 fn pdfsets_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
-    (0..set.num_members())
-        .into_par_iter()
-        .map(|idx| {
-            let (info, knot_array) = set.member(idx);
-            PDF {
-                grid_pdf: GridPDF::new(info, knot_array),
-            }
+    set.members()
+        .into_iter()
+        .map(|(info, knot_array)| PDF {
+            grid_pdf: GridPDF::new(info, knot_array),
         })
         .collect()
 }
