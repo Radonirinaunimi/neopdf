@@ -43,7 +43,7 @@ impl PyLhapdfSet {
     #[must_use]
     pub fn members(&self) -> Vec<(PyMetaData, PyGridArray)> {
         // TODO: Use the parallelized `members` in the crate
-        let num_members = self.inner.members().len();
+        let num_members = self.inner.members().collect::<Vec<_>>().len();
         (0..num_members).map(|idx| self.member(idx)).collect()
     }
 }

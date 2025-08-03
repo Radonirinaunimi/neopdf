@@ -35,7 +35,7 @@ trait PdfSet: Send + Sync {
     fn member(&self, idx: usize) -> (MetaData, GridArray);
 
     /// Retrieves the metadata and grid arrays for all members.
-    fn members(&self) -> Vec<(MetaData, GridArray)>;
+    fn members(&self) -> Box<dyn Iterator<Item = (MetaData, GridArray)> + Send + '_>;
 }
 
 impl PdfSet for LhapdfSet {
@@ -43,8 +43,8 @@ impl PdfSet for LhapdfSet {
         self.member(idx)
     }
 
-    fn members(&self) -> Vec<(MetaData, GridArray)> {
-        self.members()
+    fn members(&self) -> Box<dyn Iterator<Item = (MetaData, GridArray)> + Send + '_> {
+        Box::new(self.members())
     }
 }
 
@@ -53,8 +53,8 @@ impl PdfSet for NeopdfSet {
         self.member(idx)
     }
 
-    fn members(&self) -> Vec<(MetaData, GridArray)> {
-        self.members()
+    fn members(&self) -> Box<dyn Iterator<Item = (MetaData, GridArray)> + Send + '_> {
+        Box::new(self.members())
     }
 }
 
@@ -86,7 +86,6 @@ fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
 /// A vector of [`PDF`] instances, one for each member in the set.
 fn pdfsets_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
     set.members()
-        .into_iter()
         .map(|(info, knot_array)| PDF {
             grid_pdf: GridPDF::new(info, knot_array),
         })

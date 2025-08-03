@@ -85,12 +85,10 @@ impl LhapdfSet {
     ///
     /// # Returns
     ///
-    /// A vector of tuples, where each tuple contains the `MetaData` and `PdfData`
+    /// An iterator over tuples, where each tuple contains the `MetaData` and `GridArray`
     /// for a member of the set.
-    pub fn members(&self) -> Vec<(MetaData, GridArray)> {
-        (0..self.info.num_members as usize)
-            .map(|i| self.member(i))
-            .collect()
+    pub fn members(&self) -> impl Iterator<Item = (MetaData, GridArray)> + Send + '_ {
+        (0..self.info.num_members as usize).map(move |i| self.member(i))
     }
 
     /// Reads the `.info` file for a PDF set and deserializes it into an `Info` struct.
@@ -225,12 +223,11 @@ impl NeopdfSet {
     }
 
     /// TODO
-    pub fn members(&self) -> Vec<(MetaData, GridArray)> {
+    pub fn members(&self) -> impl Iterator<Item = (MetaData, GridArray)> {
         GridArrayCollection::decompress(&self.neopdf_setpath)
             .unwrap()
             .into_iter()
             .map(|grid| (grid.metadata.as_ref().clone(), grid.grid))
-            .collect()
     }
 }
 

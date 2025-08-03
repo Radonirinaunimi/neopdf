@@ -29,7 +29,7 @@ pub fn convert_lhapdf<P: AsRef<std::path::Path>>(
     output_path: P,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let lhapdf_set = LhapdfSet::new(pdf_name);
-    let members = lhapdf_set.members();
+    let members: Vec<_> = lhapdf_set.members().collect();
     if members.is_empty() {
         return Err("No members found in the LHAPDF set".into());
     }
@@ -83,7 +83,7 @@ pub fn combine_lhapdf_npdfs<P: AsRef<std::path::Path>>(
         };
         a_values.push(a);
         let set = LhapdfSet::new(pdf_name);
-        let members = set.members();
+        let members: Vec<_> = set.members().collect();
         if members.is_empty() {
             return Err(format!("No members found in set: {}", pdf_name).into());
         }
@@ -200,7 +200,7 @@ pub fn combine_lhapdf_alphas<P: AsRef<std::path::Path>>(
         };
         alphas_values.push(alphas);
         let set = LhapdfSet::new(pdf_name);
-        let members = set.members();
+        let members: Vec<_> = set.members().collect();
         if members.is_empty() {
             return Err(format!("No members found in set: {}", pdf_name).into());
         }
