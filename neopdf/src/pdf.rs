@@ -73,6 +73,26 @@ fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
     }
 }
 
+/// Loads all PDF members from a generic PDF set backend in sequential.
+///
+/// # Arguments
+///
+/// * `set` - The PDF set backend implementing [`PdfSet`].
+///
+/// # Returns
+///
+/// A vector of [`PDF`] instances, one for each member in the set.
+fn pdfsets_seq_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
+    (0..set.num_members())
+        .map(|idx| {
+            let (info, knot_array) = set.member(idx);
+            PDF {
+                grid_pdf: GridPDF::new(info, knot_array),
+            }
+        })
+        .collect()
+}
+
 /// Loads all PDF members from a generic PDF set backend in parallel.
 ///
 /// # Arguments
@@ -82,7 +102,7 @@ fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
 /// # Returns
 ///
 /// A vector of [`PDF`] instances, one for each member in the set.
-fn pdfsets_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
+fn pdfsets_par_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
     (0..set.num_members())
         .into_par_iter()
         .map(|idx| {
@@ -125,7 +145,7 @@ impl PDF {
         }
     }
 
-    /// Loads all members of a PDF set.
+    /// Loads all members of a PDF set in parallel.
     ///
     /// This function reads the `.info` file and all `.dat` member files
     /// to construct a `Vec<PDF>`, with each `PDF` instance representing a member
@@ -140,9 +160,30 @@ impl PDF {
     /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
     pub fn load_pdfs(pdf_name: &str) -> Vec<PDF> {
         if pdf_name.ends_with(".neopdf.lz4") {
-            pdfsets_loader(NeopdfSet::new(pdf_name))
+            pdfsets_par_loader(NeopdfSet::new(pdf_name))
         } else {
-            pdfsets_loader(LhapdfSet::new(pdf_name))
+            pdfsets_par_loader(LhapdfSet::new(pdf_name))
+        }
+    }
+
+    /// Loads all members of a PDF set in sequential.
+    ///
+    /// This function reads the `.info` file and all `.dat` member files
+    /// to construct a `Vec<PDF>`, with each `PDF` instance representing a member
+    /// of the set. The loading is performed in parallel.
+    ///
+    /// # Arguments
+    ///
+    /// * `pdf_name` - The name of the PDF set.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
+    pub fn load_pdfs_seq(pdf_name: &str) -> Vec<PDF> {
+        if pdf_name.ends_with(".neopdf.lz4") {
+            pdfsets_seq_loader(NeopdfSet::new(pdf_name))
+        } else {
+            pdfsets_seq_loader(LhapdfSet::new(pdf_name))
         }
     }
 
