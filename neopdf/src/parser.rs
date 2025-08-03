@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use super::gridpdf::GridArray;
 use super::manage::{ManageData, PdfSetFormat};
 use super::metadata::MetaData;
-use super::writer::{GridArrayCollection, GridArrayReader};
+use super::writer::{GridArrayCollection, GridArrayReader, LazyGridArrayIterator};
 
 /// Represents the data for a single subgrid within a PDF data file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,10 +91,14 @@ impl LhapdfSet {
         (0..self.info.num_members as usize).map(move |i| self.member(i))
     }
 
+    /// Consumes the set and returns a lazy iterator over its members.
+    pub fn into_lazy_members(self) -> impl Iterator<Item = (MetaData, GridArray)> + Send {
+        (0..self.info.num_members as usize).map(move |i| self.member(i))
+    }
+
     /// Reads the `.info` file for a PDF set and deserializes it into an `Info` struct.
     ///
     /// # Arguments
-    ///
     /// * `path` - The path to the `.info` file.
     ///
     /// # Returns
@@ -228,6 +232,15 @@ impl NeopdfSet {
             .unwrap()
             .into_iter()
             .map(|grid| (grid.metadata.as_ref().clone(), grid.grid))
+    }
+
+    /// TODO
+    pub fn into_lazy_members(
+        self,
+    ) -> impl Iterator<Item = Result<(MetaData, GridArray), Box<dyn std::error::Error>>> {
+        LazyGridArrayIterator::from_file(&self.neopdf_setpath)
+            .unwrap()
+            .map(|grid_result| grid_result.map(|grid| (grid.metadata.as_ref().clone(), grid.grid)))
     }
 }
 

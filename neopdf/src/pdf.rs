@@ -26,6 +26,8 @@ use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
 use super::subgrid::{RangeParameters, SubGrid};
 
+type Type = Result<(MetaData, GridArray), Box<dyn std::error::Error>>;
+
 /// Trait for abstracting over different PDF set backends (e.g., LHAPDF, NeoPDF).
 ///
 /// Provides a unified interface for accessing the number of members and retrieving individual
@@ -36,6 +38,9 @@ trait PdfSet: Send + Sync {
 
     /// Retrieves the metadata and grid arrays for all members.
     fn members(&self) -> Box<dyn Iterator<Item = (MetaData, GridArray)> + Send + '_>;
+
+    /// Consumes the set and returns a lazy iterator over its members.
+    fn into_lazy_members(self) -> Box<dyn Iterator<Item = Type> + Send>;
 }
 
 impl PdfSet for LhapdfSet {
@@ -46,6 +51,13 @@ impl PdfSet for LhapdfSet {
     fn members(&self) -> Box<dyn Iterator<Item = (MetaData, GridArray)> + Send + '_> {
         Box::new(self.members())
     }
+
+    fn into_lazy_members(
+        self,
+    ) -> Box<dyn Iterator<Item = Result<(MetaData, GridArray), Box<dyn std::error::Error>>> + Send>
+    {
+        Box::new(self.into_lazy_members().map(Ok))
+    }
 }
 
 impl PdfSet for NeopdfSet {
@@ -55,6 +67,13 @@ impl PdfSet for NeopdfSet {
 
     fn members(&self) -> Box<dyn Iterator<Item = (MetaData, GridArray)> + Send + '_> {
         Box::new(self.members())
+    }
+
+    fn into_lazy_members(
+        self,
+    ) -> Box<dyn Iterator<Item = Result<(MetaData, GridArray), Box<dyn std::error::Error>>> + Send>
+    {
+        Box::new(self.into_lazy_members())
     }
 }
 
@@ -90,6 +109,25 @@ fn pdfsets_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
             grid_pdf: GridPDF::new(info, knot_array),
         })
         .collect()
+}
+
+/// Lazily loads all PDF members from a generic PDF set backend.
+///
+/// # Arguments
+///
+/// * `set` - The PDF set backend implementing [`PdfSet`].
+///
+/// # Returns
+///
+/// An iterator over [`PDF`] instances, one for each member in the set.
+fn pdfsets_loader_lazy<T: PdfSet + Send + Sync + 'static>(
+    set: T,
+) -> Box<dyn Iterator<Item = Result<PDF, Box<dyn std::error::Error>>> + Send> {
+    Box::new(set.into_lazy_members().map(|member_result| {
+        member_result.map(|(info, knot_array)| PDF {
+            grid_pdf: GridPDF::new(info, knot_array),
+        })
+    }))
 }
 
 /// Represents a Parton Distribution Function (PDF) set.
@@ -141,6 +179,29 @@ impl PDF {
             pdfsets_loader(NeopdfSet::new(pdf_name))
         } else {
             pdfsets_loader(LhapdfSet::new(pdf_name))
+        }
+    }
+
+    /// Lazily loads all members of a PDF set.
+    ///
+    /// This function reads the `.info` file and all `.dat` member files
+    /// to construct a `Vec<PDF>`, with each `PDF` instance representing a member
+    /// of the set. The loading is performed in parallel.
+    ///
+    /// # Arguments
+    ///
+    /// * `pdf_name` - The name of the PDF set.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
+    pub fn load_pdfs_lazy(
+        pdf_name: &str,
+    ) -> Box<dyn Iterator<Item = Result<PDF, Box<dyn std::error::Error>>> + Send> {
+        if pdf_name.ends_with(".neopdf.lz4") {
+            pdfsets_loader_lazy(NeopdfSet::new(pdf_name))
+        } else {
+            pdfsets_loader_lazy(LhapdfSet::new(pdf_name))
         }
     }
 
