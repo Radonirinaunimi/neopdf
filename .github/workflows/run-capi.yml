@@ -1,4 +1,4 @@
-name: Run the C/C++-API tests 📦
+name: Run the C/C++/Fortran-API tests 📦
 
 on: [push]
 
