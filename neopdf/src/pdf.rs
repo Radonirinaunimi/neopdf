@@ -26,7 +26,21 @@ use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
 use super::subgrid::{RangeParameters, SubGrid};
 
-type Type = Result<(MetaData, GridArray), Box<dyn std::error::Error>>;
+#[derive(Debug)]
+pub struct SendableError(Box<dyn std::error::Error>);
+
+impl std::fmt::Display for SendableError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl std::error::Error for SendableError {}
+
+unsafe impl Send for SendableError {}
+unsafe impl Sync for SendableError {}
+
+type Type = Result<(MetaData, GridArray), SendableError>;
 
 /// Trait for abstracting over different PDF set backends (e.g., LHAPDF, NeoPDF).
 ///
@@ -52,10 +66,7 @@ impl PdfSet for LhapdfSet {
         Box::new(self.members())
     }
 
-    fn into_lazy_members(
-        self,
-    ) -> Box<dyn Iterator<Item = Result<(MetaData, GridArray), Box<dyn std::error::Error>>> + Send>
-    {
+    fn into_lazy_members(self) -> Box<dyn Iterator<Item = Type> + Send> {
         Box::new(self.into_lazy_members().map(Ok))
     }
 }
@@ -69,11 +80,11 @@ impl PdfSet for NeopdfSet {
         Box::new(self.members())
     }
 
-    fn into_lazy_members(
-        self,
-    ) -> Box<dyn Iterator<Item = Result<(MetaData, GridArray), Box<dyn std::error::Error>>> + Send>
-    {
-        Box::new(self.into_lazy_members())
+    fn into_lazy_members(self) -> Box<dyn Iterator<Item = Type> + Send> {
+        Box::new(
+            self.into_lazy_members()
+                .map(|res| res.map_err(SendableError)),
+        )
     }
 }
 
@@ -122,7 +133,7 @@ fn pdfsets_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
 /// An iterator over [`PDF`] instances, one for each member in the set.
 fn pdfsets_loader_lazy<T: PdfSet + Send + Sync + 'static>(
     set: T,
-) -> Box<dyn Iterator<Item = Result<PDF, Box<dyn std::error::Error>>> + Send> {
+) -> Box<dyn Iterator<Item = Result<PDF, SendableError>> + Send> {
     Box::new(set.into_lazy_members().map(|member_result| {
         member_result.map(|(info, knot_array)| PDF {
             grid_pdf: GridPDF::new(info, knot_array),
@@ -197,7 +208,7 @@ impl PDF {
     /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
     pub fn load_pdfs_lazy(
         pdf_name: &str,
-    ) -> Box<dyn Iterator<Item = Result<PDF, Box<dyn std::error::Error>>> + Send> {
+    ) -> Box<dyn Iterator<Item = Result<PDF, SendableError>> + Send> {
         if pdf_name.ends_with(".neopdf.lz4") {
             pdfsets_loader_lazy(NeopdfSet::new(pdf_name))
         } else {

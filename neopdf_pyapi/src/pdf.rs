@@ -1,8 +1,9 @@
 use numpy::{IntoPyArray, PyArray2};
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
 
 use neopdf::gridpdf::ForcePositive;
-use neopdf::pdf::PDF;
+use neopdf::pdf::{SendableError, PDF};
 
 use super::gridpdf::PySubGrid;
 use super::metadata::PyMetaData;
@@ -68,6 +69,30 @@ pub enum PyGridParams {
     KT,
     /// The energy scale `Q^2`.
     Q2,
+}
+
+/// An iterator over `PDF` objects.
+#[pyclass(name = "PDFIterator")]
+pub struct PyPDFIterator {
+    iter: Box<dyn Iterator<Item = Result<PDF, SendableError>> + Send>,
+}
+
+unsafe impl Send for PyPDFIterator {}
+unsafe impl Sync for PyPDFIterator {}
+
+#[pymethods]
+impl PyPDFIterator {
+    const fn __iter__(slf: PyRef<Self>) -> PyRef<Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<Self>) -> PyResult<Option<PyPDF>> {
+        match slf.iter.next() {
+            Some(Ok(pdf)) => Ok(Some(PyPDF { pdf })),
+            Some(Err(e)) => Err(PyRuntimeError::new_err(format!("PDF loading error: {e}"))),
+            None => Ok(None),
+        }
+    }
 }
 
 /// Python wrapper for the `neopdf::pdf::PDF` struct.
@@ -152,6 +177,30 @@ impl PyPDF {
             .into_iter()
             .map(move |pdfobj| Self { pdf: pdfobj })
             .collect()
+    }
+
+    /// Loads all members of the PDF set lazily.
+    ///
+    /// This function returns an iterator that loads each member of a given
+    /// PDF set lazily.
+    ///
+    /// Parameters
+    /// ----------
+    /// pdf_name : str
+    ///     The name of the PDF set.
+    ///
+    /// Returns
+    /// -------
+    /// PDFIterator
+    ///     An iterator over `PDF` instances, one for each member.
+    #[must_use]
+    #[staticmethod]
+    #[pyo3(name = "mkPDFs_lazy")]
+    pub fn mkpdfs_lazy(pdf_name: &str) -> PyPDFIterator {
+        let iter = PDF::load_pdfs_lazy(pdf_name);
+        PyPDFIterator {
+            iter: Box::new(iter),
+        }
     }
 
     /// Returns the list of `PID` values.
@@ -435,6 +484,7 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
         "import sys; sys.modules['neopdf.pdf'] = m"
     );
     m.add_class::<PyPDF>()?;
+    m.add_class::<PyPDFIterator>()?;
     m.add_class::<PyForcePositive>()?;
     m.add_class::<PyGridParams>()?;
     parent_module.add_submodule(&m)
