@@ -263,6 +263,68 @@ class NeoPDFs {
         }
 };
 
+/** @brief Class for lazily loading PDF members from a .neopdf.lz4 file. */
+class NeoPDFLazy {
+    private:
+        ::NeoPDFLazyIterator* raw_iter;
+
+    public:
+        /**
+         * @brief Constructor that initializes the lazy iterator for a given PDF set.
+         * @param pdf_name Name of the PDF set (must be a .neopdf.lz4 file).
+         * @throws std::runtime_error if the iterator cannot be created.
+         */
+        explicit NeoPDFLazy(const std::string& pdf_name) {
+            raw_iter = neopdf_pdf_load_lazy(pdf_name.c_str());
+            if (!raw_iter) {
+                throw std::runtime_error("Failed to create lazy iterator. Check if file is a .neopdf.lz4 file.");
+            }
+        }
+
+        /** @brief Destructor. */
+        ~NeoPDFLazy() {
+            if (raw_iter) {
+                neopdf_lazy_iterator_free(raw_iter);
+            }
+        }
+
+        /** @brief Move constructor. */
+        NeoPDFLazy(NeoPDFLazy&& other) noexcept : raw_iter(other.raw_iter) {
+            other.raw_iter = nullptr;
+        }
+
+        /** @brief Move assignment operator. */
+        NeoPDFLazy& operator=(NeoPDFLazy&& other) noexcept {
+            if (this != &other) {
+                if (raw_iter) {
+                    neopdf_lazy_iterator_free(raw_iter);
+                }
+                raw_iter = other.raw_iter;
+                other.raw_iter = nullptr;
+            }
+            return *this;
+        }
+
+        /** @brief Deleted copy semantics. */
+        NeoPDFLazy(const NeoPDFLazy&) = delete;
+        NeoPDFLazy& operator=(const NeoPDFLazy&) = delete;
+
+        /**
+         * @brief Get the next PDF member from the iterator.
+         * @return A unique_ptr to the NeoPDF object, or nullptr if the iteration is complete.
+         */
+        std::unique_ptr<NeoPDF> next() {
+            if (!raw_iter) {
+                return nullptr;
+            }
+            NeoPDFWrapper* pdf_raw = neopdf_lazy_iterator_next(raw_iter);
+            if (pdf_raw) {
+                return NeoPDF::from_raw(pdf_raw);
+            }
+            return nullptr;
+        }
+};
+
 /** @brief Class for writing NeoPDF grid data to a file. */
 class GridWriter {
     private:
