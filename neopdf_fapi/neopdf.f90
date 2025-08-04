@@ -25,6 +25,14 @@ module neopdf
         enumerator :: neopdf_subgrid_params
     end enum
 
+    enum, bind(c) ! :: neopdf_force_positive
+        enumerator :: neopdf_force_positive_clip_negative
+        enumerator :: neopdf_force_positive_clip_small
+        enumerator :: neopdf_force_positive_no_clipping
+
+        enumerator :: neopdf_force_positive
+    end enum
+
     interface
         function strlen(s) bind(c, name="strlen")
             use iso_c_binding
@@ -148,6 +156,25 @@ module neopdf
             real (c_double) :: params(*)
             integer (c_size_t), value :: num_params
             real (c_double) :: c_neopdf_pdf_xfxq2_nd
+        end function
+
+        subroutine c_neopdf_pdf_set_force_positive(pdf, option) bind(c, name="neopdf_pdf_set_force_positive")
+            use iso_c_binding
+            type (c_ptr), value :: pdf
+            integer (c_int), value :: option
+        end subroutine
+
+        subroutine c_neopdf_pdf_set_force_positive_members(pdfs, option) bind(c, name="neopdf_pdf_set_force_positive_members")
+            use iso_c_binding
+            import :: neopdf_pdf_members
+            type (neopdf_pdf_members) :: pdfs
+            integer (c_int), value :: option
+        end subroutine
+
+        function c_neopdf_pdf_is_force_positive(pdf) bind(c, name="neopdf_pdf_is_force_positive")
+            use iso_c_binding
+            type (c_ptr), value :: pdf
+            integer (c_int) :: c_neopdf_pdf_is_force_positive
         end function
     end interface
 
@@ -333,6 +360,27 @@ contains
         real (dp) :: res
 
         res = c_neopdf_pdf_xfxq2_nd(pdf%ptr, id, params, int(size(params), c_size_t))
+    end function
+
+    subroutine neopdf_pdf_set_force_positive(pdf, option)
+        implicit none
+        type (neopdf_pdf), intent(in) :: pdf
+        integer, intent(in) :: option
+        call c_neopdf_pdf_set_force_positive(pdf%ptr, option)
+    end subroutine
+
+    subroutine neopdf_pdf_set_force_positive_members(pdfs, option)
+        implicit none
+        type (neopdf_pdf_members), intent(inout) :: pdfs
+        integer, intent(in) :: option
+        call c_neopdf_pdf_set_force_positive_members(pdfs, option)
+    end subroutine
+
+    function neopdf_pdf_is_force_positive(pdf) result(res)
+        implicit none
+        type (neopdf_pdf), intent(in) :: pdf
+        integer :: res
+        res = c_neopdf_pdf_is_force_positive(pdf%ptr)
     end function
 
 end module
