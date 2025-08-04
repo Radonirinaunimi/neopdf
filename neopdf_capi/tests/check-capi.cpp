@@ -152,6 +152,68 @@ void test_all_pdf_members() {
     neopdf_pdf_array_free(neo_pdfs);
 }
 
+void test_lazy_loading() {
+    std::cout << "=== Test Lazy Loading of PDF Members ===\n";
+
+    // Disable LHAPDF banners to guarantee deterministic output
+    LHAPDF::setVerbosity(0);
+
+    std::string pdfname = "NNPDF40_nnlo_as_01180.neopdf.lz4";
+    NeoPDFLazyIterator* lazy_iter = neopdf_pdf_load_lazy(pdfname.c_str());
+
+    if (!lazy_iter) {
+        std::cerr << "Failed to load lazy iterator for " << pdfname << std::endl;
+        return;
+    }
+
+    std::cout << "Successfully loaded lazy iterator for " << pdfname << "\n";
+
+    // Test case: evaluate a simple point across all members
+    int pid = 1;
+    double x = 1e-9;
+    double q2 = 1.65 * 1.65;
+
+    std::cout << "\nEvaluating xfxQ2 for pid=" << pid
+              << ", x=" << std::scientific << x
+              << ", Q2=" << q2 << " across all members (lazily):\n";
+
+    std::cout << std::right
+        << std::setw(8) << "Member"
+        << std::setw(15) << "LHAPDF"
+        << std::setw(15) << "NeoPDF"
+        << std::setw(15) << "Rel. Diff." << "\n";
+    std::cout << std::string(53, '-') << "\n";
+
+    // Evaluate the same point across all PDF members
+    std::vector<double> results;
+    int member_idx = 0;
+    while (NeoPDFWrapper* pdf = neopdf_lazy_iterator_next(lazy_iter)) {
+        auto lha_pdf = std::unique_ptr<LHAPDF::PDF>(LHAPDF::mkPDF("NNPDF40_nnlo_as_01180", member_idx));
+
+        double expected = lha_pdf->xfxQ2(pid, x, q2);
+        double result = neopdf_pdf_xfxq2(pdf, pid, x, q2);
+
+        double reldif = std::abs(result - expected) / expected;
+        assert(std::abs(result - expected) < TOLERANCE);
+        results.push_back(result);
+
+        std::cout << std::right
+            << std::setw(8) << member_idx
+            << std::scientific << std::setprecision(8)
+            << std::setw(15) << expected
+            << std::setw(15) << result
+            << std::setw(15) << reldif << "\n";
+
+        neopdf_pdf_free(pdf); // Free the individual PDF member
+        member_idx++;
+    }
+
+    // Free the lazy iterator
+    neopdf_lazy_iterator_free(lazy_iter);
+
+    std::cout << "\nSuccessfully iterated through all members lazily.\n";
+}
+
 
 int main() {
     // Test loading single PDF member
@@ -159,6 +221,9 @@ int main() {
 
     // Test loading all the PDF members
     test_all_pdf_members();
+
+    // Test lazy loading of PDF members
+    test_lazy_loading();
 
     return EXIT_SUCCESS;
 }

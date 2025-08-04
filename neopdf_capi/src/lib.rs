@@ -138,6 +138,76 @@ pub unsafe extern "C" fn neopdf_pdf_array_free(pdfs: NeoPDFMembers) {
     }
 }
 
+/// Opaque pointer to a lazy PDF iterator object.
+pub struct NeoPDFLazyIterator(Box<dyn Iterator<Item = Result<PDF, Box<dyn std::error::Error>>>>);
+
+/// Loads a PDF set for lazy iteration.
+///
+/// This function is only supported for `.neopdf.lz4` files.
+/// Returns a pointer to a `NeoPDFLazyIterator`. The caller is responsible for
+/// freeing the memory using `neopdf_lazy_iterator_free`.
+///
+/// # Panics
+///
+/// This function will panic if the provided C string is not valid UTF-8.
+///
+/// # Safety
+///
+/// The `pdf_name` C string must be null-terminated and valid UTF-8.
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_load_lazy(pdf_name: *const c_char) -> *mut NeoPDFLazyIterator {
+    let c_str = unsafe { CStr::from_ptr(pdf_name) };
+    let pdf_name = c_str.to_str().expect("Invalid UTF-8 string");
+
+    if !pdf_name.ends_with(".neopdf.lz4") {
+        return std::ptr::null_mut();
+    }
+
+    let lazy_iter = PDF::load_pdfs_lazy(pdf_name);
+    let boxed_iter: Box<dyn Iterator<Item = Result<PDF, Box<dyn std::error::Error>>>> =
+        Box::new(lazy_iter);
+
+    Box::into_raw(Box::new(NeoPDFLazyIterator(boxed_iter)))
+}
+
+/// Retrieves the next PDF member from the lazy iterator.
+///
+/// Returns a pointer to a `NeoPDFWrapper` for the next member, or `NULL` if the
+/// iterator is exhausted or an error occurs. The caller is responsible for
+/// freeing the returned `NeoPDFWrapper` with `neopdf_pdf_free`.
+///
+/// # Safety
+///
+/// The `iter` pointer must be a valid pointer to a `NeoPDFLazyIterator` object.
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_lazy_iterator_next(
+    iter: *mut NeoPDFLazyIterator,
+) -> *mut NeoPDFWrapper {
+    if iter.is_null() {
+        return std::ptr::null_mut();
+    }
+    let iter_wrapper = unsafe { &mut (*iter).0 };
+
+    match iter_wrapper.next() {
+        Some(Ok(pdf)) => Box::into_raw(Box::new(NeoPDFWrapper(pdf))),
+        Some(Err(_)) => std::ptr::null_mut(), // Silently return null on error
+        None => std::ptr::null_mut(),
+    }
+}
+
+/// Frees a lazy PDF iterator object.
+///
+/// # Safety
+///
+/// The `iter` pointer must be a valid pointer to a `NeoPDFLazyIterator` object
+/// previously allocated by `neopdf_pdf_load_lazy`.
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_lazy_iterator_free(iter: *mut NeoPDFLazyIterator) {
+    if !iter.is_null() {
+        unsafe { drop(Box::from_raw(iter)) };
+    }
+}
+
 /// Retrieves the `x_min` for this PDF set.
 ///
 /// # Panics
