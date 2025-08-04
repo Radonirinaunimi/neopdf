@@ -26,6 +26,7 @@ use super::gridpdf::{ForcePositive, GridArray, GridPDF};
 use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
 use super::subgrid::{RangeParameters, SubGrid};
+use super::writer::LazyGridArrayIterator;
 
 /// Trait for abstracting over different PDF set backends (e.g., LHAPDF, NeoPDF).
 ///
@@ -185,6 +186,40 @@ impl PDF {
         } else {
             pdfsets_seq_loader(LhapdfSet::new(pdf_name))
         }
+    }
+
+    /// Creates an iterator that loads PDF members lazily.
+    ///
+    /// This function is suitable for `.neopdf.lz4` files, which support lazy loading.
+    /// It returns an iterator that yields `PDF` instances on demand, which is useful
+    /// for reducing memory consumption when working with large PDF sets.
+    ///
+    /// # Arguments
+    ///
+    /// * `pdf_name` - The name of the PDF set (must end with `.neopdf.lz4`).
+    ///
+    /// # Returns
+    ///
+    /// An iterator over `Result<PDF, Box<dyn std::error::Error>>`.
+    pub fn mk_pdfs_lazy(
+        pdf_name: &str,
+    ) -> impl Iterator<Item = Result<PDF, Box<dyn std::error::Error>>> {
+        assert!(
+            pdf_name.ends_with(".neopdf.lz4"),
+            "Lazy loading is only supported for .neopdf.lz4 files"
+        );
+
+        let lazy_iter = LazyGridArrayIterator::from_file(pdf_name).unwrap();
+
+        lazy_iter.map(|grid_array_with_metadata_result| {
+            grid_array_with_metadata_result.map(|grid_array_with_metadata| {
+                let info = (*grid_array_with_metadata.metadata).clone();
+                let knot_array = grid_array_with_metadata.grid;
+                PDF {
+                    grid_pdf: GridPDF::new(info, knot_array),
+                }
+            })
+        })
     }
 
     /// Clip the negative values for the `PDF` object.
