@@ -11,12 +11,14 @@
 //!   serialization.
 //! - Random access to individual grid members without loading the entire collection into memory.
 //! - Extraction of metadata without full decompression.
+//! - Lazy iteration over grid members for memory-efficient processing of large sets.
 //!
 //! # Key Types
 //!
 //! - [`GridArrayWithMetadata`]: Container for a grid and its associated metadata.
 //! - [`GridArrayCollection`]: Static interface for compressing and decompressing collections of grids.
 //! - [`GridArrayReader`]: Provides random access to individual grids in a compressed file.
+//! - [`LazyGridArrayIterator`]: Enables lazy, sequential iteration over grid members.
 //!
 //! See the documentation for each type for more details on available methods and usage patterns.
 use std::env;
@@ -329,6 +331,106 @@ impl GridArrayReader {
     }
 }
 
+/// Iterator for lazily reading [`GridArrayWithMetadata`] members from a compressed file.
+///
+/// Useful for memory-efficient sequential processing of large PDF sets.
+pub struct LazyGridArrayIterator {
+    cursor: std::io::Cursor<Vec<u8>>,
+    remaining: u64,
+    metadata: Arc<MetaData>,
+    buffer: Vec<u8>,
+}
+
+impl LazyGridArrayIterator {
+    /// Creates a new lazy iterator from a reader.
+    ///
+    /// # Arguments
+    ///
+    /// * `reader` - Any type implementing [`Read`].
+    ///
+    /// # Returns
+    ///
+    /// A [`LazyGridArrayIterator`] instance on success, or an error if reading fails.
+    pub fn new<R: Read>(reader: R) -> Result<Self, Box<dyn std::error::Error>> {
+        let mut decoder = FrameDecoder::new(reader);
+        let mut decompressed = Vec::new();
+        decoder.read_to_end(&mut decompressed)?;
+
+        let mut cursor = std::io::Cursor::new(decompressed);
+
+        let metadata_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let mut metadata_bytes = vec![0u8; metadata_size as usize];
+        cursor.read_exact(&mut metadata_bytes)?;
+        let metadata: MetaData = bincode::deserialize(&metadata_bytes)?;
+        let shared_metadata = Arc::new(metadata);
+
+        let count: u64 = bincode::deserialize_from(&mut cursor)?;
+
+        Ok(Self {
+            cursor,
+            remaining: count,
+            metadata: shared_metadata,
+            buffer: Vec::new(),
+        })
+    }
+
+    /// Creates a new lazy iterator from a file path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - Input file path.
+    ///
+    /// # Returns
+    ///
+    /// A [`LazyGridArrayIterator`] instance on success, or an error if reading fails.
+    pub fn from_file<P: AsRef<Path>>(path: P) -> Result<Self, Box<dyn std::error::Error>> {
+        let file = File::open(path)?;
+        let buf_reader = BufReader::new(file);
+        Self::new(buf_reader)
+    }
+
+    /// Returns a reference to the shared metadata.
+    pub fn metadata(&self) -> &Arc<MetaData> {
+        &self.metadata
+    }
+}
+
+impl Iterator for LazyGridArrayIterator {
+    type Item = Result<GridArrayWithMetadata, Box<dyn std::error::Error>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining == 0 {
+            return None;
+        }
+
+        let result = (|| -> Result<GridArrayWithMetadata, Box<dyn std::error::Error>> {
+            // Read size
+            let size: u64 = bincode::deserialize_from(&mut self.cursor)?;
+
+            // Read grid data
+            self.buffer.resize(size as usize, 0);
+            self.cursor.read_exact(&mut self.buffer)?;
+
+            let grid: GridArray = bincode::deserialize(&self.buffer)?;
+
+            Ok(GridArrayWithMetadata {
+                grid,
+                metadata: Arc::clone(&self.metadata),
+            })
+        })();
+
+        self.remaining -= 1;
+        Some(result)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let remaining = self.remaining as usize;
+        (remaining, Some(remaining))
+    }
+}
+
+impl ExactSizeIterator for LazyGridArrayIterator {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -387,6 +489,10 @@ mod tests {
             assert_eq!(g.metadata.set_desc, "Test PDF");
             assert_eq!(g.grid.pids, Array1::from(vec![1, 2, 3]));
         }
+
+        let g_iter = LazyGridArrayIterator::from_file(path).unwrap();
+        assert_eq!(g_iter.metadata().set_index, 1);
+        assert_eq!(g_iter.count(), 2);
     }
 
     fn test_grid() -> GridArray {

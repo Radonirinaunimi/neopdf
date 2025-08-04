@@ -26,7 +26,6 @@ use super::gridpdf::{ForcePositive, GridArray, GridPDF};
 use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
 use super::subgrid::{RangeParameters, SubGrid};
-use super::writer::LazyGridArrayIterator;
 
 /// Trait for abstracting over different PDF set backends (e.g., LHAPDF, NeoPDF).
 ///
@@ -201,7 +200,7 @@ impl PDF {
     /// # Returns
     ///
     /// An iterator over `Result<PDF, Box<dyn std::error::Error>>`.
-    pub fn mk_pdfs_lazy(
+    pub fn load_pdfs_lazy(
         pdf_name: &str,
     ) -> impl Iterator<Item = Result<PDF, Box<dyn std::error::Error>>> {
         assert!(
@@ -209,9 +208,9 @@ impl PDF {
             "Lazy loading is only supported for .neopdf.lz4 files"
         );
 
-        let lazy_iter = LazyGridArrayIterator::from_file(pdf_name).unwrap();
+        let iter_lazy = NeopdfSet::new(pdf_name).into_lazy_iterators();
 
-        lazy_iter.map(|grid_array_with_metadata_result| {
+        iter_lazy.map(|grid_array_with_metadata_result| {
             grid_array_with_metadata_result.map(|grid_array_with_metadata| {
                 let info = (*grid_array_with_metadata.metadata).clone();
                 let knot_array = grid_array_with_metadata.grid;

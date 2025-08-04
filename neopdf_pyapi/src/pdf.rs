@@ -218,7 +218,7 @@ impl PyPDF {
     #[pyo3(name = "mkPDFs_lazy")]
     pub fn mkpdfs_lazy(pdf_name: &str) -> PyLazyPDFs {
         PyLazyPDFs {
-            iter: Mutex::new(Box::new(PDF::mk_pdfs_lazy(pdf_name))),
+            iter: Mutex::new(Box::new(PDF::load_pdfs_lazy(pdf_name))),
         }
     }
 
