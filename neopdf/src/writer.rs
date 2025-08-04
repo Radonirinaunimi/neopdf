@@ -366,6 +366,11 @@ impl LazyGridArrayIterator {
 
         let count: u64 = bincode::deserialize_from(&mut cursor)?;
 
+        // Read and skip the offset table
+        let offset_table_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let mut offset_table_bytes = vec![0u8; offset_table_size as usize];
+        cursor.read_exact(&mut offset_table_bytes)?;
+
         Ok(Self {
             cursor,
             remaining: count,

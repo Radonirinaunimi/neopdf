@@ -81,6 +81,16 @@ class TestPDFInterpolations:
             np.testing.assert_equal(res, ref)
 
 
+class TestLazyLoader:
+    @pytest.mark.parametrize("pdfname", ["NNPDF40_nnlo_as_01180.neopdf.lz4"])
+    def test_lazy_loader(self, neo_pdfs_lazy, pdfname):
+        neopdfs = neo_pdfs_lazy(pdfname)
+
+        for pdf in neopdfs:
+            res = pdf.xfxQ2(21, 1e-5, 1e2)
+            assert isinstance(res, float)
+
+
 class TestForcePositive:
     def test_force_positive(self, neo_pdf):
         neopdf = neo_pdf("nNNPDF30_nlo_as_0118_A56_Z26")
