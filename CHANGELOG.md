@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `gridpdf::ForcePositive` enum to set the clipping method to negative
+  interpolated values.
+- Python API: Added `pdf:LoaderMehod` to select the method to load all the PDF
+  members.
+
 ### Changed
 
 - Modified `GridArray::pid_index` to accept both `0` and `21` for the Gluon.
