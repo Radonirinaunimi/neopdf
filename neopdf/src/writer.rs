@@ -10,8 +10,8 @@
 //! - Compression and decompression of multiple [`GridArray`]s with shared metadata using LZ4 and bincode
 //!   serialization.
 //! - Random access to individual grid members without loading the entire collection into memory.
-//! - Lazy iteration over grid members for memory-efficient processing of large sets.
 //! - Extraction of metadata without full decompression.
+//! - Lazy iteration over grid members for memory-efficient processing of large sets.
 //!
 //! # Key Types
 //!
@@ -365,6 +365,11 @@ impl LazyGridArrayIterator {
         let shared_metadata = Arc::new(metadata);
 
         let count: u64 = bincode::deserialize_from(&mut cursor)?;
+
+        // Read and skip the offset table
+        let offset_table_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let mut offset_table_bytes = vec![0u8; offset_table_size as usize];
+        cursor.read_exact(&mut offset_table_bytes)?;
 
         Ok(Self {
             cursor,
