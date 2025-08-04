@@ -1,7 +1,14 @@
 # Installation
 
-This guide provides detailed instructions for installing `NeoPDF `and its APIs for Rust, Python,
+This guide provides detailed instructions for installing `NeoPDF` and its APIs for Rust, Python,
 Fortran, and C/C++, as well as the command line interface (CLI).
+
+!!! danger "Development with Pixi"
+
+    For developers who want to contribute to NeoPDF or work with the source code and want a proper
+    environment manager, a `pixi.toml` configuration is provided to work with the [Pixi](https://pixi.sh/latest/)
+    environment and package manager. See the comprehensive [Development with Pixi](./development-with-pixi.md)
+    guide for detailed instructions on setting up a reproducible development environment.
 
 !!! note "Where to store PDF sets?"
 
