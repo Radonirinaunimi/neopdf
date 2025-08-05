@@ -8,7 +8,6 @@ theme:
     accent: custom
   features:
     - navigation.sections
-    - toc.integrate
     - navigation.top
     - search.suggest
     - search.highlight
@@ -23,6 +22,7 @@ extra_javascript:
 nav:
   - Home: index.md
   - Installation: installation.md
+  - Development with Pixi: development-with-pixi.md
   - Features: design-and-features.md
   - Design Rationale: design.md
   - CLI Tutorials: cli-tutorials.md

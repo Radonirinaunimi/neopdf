@@ -52,6 +52,13 @@ widely used, have limitations in terms of extensibility and features. `NeoPDF` a
 - **CLI Tools**: Command-line utilities that allow users to inspect the contents of a gird,
     convert LHAPDF/TMDlib format into `NeoPDF`, and perform interpolations.
 
+## Getting Started
+
+- **[Installation Guide](./installation.md)**: Complete installation instructions for all platforms and APIs
+- **[Development with Pixi](./development-with-pixi.md)**: Comprehensive guide for developers using Pixi for environment management
+- **[CLI Tutorials](./cli-tutorials.md)**: Learn how to use the command-line interface
+- **[Examples](./examples/)**: Code examples for Python, C++, C, and Fortran APIs
+
 ## Source Code & Bug Report
 
 - [GitHub Repository](https://github.com/radonirinaunimi/neopdf)

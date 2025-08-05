@@ -1,0 +1,76 @@
+[project]
+name = "neopdf"
+version = "0.1.0"
+authors = ["Tanjona R. Rabemananjara <tanjona.hepc@gmail.com>"]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-64", "win-64", "osx-arm64"]
+
+[dependencies]
+python = ">=3.10,<3.12"
+pip = "*"
+rust = "*"
+
+[activation.env]
+NEOPDF_DATA_PATH = "$PWD/neopdf-data"
+
+[feature.pyapi.dependencies]
+maturin = "*"
+numpy = "*"
+pytest = "*"
+pytest-cov = "*"
+
+[feature.capi.dependencies]
+c-compiler = "*"
+cxx-compiler = "*"
+gfortran = "*"
+cargo-c = "*"
+
+[feature.cli.dependencies]
+
+[feature.docs.dependencies]
+mkdocs = "*"
+mkdocs-material = "*"
+
+[environments]
+default = {features=["pyapi", "capi", "cli", "docs"]}
+
+[pypi-dependencies]
+mkdocs-roamlinks-plugin = "*"
+
+[tasks]
+# Python API
+install-pyapi = "maturin develop --manifest-path neopdf_pyapi/Cargo.toml"
+test-pyapi = "pytest neopdf_pyapi/tests"
+
+# C-API
+install-capi = "cargo cinstall --manifest-path neopdf_capi/Cargo.toml"
+test-capi = "make -C neopdf_capi/tests"
+
+# Command Line Interface (CLI)
+install-cli = "cargo install --path neopdf_cli"
+
+# Documentations
+docs = "mkdocs serve"
+
+[target.linux-64.tasks]
+test-rust = "cargo test --no-fail-fast --release"
+
+[target.win-64.tasks]
+test-rust = "cargo test --no-fail-fast --release"
+
+[target.osx-64.tasks]
+test-rust = { cmd = "cargo test --no-fail-fast --release", env = { MACOSX_DEPLOYMENT_TARGET = "11.0", SDKROOT = "$(xcrun --sdk macosx --show-sdk-path)" } }
+test-capi = "make -C neopdf_capi/tests"
+
+[target.osx-arm64.tasks]
+test-rust = { cmd = "cargo test --no-fail-fast --release", env = { MACOSX_DEPLOYMENT_TARGET = "11.0", SDKROOT = "$(xcrun --sdk macosx --show-sdk-path)" } }
+test-capi = "make -C neopdf_capi/tests"
+
+[target.linux-64.dependencies]
+lhapdf = "*"
+
+[target.osx-64.dependencies]
+lhapdf = "*"
+
+[target.osx-arm64.dependencies]
+lhapdf = "*"
