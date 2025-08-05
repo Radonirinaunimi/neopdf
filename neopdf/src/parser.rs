@@ -4,12 +4,12 @@
 //! set formats, including subgrid data extraction and metadata reading.
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use super::gridpdf::GridArray;
 use super::manage::{ManageData, PdfSetFormat};
 use super::metadata::MetaData;
-use super::writer::GridArrayReader;
+use super::writer::{GridArrayReader, LazyGridArrayIterator};
 
 /// Represents the data for a single subgrid within a PDF data file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -200,6 +200,7 @@ impl LhapdfSet {
 pub struct NeopdfSet {
     pub info: MetaData,
     grid_reader: GridArrayReader,
+    setpath: PathBuf,
 }
 
 impl NeopdfSet {
@@ -207,16 +208,25 @@ impl NeopdfSet {
     pub fn new(pdf_name: &str) -> Self {
         let manager = ManageData::new(pdf_name, PdfSetFormat::Neopdf);
         let neopdf_setpath = manager.set_path();
-        let grid_reader = GridArrayReader::from_file(neopdf_setpath).unwrap();
-        let info = grid_reader.metadata().as_ref().clone();
+        let grid_readers = GridArrayReader::from_file(neopdf_setpath).unwrap();
+        let metadata_info = grid_readers.metadata().as_ref().clone();
 
-        Self { info, grid_reader }
+        Self {
+            info: metadata_info,
+            grid_reader: grid_readers,
+            setpath: neopdf_setpath.to_path_buf(),
+        }
     }
 
     /// TODO
     pub fn member(&self, member: usize) -> (MetaData, GridArray) {
         let load_grid = self.grid_reader.load_grid(member).unwrap();
         (self.info.clone(), load_grid.grid)
+    }
+
+    /// TODO
+    pub fn into_lazy_iterators(&self) -> LazyGridArrayIterator {
+        LazyGridArrayIterator::from_file(&self.setpath).unwrap()
     }
 }
 

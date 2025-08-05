@@ -167,6 +167,18 @@ impl GridArray {
     }
 }
 
+/// Defines the methods for handling negative or small PDF values.
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub enum ForcePositive {
+    /// If the calculated PDF value is negative, it is forced to 0.
+    ClipNegative,
+    /// If the calculated PDF value is less than 1e-10, it is set to 1e-10.
+    ClipSmall,
+    /// No clipping is done, value is returned as it is.
+    NoClipping,
+}
+
 /// The main PDF grid interface, providing high-level methods for interpolation.
 pub struct GridPDF {
     /// The metadata associated with the PDF set.
@@ -177,6 +189,8 @@ pub struct GridPDF {
     interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
     /// An interpolator for the running of alpha_s.
     alphas_interpolator: Interp1DOwned<f64, AlphaSCubicInterpolation>,
+    /// Clip the values to positive definite numbers if negatives.
+    pub force_positive: Option<ForcePositive>,
 }
 
 impl GridPDF {
@@ -195,6 +209,34 @@ impl GridPDF {
             knot_array,
             interpolators,
             alphas_interpolator,
+            force_positive: None,
+        }
+    }
+
+    /// Sets the method for handling negative or small PDF values.
+    ///
+    /// # Arguments
+    ///
+    /// * `flag` - The `ForcePositive` enum variant specifying the clipping method.
+    pub fn set_force_positive(&mut self, flag: ForcePositive) {
+        self.force_positive = Some(flag);
+    }
+
+    /// Applies the configured clipping method to a given PDF value.
+    ///
+    /// # Arguments
+    ///
+    /// * `value` - The PDF value to which the clipping policy is applied.
+    ///
+    /// # Returns
+    ///
+    /// The clipped PDF value, according to the policy set by `set_force_positive`.
+    pub fn apply_force_positive(&self, value: f64) -> f64 {
+        match &self.force_positive {
+            Some(ForcePositive::ClipNegative) => value.max(0.0),
+            Some(ForcePositive::ClipSmall) => value.max(1e-10),
+            Some(ForcePositive::NoClipping) => value,
+            None => value,
         }
     }
 
@@ -253,9 +295,11 @@ impl GridPDF {
             Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
         })?;
 
-        self.interpolators[subgrid_idx][pid_idx]
+        let result = self.interpolators[subgrid_idx][pid_idx]
             .interpolate_point(points)
-            .map_err(|e| Error::InterpolationError(e.to_string()))
+            .map_err(|e| Error::InterpolationError(e.to_string()))?;
+
+        Ok(self.apply_force_positive(result))
     }
 
     /// Interpolates PDF values for multiple points in parallel.
@@ -289,11 +333,11 @@ impl GridPDF {
     ///
     /// # Arguments
     ///
-    /// TODO
+    /// * `points` - A slice where the last two elements are `x` and `q2`.
     ///
     /// # Returns
     ///
-    /// TODO
+    /// A tuple containing the `x` and `q2` values.
     pub fn get_x_q2(&self, points: &[f64]) -> (f64, f64) {
         match points {
             [.., x, q2] => (*x, *q2),

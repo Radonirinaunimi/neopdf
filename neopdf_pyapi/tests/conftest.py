@@ -3,6 +3,7 @@ import pytest
 import numpy as np
 
 from neopdf.pdf import PDF as NeoPDF
+from neopdf.pdf import LazyPDFs
 
 
 @pytest.fixture(scope="session")
@@ -24,6 +25,18 @@ def neo_pdfs():
     def _init_pdf(pdfname: str) -> NeoPDF:
         if pdfname not in cached_pdf:
             cached_pdf[pdfname] = NeoPDF.mkPDFs(pdfname)
+        return cached_pdf[pdfname]
+
+    return _init_pdf
+
+
+@pytest.fixture(scope="session")
+def neo_pdfs_lazy():
+    cached_pdf = {}
+
+    def _init_pdf(pdfname: str) -> LazyPDFs:
+        if pdfname not in cached_pdf:
+            cached_pdf[pdfname] = NeoPDF.mkPDFs_lazy(pdfname)
         return cached_pdf[pdfname]
 
     return _init_pdf

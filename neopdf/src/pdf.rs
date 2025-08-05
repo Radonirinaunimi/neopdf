@@ -22,7 +22,7 @@
 use ndarray::{Array1, Array2};
 use rayon::prelude::*;
 
-use super::gridpdf::{GridArray, GridPDF};
+use super::gridpdf::{ForcePositive, GridArray, GridPDF};
 use super::metadata::MetaData;
 use super::parser::{LhapdfSet, NeopdfSet};
 use super::subgrid::{RangeParameters, SubGrid};
@@ -73,6 +73,26 @@ fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
     }
 }
 
+/// Loads all PDF members from a generic PDF set backend in sequential.
+///
+/// # Arguments
+///
+/// * `set` - The PDF set backend implementing [`PdfSet`].
+///
+/// # Returns
+///
+/// A vector of [`PDF`] instances, one for each member in the set.
+fn pdfsets_seq_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
+    (0..set.num_members())
+        .map(|idx| {
+            let (info, knot_array) = set.member(idx);
+            PDF {
+                grid_pdf: GridPDF::new(info, knot_array),
+            }
+        })
+        .collect()
+}
+
 /// Loads all PDF members from a generic PDF set backend in parallel.
 ///
 /// # Arguments
@@ -82,7 +102,7 @@ fn pdfset_loader<T: PdfSet>(set: T, member: usize) -> PDF {
 /// # Returns
 ///
 /// A vector of [`PDF`] instances, one for each member in the set.
-fn pdfsets_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
+fn pdfsets_par_loader<T: PdfSet + Send + Sync>(set: T) -> Vec<PDF> {
     (0..set.num_members())
         .into_par_iter()
         .map(|idx| {
@@ -125,7 +145,7 @@ impl PDF {
         }
     }
 
-    /// Loads all members of a PDF set.
+    /// Loads all members of a PDF set in parallel.
     ///
     /// This function reads the `.info` file and all `.dat` member files
     /// to construct a `Vec<PDF>`, with each `PDF` instance representing a member
@@ -140,10 +160,98 @@ impl PDF {
     /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
     pub fn load_pdfs(pdf_name: &str) -> Vec<PDF> {
         if pdf_name.ends_with(".neopdf.lz4") {
-            pdfsets_loader(NeopdfSet::new(pdf_name))
+            pdfsets_par_loader(NeopdfSet::new(pdf_name))
         } else {
-            pdfsets_loader(LhapdfSet::new(pdf_name))
+            pdfsets_par_loader(LhapdfSet::new(pdf_name))
         }
+    }
+
+    /// Loads all members of a PDF set in sequential.
+    ///
+    /// This function reads the `.info` file and all `.dat` member files
+    /// to construct a `Vec<PDF>`, with each `PDF` instance representing a member
+    /// of the set. The loading is performed in parallel.
+    ///
+    /// # Arguments
+    ///
+    /// * `pdf_name` - The name of the PDF set.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<PDF>` where each element is a `PDF` instance for a member of the set.
+    pub fn load_pdfs_seq(pdf_name: &str) -> Vec<PDF> {
+        if pdf_name.ends_with(".neopdf.lz4") {
+            pdfsets_seq_loader(NeopdfSet::new(pdf_name))
+        } else {
+            pdfsets_seq_loader(LhapdfSet::new(pdf_name))
+        }
+    }
+
+    /// Creates an iterator that loads PDF members lazily.
+    ///
+    /// This function is suitable for `.neopdf.lz4` files, which support lazy loading.
+    /// It returns an iterator that yields `PDF` instances on demand, which is useful
+    /// for reducing memory consumption when working with large PDF sets.
+    ///
+    /// # Arguments
+    ///
+    /// * `pdf_name` - The name of the PDF set (must end with `.neopdf.lz4`).
+    ///
+    /// # Returns
+    ///
+    /// An iterator over `Result<PDF, Box<dyn std::error::Error>>`.
+    pub fn load_pdfs_lazy(
+        pdf_name: &str,
+    ) -> impl Iterator<Item = Result<PDF, Box<dyn std::error::Error>>> {
+        assert!(
+            pdf_name.ends_with(".neopdf.lz4"),
+            "Lazy loading is only supported for .neopdf.lz4 files"
+        );
+
+        let iter_lazy = NeopdfSet::new(pdf_name).into_lazy_iterators();
+
+        iter_lazy.map(|grid_array_with_metadata_result| {
+            grid_array_with_metadata_result.map(|grid_array_with_metadata| {
+                let info = (*grid_array_with_metadata.metadata).clone();
+                let knot_array = grid_array_with_metadata.grid;
+                PDF {
+                    grid_pdf: GridPDF::new(info, knot_array),
+                }
+            })
+        })
+    }
+
+    /// Clip the negative values for the `PDF` object.
+    ///
+    /// # Arguments
+    ///
+    /// * `option` - The method used to clip negative values.
+    pub fn set_force_positive(&mut self, option: ForcePositive) {
+        self.grid_pdf.set_force_positive(option);
+    }
+
+    /// Clip the negative values for all the `PDF` objects.
+    ///
+    /// # Arguments
+    ///
+    /// * `pdfs` - A `Vec<PDF>` where each element is a `PDF` instance.
+    /// * `option` - The method used to clip negative values.
+    pub fn set_force_positive_members(pdfs: &mut [PDF], option: ForcePositive) {
+        for pdf in pdfs {
+            pdf.set_force_positive(option.clone());
+        }
+    }
+
+    /// Returns the clipping method used for a single `PDF` object.
+    ///
+    /// # Returns
+    ///
+    /// The clipping method given as a `ForcePositive` object.
+    pub fn is_force_positive(&self) -> &ForcePositive {
+        self.grid_pdf
+            .force_positive
+            .as_ref()
+            .unwrap_or(&ForcePositive::NoClipping)
     }
 
     /// Interpolates the PDF value (xf) for a given nucleon, alphas, flavor, x, and Q2.

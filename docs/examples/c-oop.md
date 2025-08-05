@@ -1,7 +1,7 @@
 # C++ OOP API Example
 
 This example briefly demonstrates how to use the `NeoPDF` C++ OOP API to load and evaluate parton
-distributions.
+distributions. More examples can be found in [neopdf_capi/tests](https://github.com/Radonirinaunimi/neopdf/tree/master/neopdf_capi/tests).
 
 ## Prerequisites
 
@@ -26,7 +26,6 @@ to LHAPDF.
 ```cpp linenums="1"
 #include <LHAPDF/PDF.h>
 #include <LHAPDF/GridPDF.h>
-#include <neopdf_capi.h>
 #include <NeoPDF.hpp>
 #include <cassert>
 #include <cmath>
@@ -230,13 +229,54 @@ void test_all_pdf_members() {
     std::cout << "Relative Std Dev: " << std_dev / mean << "\n";
 }
 
-void test_raw_load_all() {
-    std::cout << "=== Test raw neopdf_pdf_load_all ===\n";
-    NeoPDFMembers raw_pdfs = neopdf_pdf_load_all("NNPDF40_nnlo_as_01180");
-    std::cout << "Loaded " << raw_pdfs.size << " PDF members (raw call)\n";
-    neopdf_pdf_array_free(raw_pdfs);
-}
+void test_lazy_loading() {
+    std::cout << "=== Test NeoPDFLazy class (lazy loading) ===\n";
 
+    // Disable LHAPDF banners to guarantee deterministic output
+    LHAPDF::setVerbosity(0);
+
+    std::string pdfname = "NNPDF40_nnlo_as_01180.neopdf.lz4";
+    NeoPDFLazy lazy_pdfs(pdfname);
+
+    std::cout << "Initialized lazy loader for " << pdfname << "\n";
+
+    // Test case: evaluate a simple point across all members
+    int pid = 1;
+    double x = 1e-9;
+    double q2 = 1.65 * 1.65;
+
+    std::cout << std::right
+        << std::setw(8) << "Member"
+        << std::setw(15) << "LHAPDF"
+        << std::setw(15) << "NeoPDF"
+        << std::setw(15) << "Rel. Diff." << "\n";
+    std::cout << std::string(53, '-') << "\n";
+
+    // Evaluate the same point across all PDF members
+    std::vector<double> results;
+    int member_idx = 0;
+    while (auto neo_pdf = lazy_pdfs.next()) {
+        const LHAPDF::PDF* basepdf = LHAPDF::mkPDF("NNPDF40_nnlo_as_01180", member_idx);
+        const LHAPDF::GridPDF& lha_pdf = *dynamic_cast<const LHAPDF::GridPDF*>(basepdf);
+
+        double expected = lha_pdf.xfxQ2(pid, x, q2);
+        double result = neo_pdf->xfxQ2(pid, x, q2);
+
+        double reldif = std::abs(result - expected) / expected;
+        assert(std::abs(result - expected) < TOLERANCE);
+        results.push_back(result);
+
+        std::cout << std::right
+            << std::setw(8) << member_idx
+            << std::scientific << std::setprecision(8)
+            << std::setw(15) << expected
+            << std::setw(15) << result
+            << std::setw(15) << reldif << "\n";
+        member_idx++;
+    }
+
+    std::cout << "\nSuccessfully iterated through all members lazily.\n";
+}
 
 int main() {
     // Test the computation of the PDF interpolations
@@ -247,6 +287,9 @@ int main() {
 
     // Test the PDF interpolations by loading all the members
     test_all_pdf_members();
+
+    // Test the lazy loading of PDF members
+    test_lazy_loading();
 
     return EXIT_SUCCESS;
 }

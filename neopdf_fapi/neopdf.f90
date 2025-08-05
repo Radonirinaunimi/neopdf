@@ -10,6 +10,55 @@ module neopdf
         type (c_ptr) :: ptr = c_null_ptr
     end type
 
+    type neopdf_lazy_iterator
+        type (c_ptr) :: ptr = c_null_ptr
+    end type
+
+    type neopdf_grid
+        type (c_ptr) :: ptr = c_null_ptr
+    end type
+
+    type neopdf_grid_array_collection
+        type (c_ptr) :: ptr = c_null_ptr
+    end type
+
+    type, bind(c) :: neopdf_physics_parameters
+        type (c_ptr) :: flavor_scheme = c_null_ptr
+        integer(c_int32_t) :: order_qcd
+        integer(c_int32_t) :: alphas_order_qcd
+        real(c_double) :: m_w
+        real(c_double) :: m_z
+        real(c_double) :: m_up
+        real(c_double) :: m_down
+        real(c_double) :: m_strange
+        real(c_double) :: m_charm
+        real(c_double) :: m_bottom
+        real(c_double) :: m_top
+    end type
+
+    type, bind(c) :: neopdf_metadata
+        type (c_ptr) :: set_desc = c_null_ptr
+        integer(c_int32_t) :: set_index
+        integer(c_int32_t) :: num_members
+        real(c_double) :: x_min
+        real(c_double) :: x_max
+        real(c_double) :: q_min
+        real(c_double) :: q_max
+        type (c_ptr) :: flavors = c_null_ptr
+        integer(c_size_t) :: num_flavors
+        type (c_ptr) :: format = c_null_ptr
+        type (c_ptr) :: alphas_q_values = c_null_ptr
+        integer(c_size_t) :: num_alphas_q
+        type (c_ptr) :: alphas_vals = c_null_ptr
+        integer(c_size_t) :: num_alphas_vals
+        logical(c_bool) :: polarised
+        integer(c_int) :: set_type
+        integer(c_int) :: interpolator_type
+        type (c_ptr) :: error_type = c_null_ptr
+        integer(c_int) :: hadron_pid
+        type(neopdf_physics_parameters) :: phys_params
+    end type
+
     type, bind(c) :: neopdf_pdf_members
         type (c_ptr) :: pdfs = c_null_ptr
         integer (c_size_t) :: size
@@ -25,12 +74,18 @@ module neopdf
         enumerator :: neopdf_subgrid_params
     end enum
 
+    enum, bind(c) ! :: neopdf_force_positive
+        enumerator :: neopdf_force_positive_clip_negative
+        enumerator :: neopdf_force_positive_clip_small
+        enumerator :: neopdf_force_positive_no_clipping
+
+        enumerator :: neopdf_force_positive
+    end enum
+
     interface
         function strlen(s) bind(c, name="strlen")
             use iso_c_binding
-
             implicit none
-
             type (c_ptr), value :: s
             integer (c_size_t)  :: strlen
         end function strlen
@@ -40,6 +95,21 @@ module neopdf
             character (c_char) :: pdf_name(*)
             integer (c_size_t), value :: member
         end function
+
+        type (c_ptr) function c_neopdf_pdf_load_lazy(pdf_name) bind(c, name="neopdf_pdf_load_lazy")
+            use iso_c_binding
+            character (c_char) :: pdf_name(*)
+        end function
+
+        type (c_ptr) function c_neopdf_lazy_iterator_next(iter) bind(c, name="neopdf_lazy_iterator_next")
+            use iso_c_binding
+            type (c_ptr), value :: iter
+        end function
+
+        subroutine c_neopdf_lazy_iterator_free(iter) bind(c, name="neopdf_lazy_iterator_free")
+            use iso_c_binding
+            type (c_ptr), value :: iter
+        end subroutine
 
         subroutine c_neopdf_pdf_free(pdf) bind(c, name="neopdf_pdf_free")
             use iso_c_binding
@@ -149,6 +219,85 @@ module neopdf
             integer (c_size_t), value :: num_params
             real (c_double) :: c_neopdf_pdf_xfxq2_nd
         end function
+
+        subroutine c_neopdf_pdf_set_force_positive(pdf, option) bind(c, name="neopdf_pdf_set_force_positive")
+            use iso_c_binding
+            type (c_ptr), value :: pdf
+            integer (c_int), value :: option
+        end subroutine
+
+        subroutine c_neopdf_pdf_set_force_positive_members(pdfs, option) bind(c, name="neopdf_pdf_set_force_positive_members")
+            use iso_c_binding
+            import :: neopdf_pdf_members
+            type (neopdf_pdf_members) :: pdfs
+            integer (c_int), value :: option
+        end subroutine
+
+        function c_neopdf_pdf_is_force_positive(pdf) bind(c, name="neopdf_pdf_is_force_positive")
+            use iso_c_binding
+            type (c_ptr), value :: pdf
+            integer (c_int) :: c_neopdf_pdf_is_force_positive
+        end function
+
+        type (c_ptr) function c_neopdf_grid_new() bind(c, name="neopdf_grid_new")
+            use iso_c_binding
+        end function
+
+        subroutine c_neopdf_grid_free(grid) bind(c, name="neopdf_grid_free")
+            use iso_c_binding
+            type (c_ptr), value :: grid
+        end subroutine
+
+        function c_neopdf_grid_add_subgrid(grid, nucleons, num_nucleons, alphas, num_alphas, kts, num_kts, xs, num_xs, q2s, num_q2s, grid_data, grid_data_len) bind(c, name="neopdf_grid_add_subgrid")
+            use iso_c_binding
+            type (c_ptr), value :: grid
+            real (c_double) :: nucleons(*)
+            integer (c_size_t), value :: num_nucleons
+            real (c_double) :: alphas(*)
+            integer (c_size_t), value :: num_alphas
+            real (c_double) :: kts(*)
+            integer (c_size_t), value :: num_kts
+            real (c_double) :: xs(*)
+            integer (c_size_t), value :: num_xs
+            real (c_double) :: q2s(*)
+            integer (c_size_t), value :: num_q2s
+            real (c_double) :: grid_data(*)
+            integer (c_size_t), value :: grid_data_len
+            integer (c_int) :: c_neopdf_grid_add_subgrid
+        end function
+
+        function c_neopdf_grid_set_flavors(grid, flavors, num_flavors) bind(c, name="neopdf_grid_set_flavors")
+            use iso_c_binding
+            type (c_ptr), value :: grid
+            integer (c_int) :: flavors(*)
+            integer (c_size_t), value :: num_flavors
+            integer (c_int) :: c_neopdf_grid_set_flavors
+        end function
+
+        type (c_ptr) function c_neopdf_gridarray_collection_new() bind(c, name="neopdf_gridarray_collection_new")
+            use iso_c_binding
+        end function
+
+        subroutine c_neopdf_gridarray_collection_free(collection) bind(c, name="neopdf_gridarray_collection_free")
+            use iso_c_binding
+            type (c_ptr), value :: collection
+        end subroutine
+
+        function c_neopdf_gridarray_collection_add_grid(collection, grid) bind(c, name="neopdf_gridarray_collection_add_grid")
+            use iso_c_binding
+            type (c_ptr), value :: collection
+            type (c_ptr), value :: grid
+            integer (c_int) :: c_neopdf_gridarray_collection_add_grid
+        end function
+
+        function c_neopdf_grid_compress(collection, metadata, output_path) bind(c, name="neopdf_grid_compress")
+            use iso_c_binding
+            import :: neopdf_metadata
+            type (c_ptr), value :: collection
+            type (neopdf_metadata) :: metadata
+            character (c_char) :: output_path(*)
+            integer (c_int) :: c_neopdf_grid_compress
+        end function
     end interface
 
 contains
@@ -183,6 +332,30 @@ contains
 
         neopdf_pdf_load = neopdf_pdf(c_neopdf_pdf_load(pdf_name // c_null_char, int(member, c_size_t)))
     end function
+
+    type (neopdf_lazy_iterator) function neopdf_pdf_load_lazy(pdf_name)
+        implicit none
+
+        character (*), intent(in) :: pdf_name
+
+        neopdf_pdf_load_lazy = neopdf_lazy_iterator(c_neopdf_pdf_load_lazy(pdf_name // c_null_char))
+    end function
+
+    type (neopdf_pdf) function neopdf_lazy_iterator_next(iter)
+        implicit none
+
+        type (neopdf_lazy_iterator), intent(in) :: iter
+
+        neopdf_lazy_iterator_next = neopdf_pdf(c_neopdf_lazy_iterator_next(iter%ptr))
+    end function
+
+    subroutine neopdf_lazy_iterator_free(iter)
+        implicit none
+
+        type (neopdf_lazy_iterator), intent(in) :: iter
+
+        call c_neopdf_lazy_iterator_free(iter%ptr)
+    end subroutine
 
     subroutine neopdf_pdf_free(pdf)
         implicit none
@@ -333,6 +506,82 @@ contains
         real (dp) :: res
 
         res = c_neopdf_pdf_xfxq2_nd(pdf%ptr, id, params, int(size(params), c_size_t))
+    end function
+
+    subroutine neopdf_pdf_set_force_positive(pdf, option)
+        implicit none
+        type (neopdf_pdf), intent(in) :: pdf
+        integer, intent(in) :: option
+        call c_neopdf_pdf_set_force_positive(pdf%ptr, option)
+    end subroutine
+
+    subroutine neopdf_pdf_set_force_positive_members(pdfs, option)
+        implicit none
+        type (neopdf_pdf_members), intent(inout) :: pdfs
+        integer, intent(in) :: option
+        call c_neopdf_pdf_set_force_positive_members(pdfs, option)
+    end subroutine
+
+    function neopdf_pdf_is_force_positive(pdf) result(res)
+        implicit none
+        type (neopdf_pdf), intent(in) :: pdf
+        integer :: res
+        res = c_neopdf_pdf_is_force_positive(pdf%ptr)
+    end function
+
+    type (neopdf_grid) function neopdf_grid_new()
+        implicit none
+        neopdf_grid_new = neopdf_grid(c_neopdf_grid_new())
+    end function
+
+    subroutine neopdf_grid_free(grid)
+        implicit none
+        type (neopdf_grid), intent(in) :: grid
+        call c_neopdf_grid_free(grid%ptr)
+    end subroutine
+
+    function neopdf_grid_add_subgrid(grid, nucleons, alphas, kts, xs, q2s, grid_data) result(res)
+        implicit none
+        type (neopdf_grid), intent(in) :: grid
+        real (dp), intent(in) :: nucleons(:), alphas(:), kts(:), xs(:), q2s(:), grid_data(:)
+        integer :: res
+        res = c_neopdf_grid_add_subgrid(grid%ptr, nucleons, int(size(nucleons), c_size_t), alphas, int(size(alphas), c_size_t), kts, int(size(kts), c_size_t), xs, int(size(xs), c_size_t), q2s, int(size(q2s), c_size_t), grid_data, int(size(grid_data), c_size_t))
+    end function
+
+    function neopdf_grid_set_flavors(grid, flavors) result(res)
+        implicit none
+        type (neopdf_grid), intent(in) :: grid
+        integer, intent(in) :: flavors(:)
+        integer :: res
+        res = c_neopdf_grid_set_flavors(grid%ptr, flavors, int(size(flavors), c_size_t))
+    end function
+
+    type (neopdf_grid_array_collection) function neopdf_gridarray_collection_new()
+        implicit none
+        neopdf_gridarray_collection_new = neopdf_grid_array_collection(c_neopdf_gridarray_collection_new())
+    end function
+
+    subroutine neopdf_gridarray_collection_free(collection)
+        implicit none
+        type (neopdf_grid_array_collection), intent(in) :: collection
+        call c_neopdf_gridarray_collection_free(collection%ptr)
+    end subroutine
+
+    function neopdf_gridarray_collection_add_grid(collection, grid) result(res)
+        implicit none
+        type (neopdf_grid_array_collection), intent(in) :: collection
+        type (neopdf_grid), intent(in) :: grid
+        integer :: res
+        res = c_neopdf_gridarray_collection_add_grid(collection%ptr, grid%ptr)
+    end function
+
+    function neopdf_grid_compress(collection, metadata, output_path) result(res)
+        implicit none
+        type (neopdf_grid_array_collection), intent(in) :: collection
+        type (neopdf_metadata), intent(in) :: metadata
+        character (*), intent(in) :: output_path
+        integer :: res
+        res = c_neopdf_grid_compress(collection%ptr, metadata, output_path // c_null_char)
     end function
 
 end module

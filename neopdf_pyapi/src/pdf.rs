@@ -1,11 +1,114 @@
-use core::panic;
-
-use neopdf::pdf::PDF;
 use numpy::{IntoPyArray, PyArray2};
 use pyo3::prelude::*;
+use std::sync::Mutex;
+
+use neopdf::gridpdf::ForcePositive;
+use neopdf::pdf::PDF;
 
 use super::gridpdf::PySubGrid;
 use super::metadata::PyMetaData;
+
+// Type aliases
+type LazyType = Result<PDF, Box<dyn std::error::Error>>;
+
+/// Python wrapper for the `ForcePositive` enum.
+#[pyclass(name = "ForcePositive")]
+#[derive(Clone)]
+pub enum PyForcePositive {
+    /// If the calculated PDF value is negative, it is forced to 0.
+    ClipNegative,
+    /// If the calculated PDF value is less than 1e-10, it is set to 1e-10.
+    ClipSmall,
+    /// No clipping is done, value is returned as it is.
+    NoClipping,
+}
+
+impl From<PyForcePositive> for ForcePositive {
+    fn from(fmt: PyForcePositive) -> Self {
+        match fmt {
+            PyForcePositive::ClipNegative => Self::ClipNegative,
+            PyForcePositive::ClipSmall => Self::ClipSmall,
+            PyForcePositive::NoClipping => Self::NoClipping,
+        }
+    }
+}
+
+impl From<&ForcePositive> for PyForcePositive {
+    fn from(fmt: &ForcePositive) -> Self {
+        match fmt {
+            ForcePositive::ClipNegative => Self::ClipNegative,
+            ForcePositive::ClipSmall => Self::ClipSmall,
+            ForcePositive::NoClipping => Self::NoClipping,
+        }
+    }
+}
+
+/// Methods to load all the PDF members for a given set.
+#[pyclass(name = "LoaderMethod")]
+#[derive(Clone)]
+pub enum PyLoaderMethod {
+    /// Load the members in parallel using multi-threads.
+    Parallel,
+    /// Load the members in sequential.
+    Sequential,
+}
+
+#[pymethods]
+impl PyForcePositive {
+    fn __eq__(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+
+    fn __hash__(&self) -> u64 {
+        use std::collections::hash_map::DefaultHasher;
+        use std::hash::{Hash, Hasher};
+        let mut hasher = DefaultHasher::new();
+        std::mem::discriminant(self).hash(&mut hasher);
+        hasher.finish()
+    }
+}
+
+/// This enum contains the different parameters that a grid can depend on.
+#[pyclass(name = "GridParams")]
+#[derive(Clone)]
+pub enum PyGridParams {
+    /// The nucleon mass number A.
+    A,
+    /// The strong coupling `alpha_s`.
+    AlphaS,
+    /// The momentum fraction.
+    X,
+    /// The transverse momentum.
+    KT,
+    /// The energy scale `Q^2`.
+    Q2,
+}
+
+/// Python wrapper for the `neopdf::pdf::PDF` struct.
+///
+/// This class provides a Python-friendly interface to the core PDF
+/// interpolation functionalities of the `neopdf` Rust library.
+#[pyclass(name = "LazyPDFs")]
+pub struct PyLazyPDFs {
+    iter: Mutex<Box<dyn Iterator<Item = LazyType> + Send>>,
+}
+
+#[pymethods]
+impl PyLazyPDFs {
+    const fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    #[allow(clippy::needless_pass_by_value)]
+    fn __next__(slf: PyRefMut<'_, Self>) -> PyResult<Option<PyPDF>> {
+        let mut iter = slf.iter.lock().unwrap();
+        match iter.next() {
+            Some(Ok(pdf)) => Ok(Some(PyPDF { pdf })),
+            Some(Err(e)) => Err(pyo3::exceptions::PyValueError::new_err(e.to_string())),
+            None => Ok(None),
+        }
+    }
+}
 
 /// Python wrapper for the `neopdf::pdf::PDF` struct.
 ///
@@ -84,11 +187,39 @@ impl PyPDF {
     #[must_use]
     #[staticmethod]
     #[pyo3(name = "mkPDFs")]
-    pub fn mkpdfs(pdf_name: &str) -> Vec<Self> {
-        PDF::load_pdfs(pdf_name)
+    #[pyo3(signature = (pdf_name, method = &PyLoaderMethod::Parallel))]
+    pub fn mkpdfs(pdf_name: &str, method: &PyLoaderMethod) -> Vec<Self> {
+        let loader_method = match method {
+            PyLoaderMethod::Parallel => PDF::load_pdfs,
+            PyLoaderMethod::Sequential => PDF::load_pdfs_seq,
+        };
+
+        loader_method(pdf_name)
             .into_iter()
             .map(move |pdfobj| Self { pdf: pdfobj })
             .collect()
+    }
+
+    /// Creates an iterator that loads PDF members lazily.
+    ///
+    /// This function is suitable for `.neopdf.lz4` files, which support lazy loading.
+    /// It returns an iterator that yields `PDF` instances on demand, which is useful
+    /// for reducing memory consumption when working with large PDF sets.
+    ///
+    /// # Arguments
+    ///
+    /// * `pdf_name` - The name of the PDF set (must end with `.neopdf.lz4`).
+    ///
+    /// # Returns
+    ///
+    /// An iterator over `Result<PDF, Box<dyn std::error::Error>>`.
+    #[must_use]
+    #[staticmethod]
+    #[pyo3(name = "mkPDFs_lazy")]
+    pub fn mkpdfs_lazy(pdf_name: &str) -> PyLazyPDFs {
+        PyLazyPDFs {
+            iter: Mutex::new(Box::new(PDF::load_pdfs_lazy(pdf_name))),
+        }
     }
 
     /// Returns the list of `PID` values.
@@ -133,14 +264,52 @@ impl PyPDF {
     /// list[float]
     ///     The subgrid knots for a given parameter.
     #[must_use]
-    pub fn subgrid_knots(&self, param: &str, subgrid_index: usize) -> Vec<f64> {
-        match param.to_lowercase().as_str() {
-            "alphas" => self.pdf.subgrid(subgrid_index).alphas.to_vec(),
-            "x" => self.pdf.subgrid(subgrid_index).xs.to_vec(),
-            "q2" => self.pdf.subgrid(subgrid_index).q2s.to_vec(),
-            "nucleons" => self.pdf.subgrid(subgrid_index).nucleons.to_vec(),
-            _ => panic!("The argument {param} is not a valid parameter."),
+    pub fn subgrid_knots(&self, param: &PyGridParams, subgrid_index: usize) -> Vec<f64> {
+        match param {
+            PyGridParams::AlphaS => self.pdf.subgrid(subgrid_index).alphas.to_vec(),
+            PyGridParams::X => self.pdf.subgrid(subgrid_index).xs.to_vec(),
+            PyGridParams::Q2 => self.pdf.subgrid(subgrid_index).q2s.to_vec(),
+            PyGridParams::A => self.pdf.subgrid(subgrid_index).nucleons.to_vec(),
+            PyGridParams::KT => self.pdf.subgrid(subgrid_index).kts.to_vec(),
         }
+    }
+
+    /// Clip the negative or small values for the `PDF` object.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : PyFrocePositive
+    ///     The clipping method use to handle negative or small values.
+    pub fn set_force_positive(&mut self, option: PyForcePositive) {
+        self.pdf.set_force_positive(option.into());
+    }
+
+    /// Clip the negative or small values for all the `PDF` objects.
+    ///
+    /// Parameters
+    /// ----------
+    /// pdfs : list[PDF]
+    ///     A list of `PDF` instances.
+    /// option : PyForcePositive
+    ///     The clipping method use to handle negative or small values.
+    #[staticmethod]
+    #[pyo3(name = "set_force_positive_members")]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn set_force_positive_members(pdfs: Vec<PyRefMut<Self>>, option: PyForcePositive) {
+        for mut pypdf in pdfs {
+            pypdf.set_force_positive(option.clone());
+        }
+    }
+
+    /// Returns the clipping method used for a single `PDF` object.
+    ///
+    /// Returns
+    /// -------
+    /// PyForcePositive
+    ///     The clipping method used for the `PDF` object.
+    #[must_use]
+    pub fn is_force_positive(&self) -> PyForcePositive {
+        self.pdf.is_force_positive().into()
     }
 
     /// Retrieves the minimum x-value for this PDF set.
@@ -334,5 +503,9 @@ pub fn register(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
         "import sys; sys.modules['neopdf.pdf'] = m"
     );
     m.add_class::<PyPDF>()?;
+    m.add_class::<PyLazyPDFs>()?;
+    m.add_class::<PyForcePositive>()?;
+    m.add_class::<PyGridParams>()?;
+    m.add_class::<PyLoaderMethod>()?;
     parent_module.add_submodule(&m)
 }

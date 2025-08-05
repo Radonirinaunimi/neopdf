@@ -237,6 +237,13 @@ pub fn test_xfxq2s() {
 }
 
 #[test]
+pub fn test_multi_members_loader() {
+    let pdfs = PDF::load_pdfs("NNPDF40_nnlo_as_01180");
+
+    assert!(pdfs.len() == 101);
+}
+
+#[test]
 pub fn test_boundary_extraction() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 

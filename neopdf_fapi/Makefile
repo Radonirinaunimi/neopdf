@@ -16,6 +16,12 @@ neopdf.o: neopdf.f90
 check-fapi: check-fapi.f90 neopdf.o
 	$(FC) $(FFLAGS) $< neopdf.o $(LHAPDF_LIBS) $(NEOPDF_LIBS) -o $@
 
+check-lazy-fapi: check-lazy-fapi.f90 neopdf.o
+	$(FC) $(FFLAGS) $< neopdf.o $(NEOPDF_LIBS) -o $@
+
+check-writer-fapi: check-writer-fapi.f90 neopdf.o
+	$(FC) $(FFLAGS) $< neopdf.o $(NEOPDF_LIBS) -o $@
+
 .PHONY: clean
 
 clean:
