@@ -10,6 +10,10 @@ module neopdf
         type (c_ptr) :: ptr = c_null_ptr
     end type
 
+    type neopdf_lazy_iterator
+        type (c_ptr) :: ptr = c_null_ptr
+    end type
+
     type, bind(c) :: neopdf_pdf_members
         type (c_ptr) :: pdfs = c_null_ptr
         integer (c_size_t) :: size
@@ -48,6 +52,21 @@ module neopdf
             character (c_char) :: pdf_name(*)
             integer (c_size_t), value :: member
         end function
+
+        type (c_ptr) function c_neopdf_pdf_load_lazy(pdf_name) bind(c, name="neopdf_pdf_load_lazy")
+            use iso_c_binding
+            character (c_char) :: pdf_name(*)
+        end function
+
+        type (c_ptr) function c_neopdf_lazy_iterator_next(iter) bind(c, name="neopdf_lazy_iterator_next")
+            use iso_c_binding
+            type (c_ptr), value :: iter
+        end function
+
+        subroutine c_neopdf_lazy_iterator_free(iter) bind(c, name="neopdf_lazy_iterator_free")
+            use iso_c_binding
+            type (c_ptr), value :: iter
+        end subroutine
 
         subroutine c_neopdf_pdf_free(pdf) bind(c, name="neopdf_pdf_free")
             use iso_c_binding
@@ -210,6 +229,30 @@ contains
 
         neopdf_pdf_load = neopdf_pdf(c_neopdf_pdf_load(pdf_name // c_null_char, int(member, c_size_t)))
     end function
+
+    type (neopdf_lazy_iterator) function neopdf_pdf_load_lazy(pdf_name)
+        implicit none
+
+        character (*), intent(in) :: pdf_name
+
+        neopdf_pdf_load_lazy = neopdf_lazy_iterator(c_neopdf_pdf_load_lazy(pdf_name // c_null_char))
+    end function
+
+    type (neopdf_pdf) function neopdf_lazy_iterator_next(iter)
+        implicit none
+
+        type (neopdf_lazy_iterator), intent(in) :: iter
+
+        neopdf_lazy_iterator_next = neopdf_pdf(c_neopdf_lazy_iterator_next(iter%ptr))
+    end function
+
+    subroutine neopdf_lazy_iterator_free(iter)
+        implicit none
+
+        type (neopdf_lazy_iterator), intent(in) :: iter
+
+        call c_neopdf_lazy_iterator_free(iter%ptr)
+    end subroutine
 
     subroutine neopdf_pdf_free(pdf)
         implicit none
