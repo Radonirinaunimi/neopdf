@@ -8,7 +8,6 @@ theme:
     accent: custom
   features:
     - navigation.sections
-    - toc.integrate
     - navigation.top
     - search.suggest
     - search.highlight
