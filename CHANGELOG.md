@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Added `pdf:mkpdfs_lazy` that loads the PDF members lazily and propagated the
-  methods into the Python, C/C++ and APIs.
+  methods into the Python, C/C++, and Fortran APIs.
 - Added `gridpdf::ForcePositive` enum to set the clipping method to negative
   interpolated values.
 - Python API: Added `pdf:LoaderMehod` to select the method to load all the PDF

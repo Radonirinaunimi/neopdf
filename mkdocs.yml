@@ -29,7 +29,7 @@ nav:
   - Examples:
       - 'Python API': 'examples/neopdf-pyapi.ipynb'
       - 'C++ OOP API': 'examples/c-oop.md'
-      - 'C API': 'examples/c.md'
+      - 'C/C++ API': 'examples/c.md'
       - 'Fortran API': 'examples/fortran.md'
 plugins:
   - search
