@@ -262,9 +262,8 @@ int main() {
     // Test the PDF interpolations by loading all the members
     test_all_pdf_members();
 
-    // TODO: Add the NeoPDF set to the container to in order for this to run.
     // Test the lazy loading of PDF members
-    // test_lazy_loading();
+    test_lazy_loading();
 
     return EXIT_SUCCESS;
 }

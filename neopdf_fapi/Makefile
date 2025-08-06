@@ -3,7 +3,7 @@ FFLAGS = -Wall -Wextra -O0 -g -ffree-line-length-none
 NEOPDF_LIBS != pkg-config neopdf_capi --libs
 LHAPDF_LIBS != pkg-config lhapdf --libs
 
-PROGRAMS = check-fapi
+PROGRAMS = check-fapi check-lazy-fapi check-writer-fapi
 
 all: $(PROGRAMS)
 
