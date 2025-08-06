@@ -31,6 +31,11 @@ pdf_sets=(
     NNPDFpol20_nnlo_as_01180
 )
 
+neopdf_sets=(
+    NNPDF40_nnlo_as_01180
+    nNNPDF30_nlo_as_0118
+)
+
 apt update
 apt install -y "${pkgs[@]}"
 
@@ -74,4 +79,9 @@ for pdf in "${pdf_sets[@]}"; do
     # see the following link why `--no-same-owner` may be necessary:
     # https://github.com/habitat-sh/builder/issues/365#issuecomment-382862233
     curl "https://lhapdfsets.web.cern.ch/current/${pdf}.tar.gz" | tar xzf - --no-same-owner -C /usr/share/LHAPDF
+done
+
+# Download NeoPDF sets
+for neo in "${NEOPDF_SETS[@]}"; do
+  wget --no-verbose --no-clobber -P /usr/share/LHAPDF "https://data.nnpdf.science/neopdf/data/${neo}.neopdf.lz4"
 done
