@@ -82,6 +82,6 @@ for pdf in "${pdf_sets[@]}"; do
 done
 
 # Download NeoPDF sets
-for neo in "${NEOPDF_SETS[@]}"; do
-  wget --no-verbose --no-clobber -P /usr/share/LHAPDF "https://data.nnpdf.science/neopdf/data/${neo}.neopdf.lz4"
+for neo in "${neopdf_sets[@]}"; do
+    wget --no-verbose --no-clobber -P /usr/share/LHAPDF "https://data.nnpdf.science/neopdf/data/${neo}.neopdf.lz4"
 done
