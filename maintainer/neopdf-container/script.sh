@@ -18,6 +18,7 @@ pkgs=(
     automake
     libtool
     cython3
+    wget
 )
 
 pdf_sets=(
