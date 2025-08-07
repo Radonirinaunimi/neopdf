@@ -59,7 +59,15 @@ widely used, have limitations in terms of extensibility and features. `NeoPDF` a
 - **[CLI Tutorials](./cli-tutorials.md)**: Learn how to use the command-line interface
 - **[Examples](./examples/)**: Code examples for Python, C++, C, and Fortran APIs
 
-## Source Code & Bug Report
+---
 
-- [GitHub Repository](https://github.com/radonirinaunimi/neopdf)
-- Issues and feature requests welcome!
+## Additional Resources
+
+- [Pixi Documentation](https://pixi.sh/latest/)
+- [Rust Book](https://doc.rust-lang.org/book/)
+- [PyO3 Documentation](https://pyo3.rs/)
+- [Cargo-c Documentation](https://crates.io/crates/cargo-c)
+- [Maturin Documentation](https://www.maturin.rs/)
+
+For more information about `NeoPDF` development, see the [Design and Features](./design-and-features.md)
+documentation.
