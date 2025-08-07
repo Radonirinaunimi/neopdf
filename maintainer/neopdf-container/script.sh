@@ -34,7 +34,6 @@ pdf_sets=(
 
 neopdf_sets=(
     NNPDF40_nnlo_as_01180
-    nNNPDF30_nlo_as_0118
 )
 
 apt update
