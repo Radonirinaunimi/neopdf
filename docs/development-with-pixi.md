@@ -426,16 +426,3 @@ pixi run cargo publish --manifest-path neopdf/Cargo.toml
 # Publish Python package
 pixi run maturin upload --manifest-path neopdf_pyapi/Cargo.toml target/wheels/*
 ```
-
----
-
-## Additional Resources
-
-- [Pixi Documentation](https://pixi.sh/latest/)
-- [Rust Book](https://doc.rust-lang.org/book/)
-- [PyO3 Documentation](https://pyo3.rs/)
-- [Cargo-c Documentation](https://crates.io/crates/cargo-c)
-- [Maturin Documentation](https://www.maturin.rs/)
-
-For more information about `NeoPDF` development, see the [Design and Features](./design-and-features.md)
-documentation.
