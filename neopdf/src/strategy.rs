@@ -1277,14 +1277,15 @@ where
     }
 }
 
-/// Implements a global N-dimensional interpolation using Chebyshev polynomials.
+/// Implements a global N-dimensional interpolation using Chebyshev polynomials with logarithmic
+/// coordinate scaling.
 ///
-/// This strategy, inspired by the method described in arXiv:2112.09703, fits a single,
-/// high-degree Chebyshev polynomial to the entire dataset. This approach can yield
-/// very high numerical accuracy, provided the underlying data is smooth and the grid
-/// points are specifically chosen as Chebyshev nodes.
+/// This strategy, inspired by the method described in arXiv:2112.09703, first transforms the input
+/// coordinates to their natural logarithms. It then fits a single, high-degree Chebyshev polynomial
+/// to the entire dataset in that log-transformed space.
 ///
 /// Key features:
+/// - **Logarithmic Scaling**: Coordinates are transformed via `x -> ln(x)` before interpolation.
 /// - **Global Nature**: The interpolation at any point depends on all data points in the grid.
 /// - **High Degree**: The degree of the interpolating polynomial is `N-1`, where `N` is the
 ///   number of grid points in each dimension.
@@ -1292,9 +1293,9 @@ where
 ///   points should correspond to the roots or extrema of Chebyshev polynomials.
 #[derive(Debug, Clone)]
 pub struct GlobalChebyshevInterpolation<const DIM: usize> {
-    // Pre-computed weights for the barycentric formula for each dimension
+    // Pre-computed weights for the barycentric formula for each dimension.
     weights: [Vec<f64>; DIM],
-    // Grid points in the t-domain [-1, 1] for each dimension
+    // Grid points in the t-domain [-1, 1] for each dimension.
     t_coords: [Vec<f64>; DIM],
 }
 
@@ -1354,7 +1355,6 @@ impl<const DIM: usize> GlobalChebyshevInterpolation<DIM> {
                 weights[j] = -1.0;
             }
         });
-        // The first and last weights are scaled by 1/2
         weights[0] *= 0.5;
         if n > 1 {
             weights[n - 1] *= 0.5;
@@ -1362,8 +1362,8 @@ impl<const DIM: usize> GlobalChebyshevInterpolation<DIM> {
         weights
     }
 
-    /// Evaluates the Chebyshev interpolant using the barycentric formula.
-    /// This is more numerically stable than direct evaluation of the high-degree polynomial.
+    /// Evaluates the Chebyshev interpolant using the barycentric formula. This approach is more
+    /// numerically stable than direct evaluation of the high-degree polynomial.
     fn barycentric_interpolate(t: f64, t_coords: &[f64], f_values: &[f64], weights: &[f64]) -> f64 {
         let mut numer = 0.0;
         let mut denom = 0.0;
@@ -1389,6 +1389,11 @@ where
 {
     fn init(&mut self, data: &InterpData1D<D>) -> Result<(), ValidateError> {
         let x_coords = data.grid[0].as_slice().unwrap();
+        if x_coords.iter().any(|&x| x <= 0.0) {
+            return Err(ValidateError::Other(
+                "The input values must be positive for logarithmic scaling".to_string(),
+            ));
+        }
         let n = x_coords.len();
         if n < 2 {
             return Err(ValidateError::Other(
@@ -1416,17 +1421,22 @@ where
 
         let x_min = x_coords[0];
         let x_max = *x_coords.last().unwrap();
-        if x_max == x_min {
-            return Ok(f_values[0]);
-        }
-        let t = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
 
-        if !(-1.0 - 1e-9..=1.0 + 1e-9).contains(&t) {
+        if x < x_min || x > x_max {
             return Err(InterpolateError::Other(format!(
                 "Input point {} is outside the grid range [{}, {}]",
                 x, x_min, x_max
             )));
         }
+
+        let log_x = x.ln();
+        let log_x_min = x_min.ln();
+        let log_x_max = x_max.ln();
+
+        if (log_x_max - log_x_min).abs() < 1e-15 {
+            return Ok(f_values[0]);
+        }
+        let t = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
 
         Ok(Self::barycentric_interpolate(
             t,
@@ -1448,6 +1458,11 @@ where
     fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
         for dim in 0..2 {
             let x_coords = data.grid[dim].as_slice().unwrap();
+            if x_coords.iter().any(|&x| x <= 0.0) {
+                return Err(ValidateError::Other(
+                    "The input values must be positive for logarithmic scaling".to_string(),
+                ));
+            }
             let n = x_coords.len();
             if n < 2 {
                 return Err(ValidateError::Other(
@@ -1474,11 +1489,29 @@ where
 
         let x_min = x_coords[0];
         let x_max = *x_coords.last().unwrap();
-        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
+        if x < x_min || x > x_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point x={} is outside the grid range [{}, {}]",
+                x, x_min, x_max
+            )));
+        }
+        let log_x = x.ln();
+        let log_x_min = x_min.ln();
+        let log_x_max = x_max.ln();
+        let t_x = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
 
         let y_min = y_coords[0];
         let y_max = *y_coords.last().unwrap();
-        let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
+        if y < y_min || y > y_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point y={} is outside the grid range [{}, {}]",
+                y, y_min, y_max
+            )));
+        }
+        let log_y = y.ln();
+        let log_y_min = y_min.ln();
+        let log_y_max = y_max.ln();
+        let t_y = 2.0 * (log_y - log_y_min) / (log_y_max - log_y_min) - 1.0;
 
         // Interpolate along y for each x grid line
         let mut y_interp_values = Vec::with_capacity(x_coords.len());
@@ -1513,6 +1546,11 @@ where
     fn init(&mut self, data: &InterpData3D<D>) -> Result<(), ValidateError> {
         for dim in 0..3 {
             let x_coords = data.grid[dim].as_slice().unwrap();
+            if x_coords.iter().any(|&x| x <= 0.0) {
+                return Err(ValidateError::Other(
+                    "The input values must be positive for logarithmic scaling".to_string(),
+                ));
+            }
             let n = x_coords.len();
             if n < 2 {
                 return Err(ValidateError::Other(
@@ -1540,15 +1578,42 @@ where
 
         let x_min = x_coords[0];
         let x_max = *x_coords.last().unwrap();
-        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
+        if x < x_min || x > x_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point x={} is outside the grid range [{}, {}]",
+                x, x_min, x_max
+            )));
+        }
+        let log_x = x.ln();
+        let log_x_min = x_min.ln();
+        let log_x_max = x_max.ln();
+        let t_x = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
 
         let y_min = y_coords[0];
         let y_max = *y_coords.last().unwrap();
-        let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
+        if y < y_min || y > y_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point y={} is outside the grid range [{}, {}]",
+                y, y_min, y_max
+            )));
+        }
+        let log_y = y.ln();
+        let log_y_min = y_min.ln();
+        let log_y_max = y_max.ln();
+        let t_y = 2.0 * (log_y - log_y_min) / (log_y_max - log_y_min) - 1.0;
 
         let z_min = z_coords[0];
         let z_max = *z_coords.last().unwrap();
-        let t_z = 2.0 * (z - z_min) / (z_max - z_min) - 1.0;
+        if z < z_min || z > z_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point z={} is outside the grid range [{}, {}]",
+                z, z_min, z_max
+            )));
+        }
+        let log_z = z.ln();
+        let log_z_min = z_min.ln();
+        let log_z_max = z_max.ln();
+        let t_z = 2.0 * (log_z - log_z_min) / (log_z_max - log_z_min) - 1.0;
 
         // Interpolate along z for each (x, y) grid plane
         let mut z_interp_values = Vec::with_capacity(x_coords.len() * y_coords.len());
@@ -2027,124 +2092,112 @@ mod tests {
     }
 
     #[test]
-    fn test_global_chebyshev_interpolation() {
-        // Test with a smooth function, e.g., cos(x) on a Chebyshev grid.
-        let n = 21; // Number of grid points (degree 20 polynomial)
-        let x_min = 0.0;
-        let x_max = std::f64::consts::PI;
+    fn test_global_chebyshev_interpolation_1d() {
+        let n = 21;
+        let x_min: f64 = 0.1;
+        let x_max: f64 = 10.0;
+        let u_min = x_min.ln();
+        let u_max = x_max.ln();
 
-        // 1. Create a Chebyshev grid in the physical domain [x_min, x_max]
-        // The canonical Chebyshev points t_j = cos(j*pi/(n-1)) are in [-1, 1]
         let x_coords: Vec<f64> = (0..n)
             .map(|j| {
                 let t_j = (std::f64::consts::PI * (n - 1 - j) as f64 / (n - 1) as f64).cos();
-                x_min + (x_max - x_min) * (t_j + 1.0) / 2.0
+                let u_j = u_min + (u_max - u_min) * (t_j + 1.0) / 2.0;
+                u_j.exp()
             })
             .collect();
 
-        // 2. Sample the function `cos(x)` on this grid
-        let f_values: Vec<f64> = x_coords.iter().map(|&x| x.cos()).collect();
-
-        // 3. Create the interpolator
+        let f_values: Vec<f64> = x_coords.iter().map(|&x| x.ln()).collect();
         let data = create_test_data_1d(x_coords, f_values);
         let mut cheby = GlobalChebyshevInterpolation::<1>::default();
         cheby.init(&data).unwrap();
 
-        // 4. Test interpolation at a point not on the grid
-        let x_test = std::f64::consts::PI / 4.0; // pi/4
-        let expected = x_test.cos();
+        let x_test: f64 = 2.5;
+        let expected = x_test.ln();
         let result = cheby.interpolate(&data, &[x_test]).unwrap();
+        assert_close(result, expected, 1e-9);
 
-        assert_close(result, expected, 1e-3); // High accuracy is expected
-
-        // 5. Test at a grid point
         let x_test_grid = data.grid[0].as_slice().unwrap()[n / 2];
-        let expected_grid = x_test_grid.cos();
+        let expected_grid = x_test_grid.ln();
         let result_grid = cheby.interpolate(&data, &[x_test_grid]).unwrap();
-        assert_close(result_grid, expected_grid, 1e-15); // Should be almost exact
+        assert_close(result_grid, expected_grid, 1e-15);
     }
 
     #[test]
     fn test_global_chebyshev_interpolation_2d() {
         let n = 11;
-        let x_min = 0.0;
-        let x_max = std::f64::consts::PI;
-        let y_min = 0.0;
-        let y_max = std::f64::consts::PI;
-
-        let create_grid = |n_points, min, max| {
+        let create_cheby_grid = |n_points, x_min: f64, x_max: f64| {
+            let u_min = x_min.ln();
+            let u_max = x_max.ln();
             (0..n_points)
                 .map(|j| {
                     let t_j = (std::f64::consts::PI * (n_points - 1 - j) as f64
                         / (n_points - 1) as f64)
                         .cos();
-                    min + (max - min) * (t_j + 1.0) / 2.0
+                    let u_j = u_min + (u_max - u_min) * (t_j + 1.0) / 2.0;
+                    u_j.exp()
                 })
                 .collect::<Vec<f64>>()
         };
 
-        let x_coords = create_grid(n, x_min, x_max);
-        let y_coords = create_grid(n, y_min, y_max);
+        let x_coords = create_cheby_grid(n, 0.1, 10.0);
+        let y_coords = create_cheby_grid(n, 0.1, 10.0);
 
         let f_values: Vec<f64> = x_coords
             .iter()
-            .flat_map(|&x| y_coords.iter().map(move |&y| x.cos() + y.cos()))
+            .flat_map(|&x| y_coords.iter().map(move |&y| x.ln() + y.ln()))
             .collect();
 
         let data = create_test_data_2d(x_coords, y_coords, f_values);
         let mut cheby = GlobalChebyshevInterpolation::<2>::default();
         cheby.init(&data).unwrap();
 
-        let x_test = std::f64::consts::PI / 4.0;
-        let y_test = std::f64::consts::PI / 3.0;
-        let expected = x_test.cos() + y_test.cos();
+        let x_test: f64 = 2.5;
+        let y_test: f64 = 3.5;
+        let expected = x_test.ln() + y_test.ln();
         let result = cheby.interpolate(&data, &[x_test, y_test]).unwrap();
 
-        assert_close(result, expected, 1e-3);
+        assert_close(result, expected, 1e-9);
     }
 
     #[test]
     fn test_global_chebyshev_interpolation_3d() {
         let n = 7;
-        let x_min = 0.0;
-        let x_max = std::f64::consts::PI;
-        let y_min = 0.0;
-        let y_max = std::f64::consts::PI;
-        let z_min = 0.0;
-        let z_max = std::f64::consts::PI;
-
-        let create_grid = |n_points, min, max| {
+        let create_cheby_grid = |n_points, x_min: f64, x_max: f64| {
+            let u_min = x_min.ln();
+            let u_max = x_max.ln();
             (0..n_points)
                 .map(|j| {
                     let t_j = (std::f64::consts::PI * (n_points - 1 - j) as f64
                         / (n_points - 1) as f64)
                         .cos();
-                    min + (max - min) * (t_j + 1.0) / 2.0
+                    let u_j = u_min + (u_max - u_min) * (t_j + 1.0) / 2.0;
+                    u_j.exp()
                 })
                 .collect::<Vec<f64>>()
         };
 
-        let x_coords = create_grid(n, x_min, x_max);
-        let y_coords = create_grid(n, y_min, y_max);
-        let z_coords = create_grid(n, z_min, z_max);
+        let x_coords = create_cheby_grid(n, 0.1, 10.0);
+        let y_coords = create_cheby_grid(n, 0.1, 10.0);
+        let z_coords = create_cheby_grid(n, 0.1, 10.0);
 
         let f_values: Vec<f64> = x_coords
             .iter()
             .cartesian_product(y_coords.iter())
             .cartesian_product(z_coords.iter())
-            .map(|((&x, &y), &z)| x.cos() + y.cos() + z.cos())
+            .map(|((&x, &y), &z)| x.ln() + y.ln() + z.ln())
             .collect();
 
         let data = create_test_data_3d(x_coords, y_coords, z_coords, f_values);
         let mut cheby = GlobalChebyshevInterpolation::<3>::default();
         cheby.init(&data).unwrap();
 
-        let x_test = std::f64::consts::PI / 4.0;
-        let y_test = std::f64::consts::PI / 3.0;
-        let z_test = std::f64::consts::PI / 2.0;
-        let expected = x_test.cos() + y_test.cos() + z_test.cos();
+        let x_test: f64 = 2.5;
+        let y_test: f64 = 3.5;
+        let z_test: f64 = 4.5;
+        let expected = x_test.ln() + y_test.ln() + z_test.ln();
         let result = cheby.interpolate(&data, &[x_test, y_test, z_test]).unwrap();
 
-        assert_close(result, expected, 1e-3);
+        assert_close(result, expected, 1e-9);
     }
 }
