@@ -25,6 +25,7 @@ nav:
   - Development with Pixi: development-with-pixi.md
   - Features: design-and-features.md
   - Design Rationale: design.md
+  - Custom Interpolation: custom-interpolation.md
   - CLI Tutorials: cli-tutorials.md
   - Examples:
       - 'Python API': 'examples/neopdf-pyapi.ipynb'
