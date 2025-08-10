@@ -190,8 +190,7 @@ pub unsafe extern "C" fn neopdf_lazy_iterator_next(
 
     match iter_wrapper.next() {
         Some(Ok(pdf)) => Box::into_raw(Box::new(NeoPDFWrapper(pdf))),
-        Some(Err(_)) => std::ptr::null_mut(), // Silently return null on error
-        None => std::ptr::null_mut(),
+        Some(Err(_)) | None => std::ptr::null_mut(),
     }
 }
 
