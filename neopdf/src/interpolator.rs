@@ -22,8 +22,8 @@ use ninterp::strategy::Linear;
 
 use super::metadata::InterpolatorType;
 use super::strategy::{
-    BilinearInterpolation, GlobalChebyshevInterpolation, LogBicubicInterpolation,
-    LogBilinearInterpolation, LogTricubicInterpolation,
+    BilinearInterpolation, LogBicubicInterpolation, LogBilinearInterpolation,
+    LogChebyshevInterpolation, LogTricubicInterpolation,
 };
 use super::subgrid::SubGrid;
 
@@ -187,12 +187,12 @@ impl InterpolatorFactory {
                 )
                 .expect("Failed to create 2D interpolator"),
             ),
-            InterpolatorType::GlobalChebyshev => Box::new(
+            InterpolatorType::LogChebyshev => Box::new(
                 Interp2D::new(
                     subgrid.xs.to_owned(),
                     subgrid.q2s.to_owned(),
                     grid_slice,
-                    GlobalChebyshevInterpolation::<2>::default(),
+                    LogChebyshevInterpolation::<2>::default(),
                     Extrapolate::Error,
                 )
                 .expect("Failed to create 2D interpolator"),
@@ -225,13 +225,13 @@ impl InterpolatorFactory {
                 )
                 .expect("Failed to create 3D interpolator"),
             ),
-            InterpolatorType::GlobalChebyshev => Box::new(
+            InterpolatorType::LogChebyshev => Box::new(
                 Interp3D::new(
                     subgrid.nucleons.to_owned(),
                     subgrid.xs.to_owned(),
                     subgrid.q2s.to_owned(),
                     reshaped_data,
-                    GlobalChebyshevInterpolation::<3>::default(),
+                    LogChebyshevInterpolation::<3>::default(),
                     Extrapolate::Error,
                 )
                 .expect("Failed to create 3D interpolator"),
@@ -264,13 +264,13 @@ impl InterpolatorFactory {
                 )
                 .expect("Failed to create 3D interpolator"),
             ),
-            InterpolatorType::GlobalChebyshev => Box::new(
+            InterpolatorType::LogChebyshev => Box::new(
                 Interp3D::new(
                     subgrid.alphas.to_owned(),
                     subgrid.xs.to_owned(),
                     subgrid.q2s.to_owned(),
                     reshaped_data,
-                    GlobalChebyshevInterpolation::<3>::default(),
+                    LogChebyshevInterpolation::<3>::default(),
                     Extrapolate::Error,
                 )
                 .expect("Failed to create 3D interpolator"),
@@ -303,13 +303,13 @@ impl InterpolatorFactory {
                 )
                 .expect("Failed to create 3D interpolator"),
             ),
-            InterpolatorType::GlobalChebyshev => Box::new(
+            InterpolatorType::LogChebyshev => Box::new(
                 Interp3D::new(
                     subgrid.kts.to_owned(),
                     subgrid.xs.to_owned(),
                     subgrid.q2s.to_owned(),
                     reshaped_data,
-                    GlobalChebyshevInterpolation::<3>::default(),
+                    LogChebyshevInterpolation::<3>::default(),
                     Extrapolate::Error,
                 )
                 .expect("Failed to create 3D interpolator"),

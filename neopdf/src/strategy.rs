@@ -504,303 +504,6 @@ where
     }
 }
 
-/// LogChebyshev interpolation strategy for PDF-like data.
-///
-/// This strategy implements bicubic-like interpolation using a Chebyshev polynomial basis
-/// with logarithmic coordinate scaling. It is functionally equivalent to bicubic interpolation
-/// but uses a different polynomial basis, which can have advantages in terms of numerical
-/// stability, though in this implementation the results are identical.
-///
-/// It is designed for interpolating Parton Distribution Functions (PDFs) where:
-/// - x-coordinates (e.g., Bjorken x) are logarithmically spaced.
-/// - y-coordinates (e.g., Q² values) are logarithmically spaced.
-/// - z-values (PDF values) are interpolated using Chebyshev polynomials.
-///
-/// This method uses a 4x4 grid of points around the interpolation point
-/// and provides C1 continuity, similar to bicubic interpolation.
-#[derive(Debug, Clone, Default, Deserialize, Serialize)]
-pub struct LogChebyshevInterpolation {
-    coeffs: Vec<f64>,
-}
-
-impl LogChebyshevInterpolation {
-    /// Find the interval for Chebyshev interpolation.
-    ///
-    /// This function determines the appropriate interval index `i` within a set of
-    /// coordinates `coords` such that `coords[i] <= x < coords[i+1]`. For Chebyshev
-    /// interpolation of degree 3, this index `i` is used to select the 4x4 grid of points
-    /// `[i-1, i, i+1, i+2]` that are relevant for the interpolation.
-    ///
-    /// # Arguments
-    ///
-    /// * `coords` - A slice of `f64` representing the sorted coordinate values.
-    /// * `x` - The `f64` value for which to find the interval.
-    ///
-    /// # Returns
-    ///
-    /// A `Result` containing the `usize` index of the lower bound of the interval
-    /// if successful, or an `InterpolateError` if `x` is out of bounds.
-    fn find_chebyshev_interval(coords: &[f64], x: f64) -> Result<usize, InterpolateError> {
-        // Find the interval [i, i+1] such that coords[i] <= x < coords[i+1]
-        let i = utils::find_interval_index(coords, x)?;
-        Ok(i)
-    }
-
-    /// Evaluates a 3rd-degree Chebyshev polynomial from coefficients.
-    ///
-    /// The interpolation is done on the interval `t` in `[0, 1]`. The variable is mapped to
-    /// `z` in `[-1, 1]` for the Chebyshev polynomial evaluation.
-    pub fn chebyshev_interpolate_from_coeffs(t: f64, coeffs: &[f64; 4]) -> f64 {
-        let z = 2.0 * t - 1.0;
-        let c = coeffs; // c0, c1, c2, c3
-
-        // Clenshaw's algorithm for n=3
-        let y3 = c[3];
-        let y2 = c[2] + 2.0 * z * y3;
-        let y1 = c[1] + 2.0 * z * y2 - y3;
-
-        c[0] + z * y1 - y2
-    }
-
-    /// Calculates the derivative with respect to log(x) at a given knot.
-    /// This mirrors the _ddx function in LHAPDF's C++ implementation.
-    pub fn calculate_ddx<D>(data: &InterpData2D<D>, ix: usize, iq2: usize) -> f64
-    where
-        D: Data<Elem = f64> + RawDataClone + Clone,
-    {
-        let nxknots = data.grid[0].len();
-        let x_coords = data.grid[0].as_slice().unwrap();
-        let log_x_coords: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
-        let values = &data.values;
-
-        let del1 = match ix {
-            0 => 0.0,
-            i => log_x_coords[i] - log_x_coords[i - 1],
-        };
-
-        let del2 = match log_x_coords.get(ix + 1) {
-            Some(&next) => next - log_x_coords[ix],
-            None => 0.0,
-        };
-
-        if ix != 0 && ix != nxknots - 1 {
-            // Central difference
-            let lddx = (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1;
-            let rddx = (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2;
-            (lddx + rddx) / 2.0
-        } else if ix == 0 {
-            // Forward difference
-            (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2
-        } else if ix == nxknots - 1 {
-            // Backward difference
-            (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1
-        } else {
-            // This case should ideally not be reached given the checks above
-            panic!("Should not reach here: Invalid index for derivative calculation.");
-        }
-    }
-
-    /// Computes the Chebyshev polynomial coefficients for interpolation.
-    fn compute_polynomial_coefficients<D>(data: &InterpData2D<D>) -> Vec<f64>
-    where
-        D: Data<Elem = f64> + RawDataClone + Clone,
-    {
-        let nxknots = data.grid[0].len();
-        let nq2knots = data.grid[1].len();
-        let values = &data.values;
-
-        // The shape of the coefficients array: (nxknots-1) * nq2knots * 4 (for c0,c1,c2,c3)
-        let mut coeffs: Vec<f64> = vec![0.0; (nxknots - 1) * nq2knots * 4];
-
-        for ix in 0..nxknots - 1 {
-            for iq2 in 0..nq2knots {
-                let dlogx = data.grid[0].as_slice().unwrap()[ix + 1].ln()
-                    - data.grid[0].as_slice().unwrap()[ix].ln();
-
-                let vl = values[[ix, iq2]];
-                let vh = values[[ix + 1, iq2]];
-                let vdl = Self::calculate_ddx(data, ix, iq2) * dlogx;
-                let vdh = Self::calculate_ddx(data, ix + 1, iq2) * dlogx;
-
-                // polynomial coefficients in monomial basis (a*t^3 + b*t^2 + c*t + d)
-                let a = vdh + vdl - 2.0 * vh + 2.0 * vl;
-                let b = 3.0 * vh - 3.0 * vl - 2.0 * vdl - vdh;
-                let c = vdl;
-                let d = vl;
-
-                // convert to Chebyshev coefficients
-                let c3 = a / 32.0;
-                let c2 = b / 8.0 + 6.0 * c3;
-                let c1 = c / 2.0 + 4.0 * c2 - 9.0 * c3;
-                let c0 = d + c1 - c2 + c3;
-
-                let base_idx = (ix * nq2knots + iq2) * 4;
-                coeffs[base_idx] = c0;
-                coeffs[base_idx + 1] = c1;
-                coeffs[base_idx + 2] = c2;
-                coeffs[base_idx + 3] = c3;
-            }
-        }
-        coeffs
-    }
-
-    /// Performs interpolation using pre-computed Chebyshev coefficients.
-    fn interpolate_with_coeffs<D>(
-        &self,
-        data: &InterpData2D<D>,
-        ix: usize,
-        iq2: usize,
-        u: f64,
-        v: f64,
-    ) -> f64
-    where
-        D: Data<Elem = f64> + RawDataClone + Clone,
-    {
-        let nq2knots = data.grid[1].len();
-
-        // Get the coefficients for the current cell (x-interpolation)
-        let base_idx_vl = (ix * nq2knots + iq2) * 4;
-        let coeffs_vl: [f64; 4] = self.coeffs[base_idx_vl..base_idx_vl + 4]
-            .try_into()
-            .unwrap();
-        let vl = Self::chebyshev_interpolate_from_coeffs(u, &coeffs_vl);
-
-        let base_idx_vh = (ix * nq2knots + iq2 + 1) * 4;
-        let coeffs_vh: [f64; 4] = self.coeffs[base_idx_vh..base_idx_vh + 4]
-            .try_into()
-            .unwrap();
-        let vh = Self::chebyshev_interpolate_from_coeffs(u, &coeffs_vh);
-
-        // Derivatives in Q2 (y-interpolation)
-        let log_q2_grid: Vec<f64> = data.grid[1]
-            .as_slice()
-            .unwrap()
-            .iter()
-            .map(|&qi| qi.ln())
-            .collect();
-
-        let dlogq_1 = log_q2_grid[iq2 + 1] - log_q2_grid[iq2];
-
-        let vdl: f64;
-        let vdh: f64;
-
-        if iq2 == 0 {
-            // Forward difference for lower q
-            vdl = vh - vl;
-            // Central difference for higher q
-            let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
-            let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4]
-                .try_into()
-                .unwrap();
-            let vhh = Self::chebyshev_interpolate_from_coeffs(u, &coeffs_vhh);
-            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
-            vdh = (vdl + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
-        } else if iq2 == nq2knots - 2 {
-            // Backward difference for higher q
-            vdh = vh - vl;
-            // Central difference for lower q
-            let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
-            let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4]
-                .try_into()
-                .unwrap();
-            let vll = Self::chebyshev_interpolate_from_coeffs(u, &coeffs_vll);
-            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
-            vdl = (vdh + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
-        } else {
-            // Central difference for both q
-            let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
-            let coeffs_vll: [f64; 4] = self.coeffs[vll_base_idx..vll_base_idx + 4]
-                .try_into()
-                .unwrap();
-            let vll = Self::chebyshev_interpolate_from_coeffs(u, &coeffs_vll);
-            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
-
-            let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
-            let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4]
-                .try_into()
-                .unwrap();
-            let vhh = Self::chebyshev_interpolate_from_coeffs(u, &coeffs_vhh);
-            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
-
-            vdl = ((vh - vl) + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
-            vdh = ((vh - vl) + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
-        }
-
-        utils::hermite_cubic_interpolate(v, vl, vdl, vh, vdh)
-    }
-}
-
-impl<D> Strategy2D<D> for LogChebyshevInterpolation
-where
-    D: Data<Elem = f64> + RawDataClone + Clone,
-{
-    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
-        // Get the coordinate arrays and data values
-        let x_coords = data.grid[0].as_slice().unwrap();
-        let y_coords = data.grid[1].as_slice().unwrap();
-
-        if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
-            return Err(ValidateError::Other(
-                "The input values must be positive for logarithmic scaling".to_string(),
-            ));
-        }
-
-        // Check that we have at least 4x4 grid for this interpolation
-        if x_coords.len() < 4 || y_coords.len() < 4 {
-            return Err(ValidateError::Other(
-                "Need at least 4x4 grid for Chebyshev interpolation".to_string(),
-            ));
-        }
-
-        self.coeffs = Self::compute_polynomial_coefficients(data);
-        Ok(())
-    }
-
-    fn interpolate(
-        &self,
-        data: &InterpData2D<D>,
-        point: &[f64; 2],
-    ) -> Result<f64, InterpolateError> {
-        let [x, y] = *point;
-
-        // Get the coordinate arrays and data values
-        let x_coords = data.grid[0].as_slice().unwrap();
-        let y_coords = data.grid[1].as_slice().unwrap();
-
-        // Transform coordinates to log space
-        let log_x = x.ln();
-        let log_y = y.ln();
-
-        // Transform grid coordinates to log space
-        let log_x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
-        let log_y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
-
-        // Find the grid cell containing the point
-        let i = Self::find_chebyshev_interval(&log_x_grid, log_x)?;
-        let j = Self::find_chebyshev_interval(&log_y_grid, log_y)?;
-
-        // Normalize coordinates to [0,1] within the central cell
-        let dx = log_x_grid[i + 1] - log_x_grid[i];
-        let dy = log_y_grid[j + 1] - log_y_grid[j];
-
-        if dx == 0.0 || dy == 0.0 {
-            return Err(InterpolateError::Other("Grid spacing is zero".to_string()));
-        }
-
-        let u = (log_x - log_x_grid[i]) / dx;
-        let v = (log_y - log_y_grid[j]) / dy;
-
-        // Perform interpolation using pre-computed coefficients
-        let result = self.interpolate_with_coeffs(data, i, j, u, v);
-
-        Ok(result)
-    }
-
-    fn allow_extrapolate(&self) -> bool {
-        false
-    }
-}
-
 /// LogTricubic interpolation strategy for PDF-like data
 ///
 /// This strategy implements tricubic interpolation with logarithmic coordinate scaling:
@@ -1292,14 +995,14 @@ where
 /// - **Grid Requirement**: For optimal stability and to avoid Runge's phenomenon, the grid
 ///   points should correspond to the roots or extrema of Chebyshev polynomials.
 #[derive(Debug, Clone)]
-pub struct GlobalChebyshevInterpolation<const DIM: usize> {
+pub struct LogChebyshevInterpolation<const DIM: usize> {
     // Pre-computed weights for the barycentric formula for each dimension.
     weights: [Vec<f64>; DIM],
     // Grid points in the t-domain [-1, 1] for each dimension.
     t_coords: [Vec<f64>; DIM],
 }
 
-impl<const DIM: usize> Default for GlobalChebyshevInterpolation<DIM> {
+impl<const DIM: usize> Default for LogChebyshevInterpolation<DIM> {
     fn default() -> Self {
         Self {
             weights: std::array::from_fn(|_| Vec::new()),
@@ -1308,20 +1011,20 @@ impl<const DIM: usize> Default for GlobalChebyshevInterpolation<DIM> {
     }
 }
 
-impl<const DIM: usize> Serialize for GlobalChebyshevInterpolation<DIM> {
+impl<const DIM: usize> Serialize for LogChebyshevInterpolation<DIM> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
         use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("GlobalChebyshevInterpolation", 2)?;
+        let mut state = serializer.serialize_struct("LogChebyshevInterpolation", 2)?;
         state.serialize_field("weights", &self.weights.as_slice())?;
         state.serialize_field("t_coords", &self.t_coords.as_slice())?;
         state.end()
     }
 }
 
-impl<'de, const DIM: usize> Deserialize<'de> for GlobalChebyshevInterpolation<DIM> {
+impl<'de, const DIM: usize> Deserialize<'de> for LogChebyshevInterpolation<DIM> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -1344,7 +1047,7 @@ impl<'de, const DIM: usize> Deserialize<'de> for GlobalChebyshevInterpolation<DI
     }
 }
 
-impl<const DIM: usize> GlobalChebyshevInterpolation<DIM> {
+impl<const DIM: usize> LogChebyshevInterpolation<DIM> {
     /// Computes the barycentric weights for a given set of Chebyshev points.
     /// The formula for the weights is `w_j = (-1)^j * delta_j`, where `delta_j`
     /// is 1/2 for the first and last points, and 1 otherwise.
@@ -1383,7 +1086,7 @@ impl<const DIM: usize> GlobalChebyshevInterpolation<DIM> {
     }
 }
 
-impl<D> Strategy1D<D> for GlobalChebyshevInterpolation<1>
+impl<D> Strategy1D<D> for LogChebyshevInterpolation<1>
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
 {
@@ -1397,7 +1100,7 @@ where
         let n = x_coords.len();
         if n < 2 {
             return Err(ValidateError::Other(
-                "GlobalChebyshevInterpolation requires at least 2 grid points.".to_string(),
+                "LogChebyshevInterpolation requires at least 2 grid points.".to_string(),
             ));
         }
 
@@ -1451,7 +1154,7 @@ where
     }
 }
 
-impl<D> Strategy2D<D> for GlobalChebyshevInterpolation<2>
+impl<D> Strategy2D<D> for LogChebyshevInterpolation<2>
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
 {
@@ -1466,7 +1169,7 @@ where
             let n = x_coords.len();
             if n < 2 {
                 return Err(ValidateError::Other(
-                    "GlobalChebyshevInterpolation requires at least 2 grid points per dimension."
+                    "LogChebyshevInterpolation requires at least 2 grid points per dimension."
                         .to_string(),
                 ));
             }
@@ -1539,7 +1242,7 @@ where
     }
 }
 
-impl<D> Strategy3D<D> for GlobalChebyshevInterpolation<3>
+impl<D> Strategy3D<D> for LogChebyshevInterpolation<3>
 where
     D: Data<Elem = f64> + RawDataClone + Clone,
 {
@@ -1554,7 +1257,7 @@ where
             let n = x_coords.len();
             if n < 2 {
                 return Err(ValidateError::Other(
-                    "GlobalChebyshevInterpolation requires at least 2 grid points per dimension."
+                    "LogChebyshevInterpolation requires at least 2 grid points per dimension."
                         .to_string(),
                 ));
             }
@@ -1734,6 +1437,21 @@ mod tests {
             values_array,
         )
         .unwrap()
+    }
+
+    // Create an instance of `create_chebyshev_grid` for 2- and 3-dimensional interpolations.
+    fn create_cheby_grid(n_points: i32, x_min: f64, x_max: f64) -> Vec<f64> {
+        let u_min = x_min.ln();
+        let u_max = x_max.ln();
+        (0..n_points)
+            .map(|j| {
+                let t_j = (std::f64::consts::PI * (n_points - 1 - j) as f64
+                    / (n_points - 1) as f64)
+                    .cos();
+                let u_j = u_min + (u_max - u_min) * (t_j + 1.0) / 2.0;
+                u_j.exp()
+            })
+            .collect::<Vec<f64>>()
     }
 
     #[test]
@@ -1997,30 +1715,6 @@ mod tests {
     }
 
     #[test]
-    fn test_log_chebyshev_interpolation() {
-        let target_data = create_target_data_2d(4);
-        let data = create_test_data_2d(
-            vec![1.0, 10.0, 100.0, 1000.0],
-            vec![1.0, 10.0, 100.0, 1000.0],
-            target_data,
-        );
-
-        let mut log_chebyshev = LogChebyshevInterpolation::default();
-        log_chebyshev.init(&data).unwrap();
-
-        let test_cases = [
-            ([10.0, 10.0], 4.0),              // Grid point
-            ([3.16227766, 3.16227766], 2.25), // sqrt(10)
-            ([31.6227766, 31.6227766], 6.25), // 10^1.5
-        ];
-
-        for (point, expected) in test_cases {
-            let result = log_chebyshev.interpolate(&data, &point).unwrap();
-            assert_close(result, expected, EPSILON);
-        }
-    }
-
-    #[test]
     fn test_ddlogq_derivatives() {
         let data = create_test_data_1d(vec![1.0, 2.0, 3.0, 4.0], vec![0.1, 0.2, 0.3, 0.4]);
 
@@ -2092,7 +1786,7 @@ mod tests {
     }
 
     #[test]
-    fn test_global_chebyshev_interpolation_1d() {
+    fn test_log_chebyshev_interpolation_1d() {
         let n = 21;
         let x_min: f64 = 0.1;
         let x_max: f64 = 10.0;
@@ -2109,37 +1803,23 @@ mod tests {
 
         let f_values: Vec<f64> = x_coords.iter().map(|&x| x.ln()).collect();
         let data = create_test_data_1d(x_coords, f_values);
-        let mut cheby = GlobalChebyshevInterpolation::<1>::default();
+        let mut cheby = LogChebyshevInterpolation::<1>::default();
         cheby.init(&data).unwrap();
 
         let x_test: f64 = 2.5;
         let expected = x_test.ln();
         let result = cheby.interpolate(&data, &[x_test]).unwrap();
-        assert_close(result, expected, 1e-9);
+        assert_close(result, expected, EPSILON);
 
         let x_test_grid = data.grid[0].as_slice().unwrap()[n / 2];
         let expected_grid = x_test_grid.ln();
         let result_grid = cheby.interpolate(&data, &[x_test_grid]).unwrap();
-        assert_close(result_grid, expected_grid, 1e-15);
+        assert_close(result_grid, expected_grid, EPSILON);
     }
 
     #[test]
-    fn test_global_chebyshev_interpolation_2d() {
+    fn test_log_chebyshev_interpolation_2d() {
         let n = 11;
-        let create_cheby_grid = |n_points, x_min: f64, x_max: f64| {
-            let u_min = x_min.ln();
-            let u_max = x_max.ln();
-            (0..n_points)
-                .map(|j| {
-                    let t_j = (std::f64::consts::PI * (n_points - 1 - j) as f64
-                        / (n_points - 1) as f64)
-                        .cos();
-                    let u_j = u_min + (u_max - u_min) * (t_j + 1.0) / 2.0;
-                    u_j.exp()
-                })
-                .collect::<Vec<f64>>()
-        };
-
         let x_coords = create_cheby_grid(n, 0.1, 10.0);
         let y_coords = create_cheby_grid(n, 0.1, 10.0);
 
@@ -2149,7 +1829,7 @@ mod tests {
             .collect();
 
         let data = create_test_data_2d(x_coords, y_coords, f_values);
-        let mut cheby = GlobalChebyshevInterpolation::<2>::default();
+        let mut cheby = LogChebyshevInterpolation::<2>::default();
         cheby.init(&data).unwrap();
 
         let x_test: f64 = 2.5;
@@ -2157,26 +1837,12 @@ mod tests {
         let expected = x_test.ln() + y_test.ln();
         let result = cheby.interpolate(&data, &[x_test, y_test]).unwrap();
 
-        assert_close(result, expected, 1e-9);
+        assert_close(result, expected, EPSILON);
     }
 
     #[test]
-    fn test_global_chebyshev_interpolation_3d() {
+    fn test_log_chebyshev_interpolation_3d() {
         let n = 7;
-        let create_cheby_grid = |n_points, x_min: f64, x_max: f64| {
-            let u_min = x_min.ln();
-            let u_max = x_max.ln();
-            (0..n_points)
-                .map(|j| {
-                    let t_j = (std::f64::consts::PI * (n_points - 1 - j) as f64
-                        / (n_points - 1) as f64)
-                        .cos();
-                    let u_j = u_min + (u_max - u_min) * (t_j + 1.0) / 2.0;
-                    u_j.exp()
-                })
-                .collect::<Vec<f64>>()
-        };
-
         let x_coords = create_cheby_grid(n, 0.1, 10.0);
         let y_coords = create_cheby_grid(n, 0.1, 10.0);
         let z_coords = create_cheby_grid(n, 0.1, 10.0);
@@ -2189,7 +1855,7 @@ mod tests {
             .collect();
 
         let data = create_test_data_3d(x_coords, y_coords, z_coords, f_values);
-        let mut cheby = GlobalChebyshevInterpolation::<3>::default();
+        let mut cheby = LogChebyshevInterpolation::<3>::default();
         cheby.init(&data).unwrap();
 
         let x_test: f64 = 2.5;
@@ -2198,6 +1864,6 @@ mod tests {
         let expected = x_test.ln() + y_test.ln() + z_test.ln();
         let result = cheby.interpolate(&data, &[x_test, y_test, z_test]).unwrap();
 
-        assert_close(result, expected, 1e-9);
+        assert_close(result, expected, EPSILON);
     }
 }

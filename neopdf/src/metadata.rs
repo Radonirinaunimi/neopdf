@@ -23,7 +23,7 @@ pub enum InterpolatorType {
     LogBilinear,
     #[default]
     LogBicubic,
-    GlobalChebyshev,
+    LogChebyshev,
     LogTricubic,
     InterpNDLinear,
 }
