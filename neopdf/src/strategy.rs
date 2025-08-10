@@ -19,6 +19,7 @@ use ninterp::data::{InterpData1D, InterpData2D, InterpData3D};
 use ninterp::error::{InterpolateError, ValidateError};
 use ninterp::strategy::traits::{Strategy1D, Strategy2D, Strategy3D};
 use serde::{Deserialize, Serialize};
+use std::f64::consts::PI;
 
 use super::utils;
 
@@ -1105,7 +1106,7 @@ where
         }
 
         self.t_coords[0] = (0..n)
-            .map(|j| (std::f64::consts::PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+            .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
             .collect();
 
         self.weights[0] = Self::compute_barycentric_weights(n);
@@ -1174,7 +1175,7 @@ where
                 ));
             }
             self.t_coords[dim] = (0..n)
-                .map(|j| (std::f64::consts::PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+                .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
                 .collect();
             self.weights[dim] = Self::compute_barycentric_weights(n);
         }
@@ -1262,7 +1263,7 @@ where
                 ));
             }
             self.t_coords[dim] = (0..n)
-                .map(|j| (std::f64::consts::PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+                .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
                 .collect();
             self.weights[dim] = Self::compute_barycentric_weights(n);
         }
@@ -1371,6 +1372,7 @@ mod tests {
     use ninterp::interpolator::{Extrapolate, InterpND};
     use ninterp::prelude::Interpolator;
     use ninterp::strategy::Linear;
+    use std::f64::consts::PI;
 
     // Helper constants for commonly used values
     const EPSILON: f64 = 1e-9;
@@ -1445,9 +1447,7 @@ mod tests {
         let u_max = x_max.ln();
         (0..n_points)
             .map(|j| {
-                let t_j = (std::f64::consts::PI * (n_points - 1 - j) as f64
-                    / (n_points - 1) as f64)
-                    .cos();
+                let t_j = (PI * (n_points - 1 - j) as f64 / (n_points - 1) as f64).cos();
                 let u_j = u_min + (u_max - u_min) * (t_j + 1.0) / 2.0;
                 u_j.exp()
             })
@@ -1790,16 +1790,7 @@ mod tests {
         let n = 21;
         let x_min: f64 = 0.1;
         let x_max: f64 = 10.0;
-        let u_min = x_min.ln();
-        let u_max = x_max.ln();
-
-        let x_coords: Vec<f64> = (0..n)
-            .map(|j| {
-                let t_j = (std::f64::consts::PI * (n - 1 - j) as f64 / (n - 1) as f64).cos();
-                let u_j = u_min + (u_max - u_min) * (t_j + 1.0) / 2.0;
-                u_j.exp()
-            })
-            .collect();
+        let x_coords = create_cheby_grid(n, x_min, x_max);
 
         let f_values: Vec<f64> = x_coords.iter().map(|&x| x.ln()).collect();
         let data = create_test_data_1d(x_coords, f_values);
@@ -1811,7 +1802,7 @@ mod tests {
         let result = cheby.interpolate(&data, &[x_test]).unwrap();
         assert_close(result, expected, EPSILON);
 
-        let x_test_grid = data.grid[0].as_slice().unwrap()[n / 2];
+        let x_test_grid = data.grid[0].as_slice().unwrap()[n as usize / 2];
         let expected_grid = x_test_grid.ln();
         let result_grid = cheby.interpolate(&data, &[x_test_grid]).unwrap();
         assert_close(result_grid, expected_grid, EPSILON);
