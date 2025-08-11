@@ -173,8 +173,8 @@ pub unsafe extern "C" fn neopdf_pdf_load_lazy(pdf_name: *const c_char) -> *mut N
 /// Retrieves the next PDF member from the lazy iterator.
 ///
 /// Returns a pointer to a `NeoPDFWrapper` for the next member, or `NULL` if the
-/// iterator is exhausted or an error occurs. The caller is responsible for
-/// freeing the returned `NeoPDFWrapper` with `neopdf_pdf_free`.
+/// iterator is exhausted or an error occurs. The caller is responsible for freeing
+/// the returned `NeoPDFWrapper` with `neopdf_pdf_free`.
 ///
 /// # Safety
 ///
@@ -417,7 +417,8 @@ pub unsafe extern "C" fn neopdf_pdf_num_pids(pdf: *mut NeoPDFWrapper) -> usize {
 ///
 /// # Safety
 ///
-/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object, and the `pids` pointer must be valid for writing `num_pids` elements.
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object, and the `pids` pointer
+/// must be valid for writing `num_pids` elements.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_pids(pdf: *mut NeoPDFWrapper, pids: *mut i32, num_pids: usize) {
     assert!(!pdf.is_null());
@@ -468,7 +469,8 @@ pub unsafe extern "C" fn neopdf_pdf_num_subgrids(pdf: *mut NeoPDFWrapper) -> usi
 ///
 /// # Safety
 ///
-/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object, and the `param_range` pointer must be valid for writing two `f64` values.
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object, and the `param_range` pointer
+/// must be valid for writing two `f64` values.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_param_range(
     pdf: *mut NeoPDFWrapper,
@@ -508,7 +510,8 @@ pub unsafe extern "C" fn neopdf_pdf_param_range(
 ///
 /// # Safety
 ///
-/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object, and the `subgrid_shape` pointer must be valid for writing `num_subgrid` elements.
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object, and the `subgrid_shape` pointer
+/// must be valid for writing `num_subgrid` elements.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_subgrids_shape_for_param(
     pdf: *mut NeoPDFWrapper,
@@ -543,7 +546,8 @@ pub unsafe extern "C" fn neopdf_pdf_subgrids_shape_for_param(
 ///
 /// # Safety
 ///
-/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object. The `subgrid` pointer must be valid for writing the number of elements specified by `subgrid_shape[subgrid_index]`.
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object. The `subgrid` pointer must be
+/// valid for writing the number of elements specified by `subgrid_shape[subgrid_index]`.
 #[no_mangle]
 pub unsafe extern "C" fn neopdf_pdf_subgrids_for_param(
     pdf: *mut NeoPDFWrapper,
@@ -640,6 +644,7 @@ impl NeoPDFGrid {
 }
 
 /// Creates a new, empty `NeoPDFGrid`.
+///
 /// The caller is responsible for freeing the returned grid using `neopdf_grid_free`.
 #[no_mangle]
 pub extern "C" fn neopdf_grid_new() -> *mut NeoPDFGrid {
@@ -647,6 +652,7 @@ pub extern "C" fn neopdf_grid_new() -> *mut NeoPDFGrid {
 }
 
 /// Adds a subgrid to an existing `NeoPDFGrid`.
+///
 /// This function takes ownership of the provided data arrays and resizes them as needed.
 ///
 /// # Safety
@@ -797,7 +803,6 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
 
     let meta = unsafe { &*meta };
 
-    // Use helper functions for safer conversions
     let set_desc = unsafe { cstr_to_string(meta.set_desc) }?;
     let format = unsafe { cstr_to_string(meta.format) }?;
     let flavors = unsafe { carray_to_vec(meta.flavors, meta.num_flavors) }?;
@@ -881,21 +886,15 @@ impl NeoPDFGridArrayCollection {
             return NeopdfResult::ErrorNullPointer;
         }
 
-        // Check if the current number of grids has reached the allocated capacity.
-        // If so, resize the underlying array.
         if self.num_grids == self.capacity {
-            // Determine the new capacity: double it if not zero, otherwise start with 4.
             let new_capacity = if self.capacity == 0 {
                 4
             } else {
                 self.capacity * 2
             };
 
-            // Allocate new memory for the array of grid pointers.
-            // If `grids` is null (first allocation), use `alloc`; otherwise, use `realloc`.
             let new_ptr = if self.grids.is_null() {
                 unsafe {
-                    // Allocate memory for `new_capacity` number of `*mut NeoPDFGrid`.
                     std::alloc::alloc(
                         std::alloc::Layout::array::<*mut NeoPDFGrid>(new_capacity).unwrap(),
                     )
@@ -905,8 +904,6 @@ impl NeoPDFGridArrayCollection {
                 }
             } else {
                 unsafe {
-                    // Reallocate existing memory to `new_capacity`.
-                    // The old pointer is cast to `u8` for `realloc`.
                     std::alloc::realloc(
                         self.grids.cast::<u8>(),
                         std::alloc::Layout::array::<*mut NeoPDFGrid>(self.capacity).unwrap(),
@@ -918,21 +915,17 @@ impl NeoPDFGridArrayCollection {
                 }
             };
 
-            // Check if reallocation failed (returned null).
             if new_ptr.is_null() {
                 return NeopdfResult::ErrorMemoryError;
             }
 
-            // Update the collection's pointer and capacity to the new allocation.
             self.grids = new_ptr;
             self.capacity = new_capacity;
         }
 
-        // Add the new grid pointer to the end of the array.
         unsafe {
             *self.grids.add(self.num_grids) = grid;
         }
-        // Increment the count of grids in the collection.
         self.num_grids += 1;
 
         NeopdfResult::Success
@@ -951,11 +944,9 @@ impl NeoPDFGridArrayCollection {
     /// # Returns
     /// An `Option<&NeoPDFGrid>`: `Some` if the index is valid, `None` otherwise.
     fn get(&self, index: usize) -> Option<&NeoPDFGrid> {
-        // Check for out-of-bounds access.
         if index >= self.num_grids {
             return None;
         }
-        // Dereference the raw pointer at the given index to get a reference to NeoPDFGrid.
         unsafe { (*self.grids.add(index)).as_ref() }
     }
 }
@@ -965,16 +956,13 @@ impl Drop for NeoPDFGridArrayCollection {
         if self.grids.is_null() {
             return;
         }
-        // Free each individual grid in the collection
         let grids_slice = unsafe { slice::from_raw_parts(self.grids, self.num_grids) };
         for &grid_ptr in grids_slice {
             if !grid_ptr.is_null() {
-                // Re-Box the raw pointer and let it drop, freeing the memory
                 unsafe { drop(Box::from_raw(grid_ptr)) };
             }
         }
 
-        // Deallocate the memory for the pointer array itself
         unsafe {
             std::alloc::dealloc(
                 self.grids.cast::<u8>(),
@@ -991,7 +979,6 @@ impl Drop for NeoPDFGridArrayCollection {
 /// `neopdf_gridarray_collection_free` to prevent memory leaks.
 #[no_mangle]
 pub extern "C" fn neopdf_gridarray_collection_new() -> *mut NeoPDFGridArrayCollection {
-    // Allocate a new `NeoPDFGridArrayCollection` on the heap and return a raw pointer to it.
     Box::into_raw(Box::new(NeoPDFGridArrayCollection::new()))
 }
 
@@ -1007,13 +994,10 @@ pub unsafe extern "C" fn neopdf_gridarray_collection_add_grid(
     collection: *mut NeoPDFGridArrayCollection,
     grid: *mut NeoPDFGrid,
 ) -> NeopdfResult {
-    // Convert the raw `collection` pointer to a mutable reference.
-    // This is unsafe because the pointer could be null or invalid.
     unsafe {
         collection
             .as_mut()
             .map_or(NeopdfResult::ErrorNullPointer, |collection| {
-                // Call the safe `add_grid` method on the Rust struct.
                 collection.add_grid(grid)
             })
     }
@@ -1031,7 +1015,6 @@ pub unsafe extern "C" fn neopdf_gridarray_collection_free(
     collection: *mut NeoPDFGridArrayCollection,
 ) {
     if !collection.is_null() {
-        // This will call the `Drop` implementation for `NeoPDFGridArrayCollection`
         unsafe { drop(Box::from_raw(collection)) };
     }
 }
@@ -1051,52 +1034,33 @@ pub unsafe extern "C" fn neopdf_grid_compress(
     metadata: *const NeoPDFMetaData,
     output_path: *const c_char,
 ) -> NeopdfResult {
-    // Perform null pointer checks for all input arguments.
     if collection.is_null() || metadata.is_null() || output_path.is_null() {
         return NeopdfResult::ErrorNullPointer;
     }
 
-    // Convert the raw `collection` pointer to an immutable reference.
-    // This is unsafe as the pointer could be invalid.
     let collection = unsafe { &*collection };
 
-    // Process the C-style `metadata` struct into a Rust `MetaData` struct.
-    // If processing fails (e.g., due to invalid C strings), return an error.
     let Some(meta) = process_metadata(metadata) else {
         return NeopdfResult::ErrorInvalidData;
     };
 
-    // Convert the C-style `output_path` string to a Rust string slice.
-    // Check for valid UTF-8 conversion.
     let out_path = unsafe { CStr::from_ptr(output_path).to_str() };
     let Ok(out_path) = out_path else {
         return NeopdfResult::ErrorInvalidData;
     };
 
-    // Create a `Vec` to hold `GridArray` objects, pre-allocating capacity for efficiency.
     let mut grid_arrays = Vec::with_capacity(collection.len());
 
-    // Iterate through each `NeoPDFGrid` pointer in the collection.
     for i in 0..collection.len() {
-        // Retrieve a reference to the `NeoPDFGrid` at the current index.
-        // If retrieval fails (e.g., invalid index), return an error.
         let Some(grid) = collection.get(i) else {
             return NeopdfResult::ErrorInvalidData;
         };
-
-        // Create a `GridArray` from the `NeoPDFGrid`'s internal `subgrids` and `flavors`.
-        // `clone()` is used here to create owned copies of the `Vec` data.
         let grid_array = GridArray::new(grid.subgrids.clone(), grid.flavors.clone());
-        // Add the newly created `GridArray` to the `grid_arrays` vector.
         grid_arrays.push(grid_array);
     }
 
-    // Create a vector of references to the `GridArray` objects.
-    // This is required by the `compress` function's signature.
     let grid_refs: Vec<&GridArray> = grid_arrays.iter().collect();
 
-    // Call the `compress` function from the `neopdf::writer` module.
-    // Map the `Result` to `NeoPDFResult`.
     match GridArrayCollection::compress(&grid_refs, &meta, out_path) {
         Ok(()) => NeopdfResult::Success,
         Err(_) => NeopdfResult::ErrorMemoryError,
