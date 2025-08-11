@@ -985,8 +985,8 @@ where
 /// coordinate scaling.
 ///
 /// This strategy, inspired by the method described in arXiv:2112.09703, first transforms the input
-/// coordinates to their natural logarithms. It then fits a single, high-degree Chebyshev polynomial
-/// to the entire dataset in that log-transformed space.
+/// coordinates to their natural logarithms, and then fits a single, high-degree Chebyshev polynomial
+/// to the entire dataset in the log-transformed space.
 ///
 /// Key features:
 /// - **Logarithmic Scaling**: Coordinates are transformed via `x -> ln(x)` before interpolation.
@@ -1123,7 +1123,7 @@ where
         let x_coords = data.grid[0].as_slice().unwrap();
         let f_values = data.values.as_slice().unwrap();
 
-        let x_min = x_coords[0];
+        let x_min = *x_coords.first().unwrap();
         let x_max = *x_coords.last().unwrap();
 
         if x < x_min || x > x_max {
@@ -1191,7 +1191,7 @@ where
         let x_coords = data.grid[0].as_slice().unwrap();
         let y_coords = data.grid[1].as_slice().unwrap();
 
-        let x_min = x_coords[0];
+        let x_min = *x_coords.first().unwrap();
         let x_max = *x_coords.last().unwrap();
         if x < x_min || x > x_max {
             return Err(InterpolateError::Other(format!(
@@ -1204,7 +1204,7 @@ where
         let log_x_max = x_max.ln();
         let t_x = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
 
-        let y_min = y_coords[0];
+        let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
         if y < y_min || y > y_max {
             return Err(InterpolateError::Other(format!(
@@ -1280,7 +1280,7 @@ where
         let y_coords = data.grid[1].as_slice().unwrap();
         let z_coords = data.grid[2].as_slice().unwrap();
 
-        let x_min = x_coords[0];
+        let x_min = *x_coords.first().unwrap();
         let x_max = *x_coords.last().unwrap();
         if x < x_min || x > x_max {
             return Err(InterpolateError::Other(format!(
@@ -1293,7 +1293,7 @@ where
         let log_x_max = x_max.ln();
         let t_x = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
 
-        let y_min = y_coords[0];
+        let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
         if y < y_min || y > y_max {
             return Err(InterpolateError::Other(format!(
@@ -1306,7 +1306,7 @@ where
         let log_y_max = y_max.ln();
         let t_y = 2.0 * (log_y - log_y_min) / (log_y_max - log_y_min) - 1.0;
 
-        let z_min = z_coords[0];
+        let z_min = *z_coords.first().unwrap();
         let z_max = *z_coords.last().unwrap();
         if z < z_min || z > z_max {
             return Err(InterpolateError::Other(format!(
