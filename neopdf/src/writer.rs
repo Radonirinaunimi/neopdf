@@ -133,65 +133,6 @@ impl GridArrayCollection {
         encoder.finish()?;
         Ok(())
     }
-    // pub fn compress<P: AsRef<Path>>(
-    //     grids: &[&GridArray],
-    //     metadata: &MetaData,
-    //     path: P,
-    // ) -> Result<(), Box<dyn std::error::Error>> {
-    //     let file = File::create(path)?;
-    //     let buf_writer = BufWriter::new(file);
-    //     let mut encoder = FrameEncoder::new(buf_writer);
-    //     let config = bincode_config();
-
-    //     let mut metadata_mut = metadata.clone();
-    //     metadata_mut.git_version = GIT_VERSION.to_string();
-    //     metadata_mut.code_version = CODE_VERSION.to_string();
-    //     let metadata_serialized = bincode::serde::encode_to_vec(&metadata_mut, config)?;
-    //     let metadata_size = metadata_serialized.len() as u64;
-
-    //     bincode::serde::encode_into_std_write(metadata_size, &mut encoder, config)?;
-    //     encoder.write_all(&metadata_serialized)?;
-
-    //     // Write number of grids
-    //     let count = grids.len() as u64;
-    //     bincode::serde::encode_into_std_write(count, &mut encoder, config)?;
-
-    //     // Serialize all grids first
-    //     let mut serialized_grids = Vec::new();
-    //     for grid in grids {
-    //         let serialized = bincode::serde::encode_to_vec(grid, config)?;
-    //         serialized_grids.push(serialized);
-    //     }
-
-    //     // Calculate offsets relative to start of data section
-    //     let mut offsets = Vec::new();
-    //     let mut current_offset = 0u64;
-
-    //     // Each grid entry has: 8 bytes for size + data
-    //     for serialized in &serialized_grids {
-    //         offsets.push(current_offset);
-    //         current_offset += 8; // size field
-    //         current_offset += serialized.len() as u64;
-    //     }
-
-    //     // Write offset table size and offsets
-    //     let offset_table_size = (serialized_grids.len() * 8) as u64;
-    //     bincode::serde::encode_into_std_write(offset_table_size, &mut encoder, config)?;
-
-    //     for offset in &offsets {
-    //         bincode::serde::encode_into_std_write(offset, &mut encoder, config)?;
-    //     }
-
-    //     // Write grid data
-    //     for serialized in &serialized_grids {
-    //         let size = serialized.len() as u64;
-    //         bincode::serde::encode_into_std_write(size, &mut encoder, config)?;
-    //         encoder.write_all(serialized)?;
-    //     }
-
-    //     encoder.finish()?;
-    //     Ok(())
-    // }
 
     /// Decompresses and loads all [`GridArray`]s and shared metadata from a file.
     ///
