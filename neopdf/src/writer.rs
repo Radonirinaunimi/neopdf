@@ -40,6 +40,11 @@ const GIT_VERSION: &str = git_version!(
 );
 const CODE_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+/// Returns the standard bincode configuration.
+fn bincode_config() -> impl bincode::config::Config {
+    bincode::config::standard()
+}
+
 /// Container for a [`GridArray`] with a shared reference to its associated metadata.
 ///
 /// Used to bundle grid data and metadata together for convenient access after decompression
@@ -75,26 +80,25 @@ impl GridArrayCollection {
         let file = File::create(path)?;
         let buf_writer = BufWriter::new(file);
         let mut encoder = FrameEncoder::new(buf_writer);
+        let config = bincode_config();
 
         let mut metadata_mut = metadata.clone();
         metadata_mut.git_version = GIT_VERSION.to_string();
         metadata_mut.code_version = CODE_VERSION.to_string();
-        let metadata_serialized = bincode::serialize(&metadata_mut)?;
+        let metadata_serialized = bincode::serde::encode_to_vec(&metadata_mut, config)?;
         let metadata_size = metadata_serialized.len() as u64;
 
-        let metadata_size_bytes = bincode::serialize(&metadata_size)?;
-        encoder.write_all(&metadata_size_bytes)?;
+        bincode::serde::encode_into_std_write(metadata_size, &mut encoder, config)?;
         encoder.write_all(&metadata_serialized)?;
 
         // Write number of grids
         let count = grids.len() as u64;
-        let count_bytes = bincode::serialize(&count)?;
-        encoder.write_all(&count_bytes)?;
+        bincode::serde::encode_into_std_write(count, &mut encoder, config)?;
 
         // Serialize all grids first
         let mut serialized_grids = Vec::new();
         for grid in grids {
-            let serialized = bincode::serialize(grid)?;
+            let serialized = bincode::serde::encode_to_vec(grid, config)?;
             serialized_grids.push(serialized);
         }
 
@@ -102,34 +106,92 @@ impl GridArrayCollection {
         let mut offsets = Vec::new();
         let mut current_offset = 0u64;
 
-        // Each grid entry has: 8 bytes for size + data
         for serialized in &serialized_grids {
             offsets.push(current_offset);
-            current_offset += 8; // size field
+            let size = serialized.len() as u64;
+            // Calculate the size of the varint-encoded size field
+            let size_field_bytes = bincode::serde::encode_to_vec(size, config)?;
+            current_offset += size_field_bytes.len() as u64;
             current_offset += serialized.len() as u64;
         }
 
         // Write offset table size and offsets
         let offset_table_size = (serialized_grids.len() * 8) as u64;
-        let offset_table_size_bytes = bincode::serialize(&offset_table_size)?;
-        encoder.write_all(&offset_table_size_bytes)?;
+        bincode::serde::encode_into_std_write(offset_table_size, &mut encoder, config)?;
 
         for offset in &offsets {
-            let offset_bytes = bincode::serialize(offset)?;
-            encoder.write_all(&offset_bytes)?;
+            bincode::serde::encode_into_std_write(offset, &mut encoder, config)?;
         }
 
         // Write grid data
         for serialized in &serialized_grids {
             let size = serialized.len() as u64;
-            let size_bytes = bincode::serialize(&size)?;
-            encoder.write_all(&size_bytes)?;
+            bincode::serde::encode_into_std_write(size, &mut encoder, config)?;
             encoder.write_all(serialized)?;
         }
 
         encoder.finish()?;
         Ok(())
     }
+    // pub fn compress<P: AsRef<Path>>(
+    //     grids: &[&GridArray],
+    //     metadata: &MetaData,
+    //     path: P,
+    // ) -> Result<(), Box<dyn std::error::Error>> {
+    //     let file = File::create(path)?;
+    //     let buf_writer = BufWriter::new(file);
+    //     let mut encoder = FrameEncoder::new(buf_writer);
+    //     let config = bincode_config();
+
+    //     let mut metadata_mut = metadata.clone();
+    //     metadata_mut.git_version = GIT_VERSION.to_string();
+    //     metadata_mut.code_version = CODE_VERSION.to_string();
+    //     let metadata_serialized = bincode::serde::encode_to_vec(&metadata_mut, config)?;
+    //     let metadata_size = metadata_serialized.len() as u64;
+
+    //     bincode::serde::encode_into_std_write(metadata_size, &mut encoder, config)?;
+    //     encoder.write_all(&metadata_serialized)?;
+
+    //     // Write number of grids
+    //     let count = grids.len() as u64;
+    //     bincode::serde::encode_into_std_write(count, &mut encoder, config)?;
+
+    //     // Serialize all grids first
+    //     let mut serialized_grids = Vec::new();
+    //     for grid in grids {
+    //         let serialized = bincode::serde::encode_to_vec(grid, config)?;
+    //         serialized_grids.push(serialized);
+    //     }
+
+    //     // Calculate offsets relative to start of data section
+    //     let mut offsets = Vec::new();
+    //     let mut current_offset = 0u64;
+
+    //     // Each grid entry has: 8 bytes for size + data
+    //     for serialized in &serialized_grids {
+    //         offsets.push(current_offset);
+    //         current_offset += 8; // size field
+    //         current_offset += serialized.len() as u64;
+    //     }
+
+    //     // Write offset table size and offsets
+    //     let offset_table_size = (serialized_grids.len() * 8) as u64;
+    //     bincode::serde::encode_into_std_write(offset_table_size, &mut encoder, config)?;
+
+    //     for offset in &offsets {
+    //         bincode::serde::encode_into_std_write(offset, &mut encoder, config)?;
+    //     }
+
+    //     // Write grid data
+    //     for serialized in &serialized_grids {
+    //         let size = serialized.len() as u64;
+    //         bincode::serde::encode_into_std_write(size, &mut encoder, config)?;
+    //         encoder.write_all(serialized)?;
+    //     }
+
+    //     encoder.finish()?;
+    //     Ok(())
+    // }
 
     /// Decompresses and loads all [`GridArray`]s and shared metadata from a file.
     ///
@@ -146,6 +208,7 @@ impl GridArrayCollection {
         let file = File::open(path)?;
         let buf_reader = BufReader::new(file);
         let mut decoder = FrameDecoder::new(buf_reader);
+        let config = bincode_config();
 
         let mut decompressed = Vec::new();
         decoder.read_to_end(&mut decompressed)?;
@@ -153,31 +216,32 @@ impl GridArrayCollection {
         let mut cursor = std::io::Cursor::new(decompressed);
 
         // Read metadata
-        let metadata_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let metadata_size: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
         let mut metadata_bytes = vec![0u8; metadata_size as usize];
         cursor.read_exact(&mut metadata_bytes)?;
-        let metadata: MetaData = bincode::deserialize(&metadata_bytes)?;
+        let (metadata, _): (MetaData, _) =
+            bincode::serde::decode_from_slice(&metadata_bytes, config)?;
         let shared_metadata = Arc::new(metadata);
-        let count: u64 = bincode::deserialize_from(&mut cursor)?;
+        let count: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
 
         // Read offset table size (but don't skip it!)
-        let _offset_table_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let _offset_table_size: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
 
         // Read the actual offsets
         let mut offsets = Vec::with_capacity(count as usize);
         for _ in 0..count {
-            let offset: u64 = bincode::deserialize_from(&mut cursor)?;
+            let offset: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
             offsets.push(offset);
         }
 
         // Now read the grid data
         let mut grids = Vec::with_capacity(count as usize);
         for _ in 0..count {
-            let size: u64 = bincode::deserialize_from(&mut cursor)?;
+            let size: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
             let mut grid_bytes = vec![0u8; size as usize];
             cursor.read_exact(&mut grid_bytes)?;
 
-            let grid: GridArray = bincode::deserialize(&grid_bytes)?;
+            let (grid, _): (GridArray, _) = bincode::serde::decode_from_slice(&grid_bytes, config)?;
             grids.push(GridArrayWithMetadata {
                 grid,
                 metadata: Arc::clone(&shared_metadata),
@@ -202,16 +266,18 @@ impl GridArrayCollection {
         let file = File::open(path)?;
         let buf_reader = BufReader::new(file);
         let mut decoder = FrameDecoder::new(buf_reader);
+        let config = bincode_config();
 
         let mut decompressed = Vec::new();
         decoder.read_to_end(&mut decompressed)?;
 
         let mut cursor = std::io::Cursor::new(decompressed);
 
-        let metadata_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let metadata_size: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
         let mut metadata_bytes = vec![0u8; metadata_size as usize];
         cursor.read_exact(&mut metadata_bytes)?;
-        let metadata: MetaData = bincode::deserialize(&metadata_bytes)?;
+        let (metadata, _): (MetaData, _) =
+            bincode::serde::decode_from_slice(&metadata_bytes, config)?;
 
         Ok(metadata)
     }
@@ -242,6 +308,7 @@ impl GridArrayReader {
         let file = File::open(path)?;
         let buf_reader = BufReader::new(file);
         let mut decoder = FrameDecoder::new(buf_reader);
+        let config = bincode_config();
 
         let mut data = Vec::new();
         decoder.read_to_end(&mut data)?;
@@ -249,20 +316,21 @@ impl GridArrayReader {
         let mut cursor = std::io::Cursor::new(&data);
 
         // Read metadata
-        let metadata_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let metadata_size: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
         let mut metadata_bytes = vec![0u8; metadata_size as usize];
         cursor.read_exact(&mut metadata_bytes)?;
-        let metadata: MetaData = bincode::deserialize(&metadata_bytes)?;
+        let (metadata, _): (MetaData, _) =
+            bincode::serde::decode_from_slice(&metadata_bytes, config)?;
         let shared_metadata = Arc::new(metadata);
-        let count: u64 = bincode::deserialize_from(&mut cursor)?;
+        let count: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
 
         // Read offset table size (but don't skip it!)
-        let _offset_table_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let _offset_table_size: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
 
         // Read the actual offsets
         let mut offsets = Vec::with_capacity(count as usize);
         for _ in 0..count {
-            let offset: u64 = bincode::deserialize_from(&mut cursor)?;
+            let offset: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
             offsets.push(offset);
         }
 
@@ -313,16 +381,17 @@ impl GridArrayReader {
             )
             .into());
         }
+        let config = bincode_config();
 
         let offset = self.data_start + self.offsets[index];
         let mut cursor = std::io::Cursor::new(&self.data);
         cursor.set_position(offset);
-        let size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let size: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
 
         let mut grid_bytes = vec![0u8; size as usize];
         cursor.read_exact(&mut grid_bytes)?;
 
-        let grid: GridArray = bincode::deserialize(&grid_bytes)?;
+        let (grid, _): (GridArray, _) = bincode::serde::decode_from_slice(&grid_bytes, config)?;
 
         Ok(GridArrayWithMetadata {
             grid,
@@ -355,19 +424,21 @@ impl LazyGridArrayIterator {
         let mut decoder = FrameDecoder::new(reader);
         let mut decompressed = Vec::new();
         decoder.read_to_end(&mut decompressed)?;
+        let config = bincode_config();
 
         let mut cursor = std::io::Cursor::new(decompressed);
 
-        let metadata_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let metadata_size: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
         let mut metadata_bytes = vec![0u8; metadata_size as usize];
         cursor.read_exact(&mut metadata_bytes)?;
-        let metadata: MetaData = bincode::deserialize(&metadata_bytes)?;
+        let (metadata, _): (MetaData, _) =
+            bincode::serde::decode_from_slice(&metadata_bytes, config)?;
         let shared_metadata = Arc::new(metadata);
 
-        let count: u64 = bincode::deserialize_from(&mut cursor)?;
+        let count: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
 
         // Read and skip the offset table
-        let offset_table_size: u64 = bincode::deserialize_from(&mut cursor)?;
+        let offset_table_size: u64 = bincode::serde::decode_from_std_read(&mut cursor, config)?;
         let mut offset_table_bytes = vec![0u8; offset_table_size as usize];
         cursor.read_exact(&mut offset_table_bytes)?;
 
@@ -407,16 +478,18 @@ impl Iterator for LazyGridArrayIterator {
         if self.remaining == 0 {
             return None;
         }
+        let config = bincode_config();
 
         let result = (|| -> Result<GridArrayWithMetadata, Box<dyn std::error::Error>> {
             // Read size
-            let size: u64 = bincode::deserialize_from(&mut self.cursor)?;
+            let size: u64 = bincode::serde::decode_from_std_read(&mut self.cursor, config)?;
 
             // Read grid data
             self.buffer.resize(size as usize, 0);
             self.cursor.read_exact(&mut self.buffer)?;
 
-            let grid: GridArray = bincode::deserialize(&self.buffer)?;
+            let (grid, _): (GridArray, _) =
+                bincode::serde::decode_from_slice(&self.buffer, config)?;
 
             Ok(GridArrayWithMetadata {
                 grid,
@@ -499,7 +572,7 @@ mod tests {
 
         let g_iter = LazyGridArrayIterator::from_file(path).unwrap();
         assert_eq!(g_iter.metadata().set_index, 1);
-        assert_eq!(g_iter.count(), 2);
+        assert_eq!(g_iter.len(), 2);
     }
 
     fn test_grid() -> GridArray {

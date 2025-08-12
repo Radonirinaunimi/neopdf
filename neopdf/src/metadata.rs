@@ -92,7 +92,7 @@ pub struct MetaData {
     #[serde(rename = "OrderQCD", default)]
     pub order_qcd: u32,
     /// Number of QCD loops in the calculation of `alpha_s`.
-    #[serde(rename = "AlphaS OrderQCD", default)]
+    #[serde(rename = "AlphaS_OrderQCD", default)]
     pub alphas_order_qcd: u32,
     /// Value of the W boson mass.
     #[serde(rename = "MW", default)]
