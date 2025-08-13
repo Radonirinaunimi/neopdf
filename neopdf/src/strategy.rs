@@ -19,6 +19,7 @@ use ninterp::data::{InterpData1D, InterpData2D, InterpData3D};
 use ninterp::error::{InterpolateError, ValidateError};
 use ninterp::strategy::traits::{Strategy1D, Strategy2D, Strategy3D};
 use serde::{Deserialize, Serialize};
+use std::f64::consts::PI;
 
 use super::utils;
 
@@ -980,6 +981,388 @@ where
     }
 }
 
+/// Implements a global N-dimensional interpolation using Chebyshev polynomials with logarithmic
+/// coordinate scaling.
+///
+/// This strategy, inspired by the method described in arXiv:2112.09703, first transforms the input
+/// coordinates to their natural logarithms, and then fits a single, high-degree Chebyshev polynomial
+/// to the entire dataset in the log-transformed space.
+///
+/// Key features:
+/// - **Logarithmic Scaling**: Coordinates are transformed via `x -> ln(x)` before interpolation.
+/// - **Global Nature**: The interpolation at any point depends on all data points in the grid.
+/// - **High Degree**: The degree of the interpolating polynomial is `N-1`, where `N` is the
+///   number of grid points in each dimension.
+/// - **Grid Requirement**: For optimal stability and to avoid Runge's phenomenon, the grid
+///   points should correspond to the roots or extrema of Chebyshev polynomials.
+#[derive(Debug, Clone)]
+pub struct LogChebyshevInterpolation<const DIM: usize> {
+    // Pre-computed weights for the barycentric formula for each dimension.
+    weights: [Vec<f64>; DIM],
+    // Grid points in the t-domain [-1, 1] for each dimension.
+    t_coords: [Vec<f64>; DIM],
+}
+
+impl<const DIM: usize> Default for LogChebyshevInterpolation<DIM> {
+    fn default() -> Self {
+        Self {
+            weights: std::array::from_fn(|_| Vec::new()),
+            t_coords: std::array::from_fn(|_| Vec::new()),
+        }
+    }
+}
+
+impl<const DIM: usize> Serialize for LogChebyshevInterpolation<DIM> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("LogChebyshevInterpolation", 2)?;
+        state.serialize_field("weights", &self.weights.as_slice())?;
+        state.serialize_field("t_coords", &self.t_coords.as_slice())?;
+        state.end()
+    }
+}
+
+impl<'de, const DIM: usize> Deserialize<'de> for LogChebyshevInterpolation<DIM> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Helper {
+            weights: Vec<Vec<f64>>,
+            t_coords: Vec<Vec<f64>>,
+        }
+
+        let helper = Helper::deserialize(deserializer)?;
+        let weights = helper.weights.try_into().map_err(|v: Vec<Vec<f64>>| {
+            serde::de::Error::invalid_length(v.len(), &"an array of the correct length")
+        })?;
+        let t_coords = helper.t_coords.try_into().map_err(|v: Vec<Vec<f64>>| {
+            serde::de::Error::invalid_length(v.len(), &"an array of the correct length")
+        })?;
+
+        Ok(Self { weights, t_coords })
+    }
+}
+
+impl<const DIM: usize> LogChebyshevInterpolation<DIM> {
+    /// Computes the barycentric weights for a given set of Chebyshev points.
+    /// The formula for the weights is `w_j = (-1)^j * delta_j`, where `delta_j`
+    /// is 1/2 for the first and last points, and 1 otherwise.
+    fn compute_barycentric_weights(n: usize) -> Vec<f64> {
+        let mut weights = vec![1.0; n];
+        (0..n).for_each(|j| {
+            if j % 2 == 1 {
+                weights[j] = -1.0;
+            }
+        });
+        weights[0] *= 0.5;
+        if n > 1 {
+            weights[n - 1] *= 0.5;
+        }
+        weights
+    }
+
+    /// Evaluates the Chebyshev interpolant using the barycentric formula. This approach is more
+    /// numerically stable than direct evaluation of the high-degree polynomial.
+    fn barycentric_interpolate(t: f64, t_coords: &[f64], f_values: &[f64], weights: &[f64]) -> f64 {
+        let mut numer = 0.0;
+        let mut denom = 0.0;
+
+        for (j, &t_j) in t_coords.iter().enumerate() {
+            // If t is exactly at a grid point, return the value to avoid division by zero
+            if (t - t_j).abs() < 1e-15 {
+                return f_values[j];
+            }
+
+            let term = weights[j] / (t - t_j);
+            numer += term * f_values[j];
+            denom += term;
+        }
+
+        numer / denom
+    }
+}
+
+impl<D> Strategy1D<D> for LogChebyshevInterpolation<1>
+where
+    D: Data<Elem = f64> + RawDataClone + Clone,
+{
+    fn init(&mut self, data: &InterpData1D<D>) -> Result<(), ValidateError> {
+        let x_coords = data.grid[0].as_slice().unwrap();
+        if x_coords.iter().any(|&x| x <= 0.0) {
+            return Err(ValidateError::Other(
+                "The input values must be positive for logarithmic scaling".to_string(),
+            ));
+        }
+        let n = x_coords.len();
+        if n < 2 {
+            return Err(ValidateError::Other(
+                "LogChebyshevInterpolation requires at least 2 grid points.".to_string(),
+            ));
+        }
+
+        self.t_coords[0] = (0..n)
+            .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+            .collect();
+
+        self.weights[0] = Self::compute_barycentric_weights(n);
+
+        Ok(())
+    }
+
+    fn interpolate(
+        &self,
+        data: &InterpData1D<D>,
+        point: &[f64; 1],
+    ) -> Result<f64, InterpolateError> {
+        let x = point[0];
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let f_values = data.values.as_slice().unwrap();
+
+        let x_min = *x_coords.first().unwrap();
+        let x_max = *x_coords.last().unwrap();
+
+        if x < x_min || x > x_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point {} is outside the grid range [{}, {}]",
+                x, x_min, x_max
+            )));
+        }
+
+        let log_x = x.ln();
+        let log_x_min = x_min.ln();
+        let log_x_max = x_max.ln();
+
+        if (log_x_max - log_x_min).abs() < 1e-15 {
+            return Ok(f_values[0]);
+        }
+        let t = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
+
+        Ok(Self::barycentric_interpolate(
+            t,
+            &self.t_coords[0],
+            f_values,
+            &self.weights[0],
+        ))
+    }
+
+    fn allow_extrapolate(&self) -> bool {
+        false
+    }
+}
+
+impl<D> Strategy2D<D> for LogChebyshevInterpolation<2>
+where
+    D: Data<Elem = f64> + RawDataClone + Clone,
+{
+    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
+        for dim in 0..2 {
+            let x_coords = data.grid[dim].as_slice().unwrap();
+            if x_coords.iter().any(|&x| x <= 0.0) {
+                return Err(ValidateError::Other(
+                    "The input values must be positive for logarithmic scaling".to_string(),
+                ));
+            }
+            let n = x_coords.len();
+            if n < 2 {
+                return Err(ValidateError::Other(
+                    "LogChebyshevInterpolation requires at least 2 grid points per dimension."
+                        .to_string(),
+                ));
+            }
+            self.t_coords[dim] = (0..n)
+                .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+                .collect();
+            self.weights[dim] = Self::compute_barycentric_weights(n);
+        }
+        Ok(())
+    }
+
+    fn interpolate(
+        &self,
+        data: &InterpData2D<D>,
+        point: &[f64; 2],
+    ) -> Result<f64, InterpolateError> {
+        let [x, y] = *point;
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+
+        let x_min = *x_coords.first().unwrap();
+        let x_max = *x_coords.last().unwrap();
+        if x < x_min || x > x_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point x={} is outside the grid range [{}, {}]",
+                x, x_min, x_max
+            )));
+        }
+        let log_x = x.ln();
+        let log_x_min = x_min.ln();
+        let log_x_max = x_max.ln();
+        let t_x = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
+
+        let y_min = *y_coords.first().unwrap();
+        let y_max = *y_coords.last().unwrap();
+        if y < y_min || y > y_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point y={} is outside the grid range [{}, {}]",
+                y, y_min, y_max
+            )));
+        }
+        let log_y = y.ln();
+        let log_y_min = y_min.ln();
+        let log_y_max = y_max.ln();
+        let t_y = 2.0 * (log_y - log_y_min) / (log_y_max - log_y_min) - 1.0;
+
+        // Interpolate along y for each x grid line
+        let mut y_interp_values = Vec::with_capacity(x_coords.len());
+        for i in 0..x_coords.len() {
+            let f_values_y: Vec<f64> = (0..y_coords.len()).map(|j| data.values[[i, j]]).collect();
+            y_interp_values.push(Self::barycentric_interpolate(
+                t_y,
+                &self.t_coords[1],
+                &f_values_y,
+                &self.weights[1],
+            ));
+        }
+
+        // Interpolate along x using the results from the y-interpolations
+        Ok(Self::barycentric_interpolate(
+            t_x,
+            &self.t_coords[0],
+            &y_interp_values,
+            &self.weights[0],
+        ))
+    }
+
+    fn allow_extrapolate(&self) -> bool {
+        false
+    }
+}
+
+impl<D> Strategy3D<D> for LogChebyshevInterpolation<3>
+where
+    D: Data<Elem = f64> + RawDataClone + Clone,
+{
+    fn init(&mut self, data: &InterpData3D<D>) -> Result<(), ValidateError> {
+        for dim in 0..3 {
+            let x_coords = data.grid[dim].as_slice().unwrap();
+            if x_coords.iter().any(|&x| x <= 0.0) {
+                return Err(ValidateError::Other(
+                    "The input values must be positive for logarithmic scaling".to_string(),
+                ));
+            }
+            let n = x_coords.len();
+            if n < 2 {
+                return Err(ValidateError::Other(
+                    "LogChebyshevInterpolation requires at least 2 grid points per dimension."
+                        .to_string(),
+                ));
+            }
+            self.t_coords[dim] = (0..n)
+                .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+                .collect();
+            self.weights[dim] = Self::compute_barycentric_weights(n);
+        }
+        Ok(())
+    }
+
+    fn interpolate(
+        &self,
+        data: &InterpData3D<D>,
+        point: &[f64; 3],
+    ) -> Result<f64, InterpolateError> {
+        let [x, y, z] = *point;
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+        let z_coords = data.grid[2].as_slice().unwrap();
+
+        let x_min = *x_coords.first().unwrap();
+        let x_max = *x_coords.last().unwrap();
+        if x < x_min || x > x_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point x={} is outside the grid range [{}, {}]",
+                x, x_min, x_max
+            )));
+        }
+        let log_x = x.ln();
+        let log_x_min = x_min.ln();
+        let log_x_max = x_max.ln();
+        let t_x = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
+
+        let y_min = *y_coords.first().unwrap();
+        let y_max = *y_coords.last().unwrap();
+        if y < y_min || y > y_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point y={} is outside the grid range [{}, {}]",
+                y, y_min, y_max
+            )));
+        }
+        let log_y = y.ln();
+        let log_y_min = y_min.ln();
+        let log_y_max = y_max.ln();
+        let t_y = 2.0 * (log_y - log_y_min) / (log_y_max - log_y_min) - 1.0;
+
+        let z_min = *z_coords.first().unwrap();
+        let z_max = *z_coords.last().unwrap();
+        if z < z_min || z > z_max {
+            return Err(InterpolateError::Other(format!(
+                "Input point z={} is outside the grid range [{}, {}]",
+                z, z_min, z_max
+            )));
+        }
+        let log_z = z.ln();
+        let log_z_min = z_min.ln();
+        let log_z_max = z_max.ln();
+        let t_z = 2.0 * (log_z - log_z_min) / (log_z_max - log_z_min) - 1.0;
+
+        // Interpolate along z for each (x, y) grid plane
+        let mut z_interp_values = Vec::with_capacity(x_coords.len() * y_coords.len());
+        for i in 0..x_coords.len() {
+            for j in 0..y_coords.len() {
+                let f_values_z: Vec<f64> = (0..z_coords.len())
+                    .map(|k| data.values[[i, j, k]])
+                    .collect();
+                z_interp_values.push(Self::barycentric_interpolate(
+                    t_z,
+                    &self.t_coords[2],
+                    &f_values_z,
+                    &self.weights[2],
+                ));
+            }
+        }
+
+        // Interpolate along y for each x grid line
+        let mut y_interp_values = Vec::with_capacity(x_coords.len());
+        for i in 0..x_coords.len() {
+            let f_values_y: Vec<f64> = (0..y_coords.len())
+                .map(|j| z_interp_values[i * y_coords.len() + j])
+                .collect();
+            y_interp_values.push(Self::barycentric_interpolate(
+                t_y,
+                &self.t_coords[1],
+                &f_values_y,
+                &self.weights[1],
+            ));
+        }
+
+        // Interpolate along x
+        Ok(Self::barycentric_interpolate(
+            t_x,
+            &self.t_coords[0],
+            &y_interp_values,
+            &self.weights[0],
+        ))
+    }
+
+    fn allow_extrapolate(&self) -> bool {
+        false
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -989,6 +1372,7 @@ mod tests {
     use ninterp::interpolator::{Extrapolate, InterpND};
     use ninterp::prelude::Interpolator;
     use ninterp::strategy::Linear;
+    use std::f64::consts::PI;
 
     // Helper constants for commonly used values
     const EPSILON: f64 = 1e-9;
@@ -1055,6 +1439,19 @@ mod tests {
             values_array,
         )
         .unwrap()
+    }
+
+    // Create an instance of `create_chebyshev_grid` for 2- and 3-dimensional interpolations.
+    fn create_cheby_grid(n_points: i32, x_min: f64, x_max: f64) -> Vec<f64> {
+        let u_min = x_min.ln();
+        let u_max = x_max.ln();
+        (0..n_points)
+            .map(|j| {
+                let t_j = (PI * (n_points - 1 - j) as f64 / (n_points - 1) as f64).cos();
+                let u_j = u_min + (u_max - u_min) * (t_j + 1.0) / 2.0;
+                u_j.exp()
+            })
+            .collect::<Vec<f64>>()
     }
 
     #[test]
@@ -1386,5 +1783,78 @@ mod tests {
             AlphaSCubicInterpolation::iq2below(&data_single, 1.5);
         });
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_log_chebyshev_interpolation_1d() {
+        let n = 21;
+        let x_min: f64 = 0.1;
+        let x_max: f64 = 10.0;
+        let x_coords = create_cheby_grid(n, x_min, x_max);
+
+        let f_values: Vec<f64> = x_coords.iter().map(|&x| x.ln()).collect();
+        let data = create_test_data_1d(x_coords, f_values);
+        let mut cheby = LogChebyshevInterpolation::<1>::default();
+        cheby.init(&data).unwrap();
+
+        let x_test: f64 = 2.5;
+        let expected = x_test.ln();
+        let result = cheby.interpolate(&data, &[x_test]).unwrap();
+        assert_close(result, expected, EPSILON);
+
+        let x_test_grid = data.grid[0].as_slice().unwrap()[n as usize / 2];
+        let expected_grid = x_test_grid.ln();
+        let result_grid = cheby.interpolate(&data, &[x_test_grid]).unwrap();
+        assert_close(result_grid, expected_grid, EPSILON);
+    }
+
+    #[test]
+    fn test_log_chebyshev_interpolation_2d() {
+        let n = 11;
+        let x_coords = create_cheby_grid(n, 0.1, 10.0);
+        let y_coords = create_cheby_grid(n, 0.1, 10.0);
+
+        let f_values: Vec<f64> = x_coords
+            .iter()
+            .flat_map(|&x| y_coords.iter().map(move |&y| x.ln() + y.ln()))
+            .collect();
+
+        let data = create_test_data_2d(x_coords, y_coords, f_values);
+        let mut cheby = LogChebyshevInterpolation::<2>::default();
+        cheby.init(&data).unwrap();
+
+        let x_test: f64 = 2.5;
+        let y_test: f64 = 3.5;
+        let expected = x_test.ln() + y_test.ln();
+        let result = cheby.interpolate(&data, &[x_test, y_test]).unwrap();
+
+        assert_close(result, expected, EPSILON);
+    }
+
+    #[test]
+    fn test_log_chebyshev_interpolation_3d() {
+        let n = 7;
+        let x_coords = create_cheby_grid(n, 0.1, 10.0);
+        let y_coords = create_cheby_grid(n, 0.1, 10.0);
+        let z_coords = create_cheby_grid(n, 0.1, 10.0);
+
+        let f_values: Vec<f64> = x_coords
+            .iter()
+            .cartesian_product(y_coords.iter())
+            .cartesian_product(z_coords.iter())
+            .map(|((&x, &y), &z)| x.ln() + y.ln() + z.ln())
+            .collect();
+
+        let data = create_test_data_3d(x_coords, y_coords, z_coords, f_values);
+        let mut cheby = LogChebyshevInterpolation::<3>::default();
+        cheby.init(&data).unwrap();
+
+        let x_test: f64 = 2.5;
+        let y_test: f64 = 3.5;
+        let z_test: f64 = 4.5;
+        let expected = x_test.ln() + y_test.ln() + z_test.ln();
+        let result = cheby.interpolate(&data, &[x_test, y_test, z_test]).unwrap();
+
+        assert_close(result, expected, EPSILON);
     }
 }

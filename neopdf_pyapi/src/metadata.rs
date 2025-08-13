@@ -43,6 +43,8 @@ pub enum PyInterpolatorType {
     LogTricubic,
     /// Linear interpolation for N-dimensional data.
     NDLinear,
+    /// Chebyshev logarithmic interpolation strategy.
+    LogChebyshev,
 }
 
 impl From<&InterpolatorType> for PyInterpolatorType {
@@ -53,6 +55,7 @@ impl From<&InterpolatorType> for PyInterpolatorType {
             InterpolatorType::LogBicubic => Self::LogBicubic,
             InterpolatorType::LogTricubic => Self::LogTricubic,
             InterpolatorType::InterpNDLinear => Self::NDLinear,
+            InterpolatorType::LogChebyshev => Self::LogChebyshev,
         }
     }
 }
@@ -65,6 +68,7 @@ impl From<&PyInterpolatorType> for InterpolatorType {
             PyInterpolatorType::LogBicubic => Self::LogBicubic,
             PyInterpolatorType::LogTricubic => Self::LogTricubic,
             PyInterpolatorType::NDLinear => Self::InterpNDLinear,
+            PyInterpolatorType::LogChebyshev => Self::LogChebyshev,
         }
     }
 }
@@ -284,6 +288,7 @@ impl PyMetaData {
             InterpolatorType::LogBicubic => "LogBicubic",
             InterpolatorType::LogTricubic => "LogTricubic",
             InterpolatorType::InterpNDLinear => "NDLinear",
+            InterpolatorType::LogChebyshev => "LogChebyshev",
         };
 
         dict.set_item("set_desc", &self.meta.set_desc)?;

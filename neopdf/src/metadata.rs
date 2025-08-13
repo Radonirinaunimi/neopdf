@@ -16,6 +16,7 @@ pub enum SetType {
 }
 
 /// Represents the type of interpolator used for the PDF.
+/// WARNING: When adding elements, always append to the end!!!
 #[repr(C)]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub enum InterpolatorType {
@@ -25,6 +26,7 @@ pub enum InterpolatorType {
     LogBicubic,
     LogTricubic,
     InterpNDLinear,
+    LogChebyshev,
 }
 
 /// Represents the information block of a PDF set, typically found in an `.info` file.
