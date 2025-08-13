@@ -3,10 +3,8 @@
 //! It defines types and methods for ensuring that PDF sets are available locally, downloading them if
 //! necessary, and handling different PDF set formats (LHAPDF, NeoPDF).
 use flate2::read::GzDecoder;
-use reqwest::blocking::get;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use std::io::Cursor;
 use std::path::{Path, PathBuf};
 use tar::Archive;
 
@@ -84,7 +82,12 @@ impl ManageData {
         );
         println!("Downloading PDF set from: {}", url);
 
-        let response = get(&url)?;
+        let response = reqwest::blocking::Client::builder()
+            .timeout(None)
+            .build()?
+            .get(&url)
+            .send()?;
+
         if !response.status().is_success() {
             return Err(format!(
                 "Failed to download PDF set '{}': HTTP {}",
@@ -94,8 +97,7 @@ impl ManageData {
             .into());
         }
 
-        let bytes = response.bytes()?;
-        let tar = GzDecoder::new(Cursor::new(bytes));
+        let tar = GzDecoder::new(response);
         let mut archive = Archive::new(tar);
 
         archive.unpack(&self.neopdf_path)?;

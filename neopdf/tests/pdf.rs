@@ -278,3 +278,14 @@ pub fn test_boundary_extraction() {
     assert!((pdf.param_ranges().q2.min - 1.65 * 1.65).abs() < PRECISION);
     assert!((pdf.param_ranges().q2.max - 1e5 * 1.0e5).abs() < PRECISION);
 }
+
+#[test]
+fn test_pdf_download() {
+    // Download a PDF set with very few members.
+    let pdf = PDF::load("MSTW2008nlo_mcrange_fixasmz", 0);
+    let gluon_as = pdf.alphas_q2(1e2);
+    let gluon_xf = pdf.xfxq2(21, &[1e-3, 1e4]);
+
+    assert!(gluon_as.is_finite());
+    assert!(gluon_xf.is_finite());
+}
