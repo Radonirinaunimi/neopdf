@@ -156,6 +156,8 @@ impl fmt::Display for MetaData {
         writeln!(f, "MStrange: {}", self.m_strange)?;
         writeln!(f, "MCharm: {}", self.m_charm)?;
         writeln!(f, "MBottom: {}", self.m_bottom)?;
-        writeln!(f, "MTop: {}", self.m_top)
+        writeln!(f, "MTop: {}", self.m_top)?;
+        writeln!(f, "AlphaS Type: {}", self.alphas_type)?;
+        writeln!(f, "Number of PDF flavors: {}", self.number_flavors)
     }
 }

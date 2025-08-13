@@ -45,6 +45,8 @@ MStrange: 0
 MCharm: 1.51
 MBottom: 4.92
 MTop: 172.5
+AlphaS Type: ipol
+Number of PDF flavors: 5
 
 ";
 
