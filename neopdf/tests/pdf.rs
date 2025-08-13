@@ -244,6 +244,21 @@ pub fn test_multi_members_loader() {
 }
 
 #[test]
+pub fn test_multi_members_lazy_loader() {
+    let pdfs = PDF::load_pdfs_lazy("NNPDF40_nnlo_as_01180.neopdf.lz4");
+
+    let _ = pdfs.map(|pdf| {
+        let result = match pdf {
+            Ok(t) => t,
+            Err(err) => unreachable!("{err}"),
+        }
+        .xfxq2(21, &[1e-5, 1e4]);
+
+        assert!(result.abs() > 0.0);
+    });
+}
+
+#[test]
 pub fn test_boundary_extraction() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 

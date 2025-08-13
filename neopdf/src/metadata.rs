@@ -94,7 +94,7 @@ pub struct MetaData {
     #[serde(rename = "OrderQCD", default)]
     pub order_qcd: u32,
     /// Number of QCD loops in the calculation of `alpha_s`.
-    #[serde(rename = "AlphaS OrderQCD", default)]
+    #[serde(rename = "AlphaS_OrderQCD", default)]
     pub alphas_order_qcd: u32,
     /// Value of the W boson mass.
     #[serde(rename = "MW", default)]
@@ -120,6 +120,12 @@ pub struct MetaData {
     /// Value of the Top quark mass.
     #[serde(rename = "MTop", default)]
     pub m_top: f64,
+    /// Type of strong coupling computations.
+    #[serde(rename = "AlphaS_Type", default)]
+    pub alphas_type: String,
+    /// Number of active PDF flavors.
+    #[serde(rename = "NumFlavors", default)]
+    pub number_flavors: u32,
 }
 
 impl fmt::Display for MetaData {
