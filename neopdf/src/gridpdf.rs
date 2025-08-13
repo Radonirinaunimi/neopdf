@@ -8,16 +8,14 @@
 use core::panic;
 
 use ndarray::{Array1, Array2};
-use ninterp::interpolator::Extrapolate;
-use ninterp::prelude::*;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use super::alphas::AlphaS;
 use super::interpolator::{DynInterpolator, InterpolatorFactory};
 use super::metadata::MetaData;
 use super::parser::SubgridData;
-use super::strategy::AlphaSCubicInterpolation;
 use super::subgrid::{ParamRange, RangeParameters, SubGrid};
 
 /// Errors that can occur during PDF grid operations.
@@ -187,8 +185,8 @@ pub struct GridPDF {
     pub knot_array: GridArray,
     /// A nested vector of interpolators for each subgrid and flavor.
     interpolators: Vec<Vec<Box<dyn DynInterpolator>>>,
-    /// An interpolator for the running of alpha_s.
-    alphas_interpolator: Interp1DOwned<f64, AlphaSCubicInterpolation>,
+    /// Calculator for the running of alpha_s.
+    alphas: AlphaS,
     /// Clip the values to positive definite numbers if negatives.
     pub force_positive: Option<ForcePositive>,
 }
@@ -202,13 +200,13 @@ impl GridPDF {
     /// * `knot_array` - The `GridArray` containing the grid data.
     pub fn new(info: MetaData, knot_array: GridArray) -> Self {
         let interpolators = Self::build_interpolators(&info, &knot_array);
-        let alphas_interpolator = Self::build_alphas_interpolator(&info);
+        let alphas = AlphaS::from_metadata(&info).expect("Failed to create AlphaS calculator");
 
         Self {
             info,
             knot_array,
             interpolators,
-            alphas_interpolator,
+            alphas,
             force_positive: None,
         }
     }
@@ -260,18 +258,6 @@ impl GridPDF {
                     .collect()
             })
             .collect()
-    }
-
-    /// Builds the interpolator for alpha_s.
-    fn build_alphas_interpolator(info: &MetaData) -> Interp1DOwned<f64, AlphaSCubicInterpolation> {
-        let q2_values: Vec<f64> = info.alphas_q_values.iter().map(|&q| q * q).collect();
-        Interp1D::new(
-            q2_values.into(),
-            info.alphas_vals.to_owned().into(),
-            AlphaSCubicInterpolation,
-            Extrapolate::Error,
-        )
-        .expect("Failed to create alpha_s interpolator")
     }
 
     /// Interpolates the PDF value for `(nucleons, alphas, x, q2)` and a given flavor.
@@ -355,7 +341,7 @@ impl GridPDF {
     ///
     /// The interpolated alpha_s value.
     pub fn alphas_q2(&self, q2: f64) -> f64 {
-        self.alphas_interpolator.interpolate(&[q2]).unwrap_or(0.0)
+        self.alphas.alphas_q2(q2)
     }
 
     /// Returns a reference to the PDF metadata.

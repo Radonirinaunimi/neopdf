@@ -476,6 +476,8 @@ mod tests {
             m_charm: 0.0,
             m_bottom: 0.0,
             m_top: 0.0,
+            alphas_type: String::new(),
+            number_flavors: 0,
         };
 
         let test_grid = test_grid();

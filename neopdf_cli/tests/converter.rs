@@ -38,7 +38,7 @@ Error Type: replicas
 Particle: 2212
 Flavor Scheme: variable
 Order QCD: 2
-AlphaS Order QCD: 0
+AlphaS Order QCD: 2
 MW: 0
 MZ: 91.1876
 MUp: 0

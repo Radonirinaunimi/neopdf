@@ -749,6 +749,10 @@ pub struct NeoPDFPhysicsParameters {
     pub m_bottom: f64,
     /// Value of the `t` quark mass.
     pub m_top: f64,
+    /// Method to compute strong coupling.
+    pub alphas_type: *const c_char,
+    /// Number of active flavors.
+    pub number_flavors: u32,
 }
 
 /// Metadata for PDF grids
@@ -809,6 +813,7 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
     let alphas_vals = unsafe { carray_to_vec(meta.alphas_vals, meta.num_alphas_vals) }?;
     let error_type = unsafe { cstr_to_string(meta.error_type) }?;
     let flavor_scheme = unsafe { cstr_to_string(meta.phys_params.flavor_scheme) }?;
+    let alphas_type = unsafe { cstr_to_string(meta.phys_params.alphas_type) }?;
 
     let metadata = MetaData {
         set_desc,
@@ -840,6 +845,8 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
         m_charm: meta.phys_params.m_charm,
         m_bottom: meta.phys_params.m_bottom,
         m_top: meta.phys_params.m_top,
+        alphas_type,
+        number_flavors: meta.phys_params.number_flavors,
     };
 
     Some(metadata)
