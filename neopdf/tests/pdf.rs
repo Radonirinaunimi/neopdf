@@ -114,6 +114,17 @@ fn test_alphas_q2_interpolations() {
 }
 
 #[test]
+fn test_alphas_q2_interpolations_abmp16() {
+    let pdf = PDF::load("ABMP16als118_5_nnlo", 10);
+
+    let q2_values = vec![1.65 * 1.65, 2.75, 4.0, 100.0, 1e5 * 1e5];
+
+    for q2 in q2_values {
+        assert!(pdf.alphas_q2(q2) >= 0.0, "Failed AlphaSQ2(Q2={q2})");
+    }
+}
+
+#[test]
 pub fn test_xfxq2s() {
     let expected = vec![
         0.27337409518414,
@@ -241,6 +252,21 @@ pub fn test_multi_members_loader() {
     let pdfs = PDF::load_pdfs("NNPDF40_nnlo_as_01180");
 
     assert!(pdfs.len() == 101);
+}
+
+#[test]
+pub fn test_multi_members_lazy_loader() {
+    let pdfs = PDF::load_pdfs_lazy("NNPDF40_nnlo_as_01180.neopdf.lz4");
+
+    let _ = pdfs.map(|pdf| {
+        let result = match pdf {
+            Ok(t) => t,
+            Err(err) => unreachable!("{err}"),
+        }
+        .xfxq2(21, &[1e-5, 1e4]);
+
+        assert!(result.abs() > 0.0);
+    });
 }
 
 #[test]

@@ -25,6 +25,8 @@ struct PhysicsParameters {
     double m_charm;
     double m_bottom;
     double m_top;
+    std::string alphas_type;
+    uint32_t number_flavors;
 
     // Conversion to C struct
     NeoPDFPhysicsParameters to_c() const {
@@ -40,6 +42,8 @@ struct PhysicsParameters {
         c_params.m_charm = m_charm;
         c_params.m_bottom = m_bottom;
         c_params.m_top = m_top;
+        c_params.alphas_type = alphas_type.c_str();
+        c_params.number_flavors = number_flavors;
         return c_params;
     }
 };

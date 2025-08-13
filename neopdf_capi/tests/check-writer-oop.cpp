@@ -98,6 +98,8 @@ int main() {
         .m_charm = 1.51,
         .m_bottom = 4.92,
         .m_top = 172.5,
+        .alphas_type = "ipol",
+        .number_flavors = 4,
     };
 
     MetaData meta = {
