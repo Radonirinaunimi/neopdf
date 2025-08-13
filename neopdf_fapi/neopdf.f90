@@ -34,6 +34,8 @@ module neopdf
         real(c_double) :: m_charm
         real(c_double) :: m_bottom
         real(c_double) :: m_top
+        type (c_ptr) :: alphas_type = c_null_ptr
+        integer(c_int32_t) :: number_flavors
     end type
 
     type, bind(c) :: neopdf_metadata
