@@ -114,6 +114,17 @@ fn test_alphas_q2_interpolations() {
 }
 
 #[test]
+fn test_alphas_q2_interpolations_abmp16() {
+    let pdf = PDF::load("ABMP16als118_5_nnlo", 10);
+
+    let q2_values = vec![1.65 * 1.65, 2.75, 4.0, 100.0, 1e5 * 1e5];
+
+    for q2 in q2_values {
+        assert!(pdf.alphas_q2(q2) >= 0.0, "Failed AlphaSQ2(Q2={q2})");
+    }
+}
+
+#[test]
 pub fn test_xfxq2s() {
     let expected = vec![
         0.27337409518414,
