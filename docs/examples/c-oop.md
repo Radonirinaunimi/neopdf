@@ -324,7 +324,7 @@ below in the case the grid should explicitly depend on more parameters.
     is correct. However, this makes the codes very verbose. To easily spot the parts that
     actually fills the grid, some lines are highlighted.
 
-```cpp linenums="1" hl_lines="34 38 41 54-62 65-72 76 88-100 102-120 131"
+```cpp linenums="1" hl_lines="34 38 41 54-62 65-72 76 88-102 104-122 133"
 #include <NeoPDF.hpp>
 #include <cassert>
 #include <cmath>
@@ -424,6 +424,8 @@ int main() {
         .m_charm = 1.51,
         .m_bottom = 4.92,
         .m_top = 172.5,
+        .alphas_type = "ipol",
+        .number_flavors = 4,
     };
 
     MetaData meta = {
@@ -511,7 +513,7 @@ In the following example, we are going to see how to fill TMD grids which contai
 a dependence on the transverse momentum $k_T$. The following example makes use of
 the [TMDlib](https://tmdlib.hepforge.org/) library to provide the TMD distributions.
 
-```cpp linenums="1" hl_lines="106 112 115-125 128-135 138 146-158 160-178 189"
+```cpp linenums="1" hl_lines="106 112 115-125 128-135 138 146-160 162-180 191"
 #include "neopdf_capi.h"
 #include "tmdlib/TMDlib.h"
 #include <NeoPDF.hpp>
@@ -669,6 +671,8 @@ int main() {
         .m_charm = 1.51,
         .m_bottom = 4.92,
         .m_top = 172.5,
+        .alphas_type = "ipol",
+        .number_flavors = 4,
     };
 
     MetaData meta = {

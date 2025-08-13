@@ -180,7 +180,7 @@ parameters.
     is correct. However, this makes the codes very verbose. To easily spot the parts that
     actually fills the grid, some lines are highlighted.
 
-```fortran linenums="1" hl_lines="50 57 63 73-78 80-91 93 99-100 127-145"
+```fortran linenums="1" hl_lines="50 57 63 73-80 82-93 95 101-102 129-147"
 program check_writer_fapi
     use neopdf
     use iso_c_binding
@@ -258,7 +258,9 @@ program check_writer_fapi
         order_qcd=2, alphas_order_qcd=2, &
         m_w=80.352_dp, m_z=91.1876_dp, &
         m_up=0.0_dp, m_down=0.0_dp, m_strange=0.0_dp, &
-        m_charm=1.51_dp, m_bottom=4.92_dp, m_top=172.5_dp)
+        m_charm=1.51_dp, m_bottom=4.92_dp, m_top=172.5_dp, &
+        alphas_type=c_char_ptr("ipol" // c_null_char), &
+        number_flavors=4)
 
     meta = neopdf_metadata( &
         set_desc=c_char_ptr("NNPDF40_nnlo_as_01180 collection" // c_null_char), &

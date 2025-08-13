@@ -182,7 +182,7 @@ the process of constructing a grid for each PDF member and serializing the colle
     that the filling of the grid is correct. However, this makes the codes very verbose. To
     easily spot the parts that actually fills the grid, some lines are highlighted.
 
-```c linenums="1" hl_lines="66 76 130-138 141-149 164 172 191-203 205-226 239"
+```c linenums="1" hl_lines="66 76 130-138 141-149 164 172 191-205 207-228 241"
 #include <neopdf_capi.h>
 #include <assert.h>
 #include <math.h>
@@ -385,6 +385,8 @@ int main() {
         .m_charm = 1.51,
         .m_bottom = 4.92,
         .m_top = 172.5,
+        .alphas_type = "ipol",
+        .number_flavors = 4,
     };
 
     NeoPDFMetaData meta = {
@@ -747,7 +749,7 @@ the process of constructing a grid for each PDF member and serializing the colle
     is correct. However, this makes the codes very verbose. To easily spot the parts that
     actually fills the grid, some lines are highlighted.
 
-```cpp linenums="1" hl_lines="112-121 124-132 141 149 168-180 182-203 213"
+```cpp linenums="1" hl_lines="112-121 124-132 141 149 168-182 184-205 215"
 #include <cstddef>
 #include <neopdf_capi.h>
 #include <cassert>
@@ -927,6 +929,8 @@ int main() {
         .m_charm = 1.51,
         .m_bottom = 4.92,
         .m_top = 172.5,
+        .alphas_type = "ipol",
+        .number_flavors = 4,
     };
 
     NeoPDFMetaData meta = {
