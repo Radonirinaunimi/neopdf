@@ -64,28 +64,50 @@ pipx install neopdf-hep
 
 ## C/C++ API
 
-To build the C-API from source, first install `cargo-c`:
+The simplest way to install the C API and the C++ OOP header is to download the pre-built libraries:
 
 ```bash
-cargo install cargo-c
+curl --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/Radonirinaunimi/neopdf/refs/heads/master/install-capi.sh | sh
 ```
 
-Then go into the `neopdf_capi` directory and run the following command:
+To pass the installation directory for where to put the files, change the arguments of the shell as
+follows:
 
 ```bash
-export CARGO_C_INSTALL_PREFIX=${prefix} # Required for the OOP C++ header
-cargo cinstall --release --prefix=${prefix}
+.. | sh -s -- --prefix /custom/installation/path
 ```
 
-This will install the library in the `${prefix}` path. This path can then be added to the `PKG_CONFIG_PATH`
-and `LD_LIBRARY_PATH` environment variables by running:
+By default, the script will download the latest stable release. If you would like a specific version,
+pass the version along with `--version`:
 
 ```bash
-export LD_LIBRARY_PATH=${prefix}/lib:$LD_LIBRARY_PATH
-export PKG_CONFIG_PATH=${prefix}/lib/pkgconfig:$PKG_CONFIG_PATH
+.. | sh -s -- --version 0.2.0-alpha1
 ```
 
-Remember to source your shell configuration or restart your terminal for the changes to take effect.
+!!! info "Development Option"
+
+    Alternatively, to build the C-API from source, first install `cargo-c`:
+
+    ```bash
+    cargo install cargo-c
+    ```
+
+    Then go into the `neopdf_capi` directory and run the following command:
+
+    ```bash
+    export CARGO_C_INSTALL_PREFIX=${prefix} # Required for the OOP C++ header
+    cargo cinstall --release --prefix=${prefix}
+    ```
+
+    This will install the library in the `${prefix}` path. This path can then be added to the `PKG_CONFIG_PATH`
+    and `LD_LIBRARY_PATH` environment variables by running:
+
+    ```bash
+    export LD_LIBRARY_PATH=${prefix}/lib:$LD_LIBRARY_PATH
+    export PKG_CONFIG_PATH=${prefix}/lib/pkgconfig:$PKG_CONFIG_PATH
+    ```
+
+    Remember to source your shell configuration or restart your terminal for the changes to take effect.
 
 ---
 

@@ -3,18 +3,27 @@
     <a href="https://app.codecov.io/gh/Radonirinaunimi/neopdf/tree/master"><img
         alt="Codecov"
         src="https://img.shields.io/codecov/c/github/Radonirinaunimi/neopdf?style=for-the-badge&logo=codecov&logoColor=red&color=blue"
+        height="25"
     /></a>
     <a href="https://gribnau.dev/cargo-msrv/"><img
         alt="MSRV"
         src="https://img.shields.io/crates/msrv/neopdf?style=for-the-badge&logo=rust&color=red"
+        height="25"
     /></a>
     <a href="https://crates.io/crates/neopdf"><img
         alt="Crates.io"
         src="https://img.shields.io/crates/v/neopdf?style=for-the-badge&logo=rust&color=blue"
+        height="25"
     /></a>
     <a href="https://pypi.org/project/neopdf-hep/"><img
         alt="PyPI - Version"
         src="https://img.shields.io/pypi/v/neopdf-hep?style=for-the-badge&logo=python&logoColor=yellow&color=%1d881d"
+        height="25"
+    /></a>
+    <a href="https://github.com/Radonirinaunimi/neopdf?tab=GPL-3.0-1-ov-file"><img
+        alt="GitHub License"
+        src="https://img.shields.io/github/license/Radonirinaunimi/neopdf?style=for-the-badge&logo=gplv3&logoColor=red"
+        height="25"
     /></a>
 </div>
 
