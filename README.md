@@ -52,7 +52,7 @@
 
 ## Quick Links
 
-- [Documentation](https://radonirinaunimi.github.io/neopdf/) | [Rust Crate Documentation](https://docs.rs/neopdf/0.1.1/neopdf/)
+- [Documentation](https://radonirinaunimi.github.io/neopdf/) | [Rust Crate Documentation](https://docs.rs/neopdf/0.1.1/neopdf/) | [C++ API Reference](https://neopdf.readthedocs.io/en/latest/)
 - [Installation](https://radonirinaunimi.github.io/neopdf/installation/)
 - [Physics and technical features](https://radonirinaunimi.github.io/neopdf/design-and-features/)
 - [NeoPDF Design](https://radonirinaunimi.github.io/neopdf/design/)
