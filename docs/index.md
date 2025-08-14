@@ -55,8 +55,8 @@ widely used, have limitations in terms of extensibility and features. `NeoPDF` a
 ## Getting Started
 
 - **[Installation Guide](./installation.md)**: Complete installation instructions for all platforms and APIs
-- **[Development with Pixi](./development-with-pixi.md)**: Comprehensive guide for developers using Pixi for environment management
-- **[CLI Tutorials](./cli-tutorials.md)**: Learn how to use the command-line interface
+- **[Development with Pixi](./development-with-pixi.md)**: Comprehensive guide for using Pixi environment manager
+- **[CLI Tutorials](./cli-tutorials.md)**: Showcase how to use the command-line interface
 - **[Examples](./examples/)**: Code examples for Python, C++, C, and Fortran APIs
 
 ---
