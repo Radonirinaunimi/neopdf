@@ -8,6 +8,7 @@ build:
   apt_packages:
     - doxygen
   commands:
+    - pip install -r neopdf_capi/docs/requirements.txt
     - cd neopdf_capi/docs && make html
     - mkdir -p _readthedocs/html
     - cp -r neopdf_capi/docs/build/html/* _readthedocs/html/
