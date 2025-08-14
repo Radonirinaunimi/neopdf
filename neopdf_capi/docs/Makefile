@@ -1,7 +1,7 @@
 # Minimal makefile for Sphinx documentation
 
 SPHINXOPTS    ?= -j auto
-SPHINXBUILD   ?= /Users/tanjona/miniconda3/envs/nnpdf/bin/sphinx-build
+SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = source
 BUILDDIR      = build
 DOXYFILE      = Doxyfile.in
