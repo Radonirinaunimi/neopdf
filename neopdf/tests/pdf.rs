@@ -114,6 +114,17 @@ fn test_alphas_q2_interpolations() {
 }
 
 #[test]
+fn test_alphas_q2_interpolations_abmp16() {
+    let pdf = PDF::load("ABMP16als118_5_nnlo", 10);
+
+    let q2_values = vec![1.65 * 1.65, 2.75, 4.0, 100.0, 1e5 * 1e5];
+
+    for q2 in q2_values {
+        assert!(pdf.alphas_q2(q2) >= 0.0, "Failed AlphaSQ2(Q2={q2})");
+    }
+}
+
+#[test]
 pub fn test_xfxq2s() {
     let expected = vec![
         0.27337409518414,
@@ -244,6 +255,21 @@ pub fn test_multi_members_loader() {
 }
 
 #[test]
+pub fn test_multi_members_lazy_loader() {
+    let pdfs = PDF::load_pdfs_lazy("NNPDF40_nnlo_as_01180.neopdf.lz4");
+
+    let _ = pdfs.map(|pdf| {
+        let result = match pdf {
+            Ok(t) => t,
+            Err(err) => unreachable!("{err}"),
+        }
+        .xfxq2(21, &[1e-5, 1e4]);
+
+        assert!(result.abs() > 0.0);
+    });
+}
+
+#[test]
 pub fn test_boundary_extraction() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 
@@ -251,4 +277,15 @@ pub fn test_boundary_extraction() {
     assert!((pdf.param_ranges().x.max - 1.00).abs() < PRECISION);
     assert!((pdf.param_ranges().q2.min - 1.65 * 1.65).abs() < PRECISION);
     assert!((pdf.param_ranges().q2.max - 1e5 * 1.0e5).abs() < PRECISION);
+}
+
+#[test]
+fn test_pdf_download() {
+    // Download a PDF set with very few members.
+    let pdf = PDF::load("MSTW2008nlo_mcrange_fixasmz", 0);
+    let gluon_as = pdf.alphas_q2(1e2);
+    let gluon_xf = pdf.xfxq2(21, &[1e-3, 1e4]);
+
+    assert!(gluon_as.is_finite());
+    assert!(gluon_xf.is_finite());
 }

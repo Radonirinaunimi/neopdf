@@ -16,6 +16,7 @@ pub enum SetType {
 }
 
 /// Represents the type of interpolator used for the PDF.
+/// WARNING: When adding elements, always append to the end!!!
 #[repr(C)]
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 pub enum InterpolatorType {
@@ -25,6 +26,7 @@ pub enum InterpolatorType {
     LogBicubic,
     LogTricubic,
     InterpNDLinear,
+    LogChebyshev,
 }
 
 /// Represents the information block of a PDF set, typically found in an `.info` file.
@@ -92,7 +94,7 @@ pub struct MetaData {
     #[serde(rename = "OrderQCD", default)]
     pub order_qcd: u32,
     /// Number of QCD loops in the calculation of `alpha_s`.
-    #[serde(rename = "AlphaS OrderQCD", default)]
+    #[serde(rename = "AlphaS_OrderQCD", default)]
     pub alphas_order_qcd: u32,
     /// Value of the W boson mass.
     #[serde(rename = "MW", default)]
@@ -118,6 +120,12 @@ pub struct MetaData {
     /// Value of the Top quark mass.
     #[serde(rename = "MTop", default)]
     pub m_top: f64,
+    /// Type of strong coupling computations.
+    #[serde(rename = "AlphaS_Type", default)]
+    pub alphas_type: String,
+    /// Number of active PDF flavors.
+    #[serde(rename = "NumFlavors", default)]
+    pub number_flavors: u32,
 }
 
 impl fmt::Display for MetaData {
@@ -148,6 +156,8 @@ impl fmt::Display for MetaData {
         writeln!(f, "MStrange: {}", self.m_strange)?;
         writeln!(f, "MCharm: {}", self.m_charm)?;
         writeln!(f, "MBottom: {}", self.m_bottom)?;
-        writeln!(f, "MTop: {}", self.m_top)
+        writeln!(f, "MTop: {}", self.m_top)?;
+        writeln!(f, "AlphaS Type: {}", self.alphas_type)?;
+        writeln!(f, "Number of PDF flavors: {}", self.number_flavors)
     }
 }

@@ -82,7 +82,6 @@ class TestPDFInterpolations:
 
 
 class TestLazyLoader:
-    @pytest.mark.skip(reason="Requires updating container to include NeoPDF sets.")
     @pytest.mark.parametrize("pdfname", ["NNPDF40_nnlo_as_01180.neopdf.lz4"])
     def test_lazy_loader(self, neo_pdfs_lazy, pdfname):
         neopdfs = neo_pdfs_lazy(pdfname)

@@ -43,6 +43,8 @@ pub enum PyInterpolatorType {
     LogTricubic,
     /// Linear interpolation for N-dimensional data.
     NDLinear,
+    /// Chebyshev logarithmic interpolation strategy.
+    LogChebyshev,
 }
 
 impl From<&InterpolatorType> for PyInterpolatorType {
@@ -53,6 +55,7 @@ impl From<&InterpolatorType> for PyInterpolatorType {
             InterpolatorType::LogBicubic => Self::LogBicubic,
             InterpolatorType::LogTricubic => Self::LogTricubic,
             InterpolatorType::InterpNDLinear => Self::NDLinear,
+            InterpolatorType::LogChebyshev => Self::LogChebyshev,
         }
     }
 }
@@ -65,6 +68,7 @@ impl From<&PyInterpolatorType> for InterpolatorType {
             PyInterpolatorType::LogBicubic => Self::LogBicubic,
             PyInterpolatorType::LogTricubic => Self::LogTricubic,
             PyInterpolatorType::NDLinear => Self::InterpNDLinear,
+            PyInterpolatorType::LogChebyshev => Self::LogChebyshev,
         }
     }
 }
@@ -84,6 +88,8 @@ pub struct PyPhysicsParameters {
     pub(crate) m_charm: f64,
     pub(crate) m_bottom: f64,
     pub(crate) m_top: f64,
+    pub(crate) alphas_type: String,
+    pub(crate) number_flavors: u32,
 }
 
 #[pymethods]
@@ -103,7 +109,9 @@ impl PyPhysicsParameters {
         m_strange = 0.0,
         m_charm = 0.0,
         m_bottom = 0.0,
-        m_top = 0.0
+        m_top = 0.0,
+        alphas_type = "None".to_string(),
+        number_flavors = 0,
     ))]
     pub const fn new(
         flavor_scheme: String,
@@ -117,6 +125,8 @@ impl PyPhysicsParameters {
         m_charm: f64,
         m_bottom: f64,
         m_top: f64,
+        alphas_type: String,
+        number_flavors: u32,
     ) -> Self {
         Self {
             flavor_scheme,
@@ -130,6 +140,8 @@ impl PyPhysicsParameters {
             m_charm,
             m_bottom,
             m_top,
+            alphas_type,
+            number_flavors,
         }
     }
 
@@ -170,6 +182,8 @@ impl Default for PyPhysicsParameters {
             m_charm: 0.0,
             m_bottom: 0.0,
             m_top: 0.0,
+            alphas_type: String::new(),
+            number_flavors: 0,
         }
     }
 }
@@ -260,6 +274,8 @@ impl PyMetaData {
             m_charm: phys_params.m_charm,
             m_bottom: phys_params.m_bottom,
             m_top: phys_params.m_top,
+            alphas_type: phys_params.alphas_type,
+            number_flavors: phys_params.number_flavors,
         };
 
         Self { meta }
@@ -284,6 +300,7 @@ impl PyMetaData {
             InterpolatorType::LogBicubic => "LogBicubic",
             InterpolatorType::LogTricubic => "LogTricubic",
             InterpolatorType::InterpNDLinear => "NDLinear",
+            InterpolatorType::LogChebyshev => "LogChebyshev",
         };
 
         dict.set_item("set_desc", &self.meta.set_desc)?;

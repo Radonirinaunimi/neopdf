@@ -190,6 +190,8 @@ pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                 "MCharm" => metadata.m_charm = value.parse()?,
                 "MBottom" => metadata.m_bottom = value.parse()?,
                 "MTop" => metadata.m_top = value.parse()?,
+                "AlphaS_Type" => metadata.alphas_type = value.to_string(),
+                "NumFlavors" => metadata.number_flavors = value.parse()?,
                 "SetType" => {
                     metadata.set_type = match value.to_lowercase().as_str() {
                         "spacelike" => SetType::SpaceLike,

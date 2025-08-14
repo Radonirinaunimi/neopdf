@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a new module `alphas.rs` to store the logics of computing the strong
+  coupling `alpha_s`. It contains a new struct `AlphaSAnalytic` to compute the
+  `alpha_s` values analytically instead of interpolating.
+- Added Chebyshev interpolation strategy for 1D, 2D, and 3D data.
 - Added `pdf:mkpdfs_lazy` that loads the PDF members lazily and propagated the
   methods into the Python, C/C++, and Fortran APIs.
 - Added `gridpdf::ForcePositive` enum to set the clipping method to negative
