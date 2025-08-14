@@ -24,4 +24,4 @@ html: xml
 
 clean:
 	@echo "Cleaning build directory and Doxygen output..."
-	@rm -rf $(BUILDDIR) docs/xml
+	@rm -rf $(BUILDDIR) xml
