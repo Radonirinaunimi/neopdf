@@ -21,7 +21,7 @@ to be a modern, high-performance alternative to both [LHAPDF](https://www.lhapdf
   </div>
   <div class="feature-card">
       <strong>🧩 Flexibility</strong>
-      <p>Supports multiple interpolation strategies: allows for an efficient implementation of custom interpolations.</p>
+      <p>Easy support for different interpolation strategies: efficient implementation of custom interpolations.</p>
   </div>
   <div class="feature-card">
       <strong>🌐 Multi-Language Support</strong>
