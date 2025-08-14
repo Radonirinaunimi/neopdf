@@ -1,0 +1,16 @@
+PROJECT_NAME           = NeoPDF
+PROJECT_NUMBER         = 0.1.1
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+INPUT                  = ../src/include/NeoPDF.hpp
+FILE_PATTERNS          = *.hpp
+RECURSIVE              = YES
+GENERATE_XML           = YES
+XML_OUTPUT             = xml
+STRIP_FROM_PATH        = ../src
+STRIP_FROM_INC_PATH    = ../src/include
+SHOW_INCLUDE_FILES     = NO
+SHOW_DIRECTORIES       = NO
+SHOW_FILES             = NO
+SHOW_USED_FILES        = NO
+VERBATIM_HEADERS       = NO

@@ -13,7 +13,7 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-exclude = ["tests/*.output"]
+exclude = ["tests/*.output", "docs"]
 
 [dependencies]
 neopdf.workspace = true

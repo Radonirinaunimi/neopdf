@@ -1,1 +1,5 @@
 /target
+/neopdf_capi/docs/build/
+/neopdf_capi/docs/xml/
+/neopdf_capi/docs/html/
+/neopdf_capi/docs/latex/
