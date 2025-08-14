@@ -1,7 +1,7 @@
 .. _neopdf:
 
-Welcome to NeoPDF's C++ APIs documentation!
-===========================================
+Welcome to the NeoPDF's C++ APIs documentation!
+===============================================
 
 **NeoPDF** is a fast, reliable, and scalable interpolation library for both **collinear**
 and **transverse momentum dependent** Parton Distribution Functions with **modern features**
@@ -16,7 +16,7 @@ designed for both present and future hadron collider experiments.
   Interface (CLI) is provided to easily inspect and perform various operations on NeoPDF grids.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
    api

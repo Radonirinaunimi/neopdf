@@ -1,0 +1,23 @@
+/* Justify all paragraph text */
+.rst-content p {
+    text-align: justify;
+    text-justify: inter-word;
+}
+
+/* Justify description lists (common in API docs) */
+.rst-content dd p {
+    text-align: justify;
+    text-justify: inter-word;
+}
+
+/* Justify docstring content */
+.rst-content .breathe-sectiondef p {
+    text-align: justify;
+    text-justify: inter-word;
+}
+
+/* Optional: Also justify list items */
+.rst-content li p {
+    text-align: justify;
+    text-justify: inter-word;
+}

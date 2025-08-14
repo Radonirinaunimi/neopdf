@@ -1,5 +1,5 @@
 API Documentation
 =================
 
-.. doxygenindex::
-   :project: neopdf
+.. doxygenfile:: NeoPDF.hpp
+   :outline:
