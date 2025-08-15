@@ -5,7 +5,7 @@ use std::os::raw::{c_char, c_double, c_int};
 use std::slice;
 
 use neopdf::gridpdf::{ForcePositive, GridArray};
-use neopdf::metadata::{InterpolatorType, MetaData, SetType};
+use neopdf::metadata::{InterpolatorType, MetaData, MetaDataV1, SetType};
 use neopdf::parser::SubgridData;
 use neopdf::pdf::PDF;
 use neopdf::writer::GridArrayCollection;
@@ -815,7 +815,7 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
     let flavor_scheme = unsafe { cstr_to_string(meta.phys_params.flavor_scheme) }?;
     let alphas_type = unsafe { cstr_to_string(meta.phys_params.alphas_type) }?;
 
-    let metadata = MetaData {
+    let metadata_v1 = MetaDataV1 {
         set_desc,
         set_index: meta.set_index,
         num_members: meta.num_members,
@@ -848,6 +848,7 @@ fn process_metadata(meta: *const NeoPDFMetaData) -> Option<MetaData> {
         alphas_type,
         number_flavors: meta.phys_params.number_flavors,
     };
+    let metadata = MetaData::new_v1(metadata_v1);
 
     Some(metadata)
 }

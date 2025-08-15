@@ -32,7 +32,7 @@ pub enum InterpolatorType {
 /// Represents the information block of a PDF set, typically found in an `.info` file.
 /// This struct is deserialized from a YAML-like format.
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct MetaData {
+pub struct MetaDataV1 {
     /// Description of the PDF set.
     #[serde(rename = "SetDesc")]
     pub set_desc: String,
@@ -126,6 +126,74 @@ pub struct MetaData {
     /// Number of active PDF flavors.
     #[serde(rename = "NumFlavors", default)]
     pub number_flavors: u32,
+}
+
+/// Version-aware MetaData wrapper that handles serialization compatibility.
+#[derive(Clone, Debug, Serialize)]
+#[serde(untagged)]
+pub enum MetaData {
+    V1(MetaDataV1),
+}
+
+impl MetaData {
+    pub fn new_v1(data: MetaDataV1) -> Self {
+        Self::V1(data)
+    }
+
+    pub fn current(data: MetaDataV1) -> Self {
+        Self::V1(data)
+    }
+
+    pub fn to_latest(self) -> MetaDataV1 {
+        match self {
+            MetaData::V1(data) => data,
+        }
+    }
+
+    pub fn as_v1(&self) -> Option<&MetaDataV1> {
+        match self {
+            MetaData::V1(data) => Some(data),
+        }
+    }
+
+    pub fn as_v1_mut(&mut self) -> Option<&mut MetaDataV1> {
+        match self {
+            MetaData::V1(data) => Some(data),
+        }
+    }
+}
+
+impl std::ops::Deref for MetaData {
+    type Target = MetaDataV1;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            MetaData::V1(data) => data,
+        }
+    }
+}
+
+impl std::ops::DerefMut for MetaData {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        match self {
+            MetaData::V1(data) => data,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for MetaData {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let v1 = MetaDataV1::deserialize(deserializer)?;
+        Ok(MetaData::V1(v1))
+        // if let Ok(v1) = MetaDataV1::deserialize(deserializer) {
+        //     return Ok(MetaData::V1(v1));
+        // }
+        // let v2 = MetaDataV2::deserialize(deserializer)?;
+        // Ok(MetaData::V2(v2))
+    }
 }
 
 impl fmt::Display for MetaData {
