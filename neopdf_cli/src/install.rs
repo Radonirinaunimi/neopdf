@@ -16,9 +16,15 @@ pub struct Cli {
 /// Entry point for the `neopdf install` CLI.
 #[allow(clippy::needless_pass_by_value)]
 pub fn main(cli: Cli) {
-    if cli.pdf_name.ends_with(".neopdf.lz4") {
-        ManageData::new(&cli.pdf_name, PdfSetFormat::Lhapdf);
+    let manager = if cli.pdf_name.ends_with(".neopdf.lz4") {
+        ManageData::new(&cli.pdf_name, PdfSetFormat::Lhapdf)
     } else {
-        ManageData::new(&cli.pdf_name, PdfSetFormat::Neopdf);
-    }
+        ManageData::new(&cli.pdf_name, PdfSetFormat::Neopdf)
+    };
+
+    println!(
+        "PDF set '{}' installed in {}",
+        cli.pdf_name,
+        manager.set_path().display()
+    );
 }
