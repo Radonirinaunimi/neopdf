@@ -76,7 +76,7 @@ impl GridArrayCollection {
         let buf_writer = BufWriter::new(file);
         let mut encoder = FrameEncoder::new(buf_writer);
 
-        let mut metadata_mut = metadata.as_v1().unwrap().clone();
+        let mut metadata_mut = metadata.as_latest();
         metadata_mut.git_version = GIT_VERSION.to_string();
         metadata_mut.code_version = CODE_VERSION.to_string();
 

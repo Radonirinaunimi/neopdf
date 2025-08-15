@@ -2,8 +2,9 @@
 //!
 //! It includes the `MetaData` struct (deserialized from .info files), PDF set
 //! and interpolator type enums, and related utilities for handling PDF set information.
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
+use std::ops::{Deref, DerefMut};
 
 /// Represents the type of PDF set.
 #[repr(C)]
@@ -29,8 +30,10 @@ pub enum InterpolatorType {
     LogChebyshev,
 }
 
-/// Represents the information block of a PDF set, typically found in an `.info` file.
-/// This struct is deserialized from a YAML-like format.
+/// Represents the information block of a given set.
+///
+/// In order to support LHAPDF formats, the fields here are very much influenced by the
+/// LHAPSD `.info` file. This struct is generally deserialized from a YAML-like format.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MetaDataV1 {
     /// Description of the PDF set.
@@ -128,7 +131,7 @@ pub struct MetaDataV1 {
     pub number_flavors: u32,
 }
 
-/// Version-aware MetaData wrapper that handles serialization compatibility.
+/// Version-aware metadata wrapper that handles serialization compatibility.
 #[derive(Clone, Debug, Serialize)]
 #[serde(untagged)]
 pub enum MetaData {
@@ -136,34 +139,25 @@ pub enum MetaData {
 }
 
 impl MetaData {
+    /// Creates a new instance of V1 `MetaData`.
     pub fn new_v1(data: MetaDataV1) -> Self {
         Self::V1(data)
     }
 
-    pub fn current(data: MetaDataV1) -> Self {
+    /// Gets the current version as the latest available version.
+    pub fn current_v1(data: MetaDataV1) -> Self {
         Self::V1(data)
     }
 
-    pub fn to_latest(self) -> MetaDataV1 {
+    /// Gets the underlying data as the latest version.
+    pub fn as_latest(&self) -> MetaDataV1 {
         match self {
-            MetaData::V1(data) => data,
-        }
-    }
-
-    pub fn as_v1(&self) -> Option<&MetaDataV1> {
-        match self {
-            MetaData::V1(data) => Some(data),
-        }
-    }
-
-    pub fn as_v1_mut(&mut self) -> Option<&mut MetaDataV1> {
-        match self {
-            MetaData::V1(data) => Some(data),
+            MetaData::V1(data) => data.clone(),
         }
     }
 }
 
-impl std::ops::Deref for MetaData {
+impl Deref for MetaData {
     type Target = MetaDataV1;
 
     fn deref(&self) -> &Self::Target {
@@ -173,7 +167,7 @@ impl std::ops::Deref for MetaData {
     }
 }
 
-impl std::ops::DerefMut for MetaData {
+impl DerefMut for MetaData {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
             MetaData::V1(data) => data,
@@ -184,15 +178,11 @@ impl std::ops::DerefMut for MetaData {
 impl<'de> Deserialize<'de> for MetaData {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de>,
+        D: Deserializer<'de>,
     {
         let v1 = MetaDataV1::deserialize(deserializer)?;
+
         Ok(MetaData::V1(v1))
-        // if let Ok(v1) = MetaDataV1::deserialize(deserializer) {
-        //     return Ok(MetaData::V1(v1));
-        // }
-        // let v2 = MetaDataV2::deserialize(deserializer)?;
-        // Ok(MetaData::V2(v2))
     }
 }
 
