@@ -4,5 +4,6 @@
 //! combining nuclear PDFs, and evaluating PDF values and `alpha_s` at given kinematics.
 
 pub mod converter;
+pub mod install;
 pub mod pdf;
 pub mod read;

@@ -11,6 +11,7 @@ Commands:
   write    Conversion and combination of PDF sets
   compute  Evaluate PDF values and `alpha_s` at given kinematics
   read     Commands for reading PDF set information
+  install  Install a PDF set from one of the supported repositories
   help     Print this message or the help of the given subcommand(s)
 
 Options:

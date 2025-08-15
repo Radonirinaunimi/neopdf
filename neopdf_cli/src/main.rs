@@ -1,7 +1,9 @@
 //! Launches the `NeoPDF` command-line interface (CLI).
 
 use clap::{Parser, Subcommand};
+
 use neopdf_cli::converter;
+use neopdf_cli::install;
 use neopdf_cli::pdf;
 use neopdf_cli::read;
 
@@ -23,6 +25,8 @@ pub enum TopLevelCommand {
     Compute(pdf::PdfCli),
     /// Commands for reading PDF set information.
     Read(read::ReadCli),
+    /// Install a PDF set from one of the supported repositories.
+    Install(install::Cli),
 }
 
 /// Entry point for the `NeoPDF` CLI.
@@ -34,5 +38,6 @@ pub fn main() {
         TopLevelCommand::Write(args) => converter::main(args),
         TopLevelCommand::Compute(args) => pdf::main(args),
         TopLevelCommand::Read(args) => read::main(args),
+        TopLevelCommand::Install(args) => install::main(args),
     }
 }
