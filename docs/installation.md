@@ -144,7 +144,7 @@ pipx install neopdf-cli
     To build and install the NeoPDF command-line interface (CLI) from source, simply run:
 
     ```bash
-    cargo install --path neopdf_cli --debug
+    cargo install --path neopdf_cli
     ```
 
     This will compile the CLI in debug mode and make the `neopdf` command available in your
