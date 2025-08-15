@@ -3,8 +3,10 @@
 //! It defines types and methods for ensuring that PDF sets are available locally, downloading them if
 //! necessary, and handling different PDF set formats (LHAPDF, NeoPDF).
 use flate2::read::GzDecoder;
+use indicatif::{ProgressBar, ProgressStyle};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use tar::Archive;
 
@@ -97,7 +99,23 @@ impl ManageData {
             .into());
         }
 
-        let tar = GzDecoder::new(response);
+        let total_size = response
+            .headers()
+            .get(reqwest::header::CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.parse::<u64>().ok())
+            .unwrap_or(0);
+
+        let pb = ProgressBar::new(total_size);
+        pb.set_style(ProgressStyle::default_bar()
+            .template("{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({eta})")?
+            .progress_chars("#>-"));
+
+        let mut response_bytes = Vec::new();
+        let mut decorated_response = pb.wrap_read(response);
+        decorated_response.read_to_end(&mut response_bytes)?;
+
+        let tar = GzDecoder::new(&response_bytes[..]);
         let mut archive = Archive::new(tar);
 
         archive.unpack(&self.neopdf_path)?;

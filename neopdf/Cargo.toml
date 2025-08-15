@@ -28,6 +28,7 @@ tar.workspace = true
 itertools.workspace = true
 regex.workspace = true
 git-version.workspace = true
+indicatif.workspace = true
 
 [dev-dependencies]
 criterion.workspace = true
