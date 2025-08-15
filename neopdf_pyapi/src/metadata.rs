@@ -1,5 +1,6 @@
-use neopdf::metadata::{InterpolatorType, MetaData, SetType};
 use pyo3::prelude::*;
+
+use neopdf::metadata::{InterpolatorType, MetaData, MetaDataV1, SetType};
 
 /// The type of the set.
 #[pyclass(eq, eq_int, name = "SetType")]
@@ -244,7 +245,7 @@ impl PyMetaData {
         let git_version = String::new();
         let code_version = String::new();
 
-        let meta = MetaData {
+        let meta_v1 = MetaDataV1 {
             set_desc,
             set_index,
             num_members,
@@ -278,7 +279,9 @@ impl PyMetaData {
             number_flavors: phys_params.number_flavors,
         };
 
-        Self { meta }
+        Self {
+            meta: MetaData::new_v1(meta_v1),
+        }
     }
 
     /// Convert to Python dictionary
@@ -338,73 +341,73 @@ impl PyMetaData {
 
     /// The description of the set.
     #[must_use]
-    pub const fn set_desc(&self) -> &String {
+    pub fn set_desc(&self) -> &String {
         &self.meta.set_desc
     }
 
     /// The index of the grid.
     #[must_use]
-    pub const fn set_index(&self) -> u32 {
+    pub fn set_index(&self) -> u32 {
         self.meta.set_index
     }
 
     /// The number of sets in the grid.
     #[must_use]
-    pub const fn number_sets(&self) -> u32 {
+    pub fn number_sets(&self) -> u32 {
         self.meta.num_members
     }
 
     /// The minimum value of `x` in the grid.
     #[must_use]
-    pub const fn x_min(&self) -> f64 {
+    pub fn x_min(&self) -> f64 {
         self.meta.x_min
     }
 
     /// The maximum value of `x` in the grid.
     #[must_use]
-    pub const fn x_max(&self) -> f64 {
+    pub fn x_max(&self) -> f64 {
         self.meta.x_max
     }
 
     /// The minimum value of `q` in the grid.
     #[must_use]
-    pub const fn q_min(&self) -> f64 {
+    pub fn q_min(&self) -> f64 {
         self.meta.q_min
     }
 
     /// The maximum value of `q` in the grid.
     #[must_use]
-    pub const fn q_max(&self) -> f64 {
+    pub fn q_max(&self) -> f64 {
         self.meta.q_max
     }
 
     /// The particle IDs of the grid.
     #[must_use]
-    pub const fn pids(&self) -> &Vec<i32> {
+    pub fn pids(&self) -> &Vec<i32> {
         &self.meta.flavors
     }
 
     /// The format of the grid.
     #[must_use]
-    pub const fn format(&self) -> &String {
+    pub fn format(&self) -> &String {
         &self.meta.format
     }
 
     /// The values of `q` for the running of the strong coupling constant.
     #[must_use]
-    pub const fn alphas_q(&self) -> &Vec<f64> {
+    pub fn alphas_q(&self) -> &Vec<f64> {
         &self.meta.alphas_q_values
     }
 
     /// The values of the running of the strong coupling constant.
     #[must_use]
-    pub const fn alphas_values(&self) -> &Vec<f64> {
+    pub fn alphas_values(&self) -> &Vec<f64> {
         &self.meta.alphas_vals
     }
 
     /// Whether the grid is polarised.
     #[must_use]
-    pub const fn is_polarised(&self) -> bool {
+    pub fn is_polarised(&self) -> bool {
         self.meta.polarised
     }
 
@@ -422,13 +425,13 @@ impl PyMetaData {
 
     /// The type of error.
     #[must_use]
-    pub const fn error_type(&self) -> &String {
+    pub fn error_type(&self) -> &String {
         &self.meta.error_type
     }
 
     /// The hadron PID.
     #[must_use]
-    pub const fn hadron_pid(&self) -> i32 {
+    pub fn hadron_pid(&self) -> i32 {
         self.meta.hadron_pid
     }
 }

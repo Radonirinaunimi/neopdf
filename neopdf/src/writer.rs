@@ -25,13 +25,13 @@ use std::env;
 use std::fs::File;
 use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::Path;
+use std::sync::Arc;
 
 use git_version::git_version;
 use lz4_flex::frame::{FrameDecoder, FrameEncoder};
 
 use super::gridpdf::GridArray;
 use super::metadata::MetaData;
-use std::sync::Arc;
 
 const GIT_VERSION: &str = git_version!(
     args = ["--always", "--dirty", "--long", "--tags"],
@@ -76,10 +76,12 @@ impl GridArrayCollection {
         let buf_writer = BufWriter::new(file);
         let mut encoder = FrameEncoder::new(buf_writer);
 
-        let mut metadata_mut = metadata.clone();
+        let mut metadata_mut = metadata.as_latest();
         metadata_mut.git_version = GIT_VERSION.to_string();
         metadata_mut.code_version = CODE_VERSION.to_string();
-        let metadata_serialized = bincode::serialize(&metadata_mut)?;
+
+        let updated_metadata = MetaData::new_v1(metadata_mut);
+        let metadata_serialized = bincode::serialize(&updated_metadata)?;
         let metadata_size = metadata_serialized.len() as u64;
 
         let metadata_size_bytes = bincode::serialize(&metadata_size)?;
@@ -152,12 +154,14 @@ impl GridArrayCollection {
 
         let mut cursor = std::io::Cursor::new(decompressed);
 
-        // Read metadata
+        // Read versioned metadata
         let metadata_size: u64 = bincode::deserialize_from(&mut cursor)?;
         let mut metadata_bytes = vec![0u8; metadata_size as usize];
         cursor.read_exact(&mut metadata_bytes)?;
-        let metadata: MetaData = bincode::deserialize(&metadata_bytes)?;
-        let shared_metadata = Arc::new(metadata);
+
+        // Deserialize versioned metadata and convert to latest
+        let versioned_metadata: MetaData = bincode::deserialize(&metadata_bytes)?;
+        let shared_metadata = Arc::new(versioned_metadata);
         let count: u64 = bincode::deserialize_from(&mut cursor)?;
 
         // Read offset table size (but don't skip it!)
@@ -442,11 +446,11 @@ mod tests {
     use ndarray::Array1;
     use tempfile::NamedTempFile;
 
-    use crate::metadata::{InterpolatorType, SetType};
+    use crate::metadata::{InterpolatorType, MetaDataV1, SetType};
 
     #[test]
     fn test_collection_with_metadata() {
-        let metadata = MetaData {
+        let metadata_v1 = MetaDataV1 {
             set_desc: "Test PDF".into(),
             set_index: 1,
             num_members: 2,
@@ -479,6 +483,7 @@ mod tests {
             alphas_type: String::new(),
             number_flavors: 0,
         };
+        let metadata = MetaData::new_v1(metadata_v1);
 
         let test_grid = test_grid();
         let grids = vec![&test_grid, &test_grid];
