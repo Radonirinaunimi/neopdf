@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added version-aware serialization of the `MetaData` struct to ensure backward
+  and forward compatibility in writing and reading grids.
 - Added a new module `alphas.rs` to store the logics of computing the strong
   coupling `alpha_s`. It contains a new struct `AlphaSAnalytic` to compute the
   `alpha_s` values analytically instead of interpolating.

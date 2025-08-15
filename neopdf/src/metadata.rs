@@ -33,7 +33,7 @@ pub enum InterpolatorType {
 /// Represents the information block of a given set.
 ///
 /// In order to support LHAPDF formats, the fields here are very much influenced by the
-/// LHAPSD `.info` file. This struct is generally deserialized from a YAML-like format.
+/// LHAPDF `.info` file. This struct is generally deserialized from a YAML-like format.
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct MetaDataV1 {
     /// Description of the PDF set.
