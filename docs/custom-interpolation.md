@@ -33,14 +33,14 @@ These traits require you to implement a few methods, the most important of which
 
 ### Required Methods
 
-For any `Strategy` trait, you must implement:
+For any `Strategy` trait, one must implement the following methods:
 
-- **`interpolate(&self, data, point)`**: This is where your core interpolation logic goes. It takes
+- **`interpolate(&self, data, point)`**: This is where the core interpolation logic goes. It takes
   the grid data and a point to evaluate and should return the interpolated value.
-- **`allow_extrapolate(&self) -> bool`**: This method should return `true` if your strategy supports
+- **`allow_extrapolate(&self) -> bool`**: This method should return `true` if the strategy supports
   extrapolation outside the grid boundaries, and `false` otherwise.
 
-You can also optionally implement:
+One can also optionally implement an `init` method:
 
 - **`init(&mut self, data)`**: This method is called once when the interpolator is created. It's
   useful for performing validation on the grid data or pre-computing values (like coefficients)
@@ -53,7 +53,8 @@ find the grid point closest to the requested point and return its value.
 
 ### Step 1: Define the Strategy Struct
 
-First, define an empty struct for your strategy. It can contain fields for configuration if needed.
+First, let's define an empty struct for the interpolation strategy. It can contain fields for
+configuration if needed.
 
 ```rust
 use ninterp::data::InterpData1D;
@@ -68,7 +69,7 @@ pub struct NearestNeighbor;
 
 ### Step 2: Implement the `Strategy1D` Trait
 
-Now, implement the `Strategy1D` trait for the `NearestNeighbor` struct.
+Now, let's implement the `Strategy1D` trait for the `NearestNeighbor` struct.
 
 ```rust
 impl<D> Strategy1D<D> for NearestNeighbor
@@ -108,7 +109,7 @@ where
 
 ### Step 3: Use the Custom Strategy
 
-Once your strategy is defined, you can use it with the `ninterp` `Interpolator` to create
+Once the strategy is defined, we can use it with the `ninterp` `Interpolator` to create
 a functioning interpolator object. `neopdf` is built on top of this, so the integration is
 seamless.
 
@@ -143,6 +144,7 @@ fn main() {
 }
 ```
 
-This example demonstrates how the modular design allows you to inject any compatible strategy
+This example demonstrates how the modular design allows users to inject any compatible strategy
 into the interpolation framework. While this example uses `ninterp` directly, the same `Strategy`
-objects can be integrated into the higher-level `neopdf` structures.
+objects can be integrated into the higher-level `neopdf` structures. See the `neopdf::gripdf.rs`
+module for more details.

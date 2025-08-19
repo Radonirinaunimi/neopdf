@@ -55,6 +55,22 @@ quickly inspect the contents of a given PDF/TMD set. The implementation of the l
   grid member without reading the whole file.
 - **Grid Data**: Each grid is stored with its size and data, allowing for efficient deserialization.
 
+Such a choice of format allows `NeoPDF` grids to be efficiently stored on disk, reducing at least
+by half the size of a given LHAPDF PDF set:
+
+| PDF Set            | Nb. Members | LHAPDF/TMDlib | NeoPDF |
+|--------------------|-------------|---------------|--------|
+| PDF4LHC21          | 40          | 31 MB         | 16 MB  |
+| NNPDF4.0 NNLO      | 100         | 158 MB        | 85 MB  |
+| NNPDF4.0 NNLO      | 1000        | 1.55 GB       | 830 MB |
+| Combined nNNPDF3.0 | 200         | -             | 1.43 GB|
+| MAP22 FF @N3LL     | 250         | 2.50 GB       | 1.65 GB|
+
+!!! info "Note"
+
+    The size of the `NeoPDF` sets could be reduced further (at least by half) by using the Chebyshev
+    grid spacing and interpolation.
+
 ### Access Patterns
 - **Eager Loading**: The entire collection of grids can be decompressed and loaded into memory for
   batch operations.
