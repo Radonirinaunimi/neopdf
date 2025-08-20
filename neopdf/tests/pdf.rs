@@ -85,7 +85,7 @@ fn test_xfxq2_extrapolations() {
 }
 
 #[test]
-#[should_panic(expected = "Expected 2D point")]
+#[should_panic(expected = "SubgridNotFound")]
 fn test_inconsistent_inputs() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 

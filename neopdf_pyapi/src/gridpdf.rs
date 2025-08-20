@@ -74,16 +74,31 @@ impl PySubGrid {
         (self.subgrid.alphas_range.min, self.subgrid.alphas_range.max)
     }
 
-    /// Returns the minimum and maximum values of the x axis.
+    /// Returns the minimum and maximum values of the momentum fraction `x`.
     #[must_use]
     pub const fn x_range(&self) -> (f64, f64) {
         (self.subgrid.x_range.min, self.subgrid.x_range.max)
     }
 
-    /// Returns the minimum and maximum values of the Q^2 axis.
+    /// Returns the minimum and maximum values of the momentum scale `Q^2`.
     #[must_use]
     pub const fn q2_range(&self) -> (f64, f64) {
         (self.subgrid.q2_range.min, self.subgrid.q2_range.max)
+    }
+
+    /// Returns the minimum and maximum values of the Nucleon number `A`.
+    #[must_use]
+    pub const fn nucleons_range(&self) -> (f64, f64) {
+        (
+            self.subgrid.nucleons_range.min,
+            self.subgrid.nucleons_range.max,
+        )
+    }
+
+    /// Returns the minimum and maximum values of the transverse momentum `kT`.
+    #[must_use]
+    pub const fn kt_range(&self) -> (f64, f64) {
+        (self.subgrid.kt_range.min, self.subgrid.kt_range.max)
     }
 
     /// Returns the shape of the subgrid
