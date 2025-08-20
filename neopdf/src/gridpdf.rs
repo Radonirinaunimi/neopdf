@@ -117,9 +117,23 @@ impl GridArray {
     ///
     /// An `Option<usize>` containing the index of the subgrid if found, otherwise `None`.
     pub fn find_subgrid(&self, points: &[f64]) -> Option<usize> {
+        // First, try to find a subgrid that completely contains the point.
+        let maybe_idx = self
+            .subgrids
+            .iter()
+            .position(|sg| sg.contains_point(points));
+
+        if maybe_idx.is_some() {
+            return maybe_idx;
+        }
+
+        // If no subgrid contains the point, find the one with the minimum distance.
         self.subgrids
             .iter()
-            .position(|sg| sg.contains_point(points))
+            .map(|sg| sg.distance_to_point(points))
+            .enumerate()
+            .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap())
+            .map(|(idx, _)| idx)
     }
 
     /// Gets the index corresponding to a given flavor ID.

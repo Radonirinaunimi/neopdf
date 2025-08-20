@@ -221,6 +221,47 @@ impl SubGrid {
                 .all(|(range, &point)| range.contains(point))
     }
 
+    /// Calculates the squared distance from a point to the subgrid's bounding box.
+    pub fn distance_to_point(&self, points: &[f64]) -> f64 {
+        let ranges = self.parameter_ranges();
+        let mut total_distance = 0.0;
+
+        for (idx, range) in ranges.iter().enumerate() {
+            let point = points[idx];
+            let distance = if point < range.min {
+                (range.min - point).powi(2)
+            } else if point > range.max {
+                (point - range.max).powi(2)
+            } else {
+                0.0
+            };
+            total_distance += distance;
+        }
+
+        total_distance
+    }
+
+    /// Gathers the parameter ranges for the subgrid based on its configuration.
+    fn parameter_ranges(&self) -> Vec<ParamRange> {
+        let mut ranges = match self.interpolation_config() {
+            InterpolationConfig::TwoD => vec![],
+            InterpolationConfig::ThreeDNucleons => vec![self.nucleons_range],
+            InterpolationConfig::ThreeDAlphas => vec![self.alphas_range],
+            InterpolationConfig::ThreeDKt => vec![self.kt_range],
+            InterpolationConfig::FourDNucleonsAlphas => {
+                vec![self.nucleons_range, self.alphas_range]
+            }
+            InterpolationConfig::FourDNucleonsKt => vec![self.nucleons_range, self.kt_range],
+            InterpolationConfig::FourDAlphasKt => vec![self.alphas_range, self.kt_range],
+            InterpolationConfig::FiveD => {
+                vec![self.nucleons_range, self.alphas_range, self.kt_range]
+            }
+        };
+        ranges.push(self.x_range);
+        ranges.push(self.q2_range);
+        ranges
+    }
+
     /// Gets the interpolation configuration for this subgrid.
     pub fn interpolation_config(&self) -> InterpolationConfig {
         InterpolationConfig::from_dimensions(self.nucleons.len(), self.alphas.len(), self.kts.len())
