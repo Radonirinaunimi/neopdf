@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Modified `GridArray::find_subgrid` to accept more combinations of variables
+  so that the construction of subgrids is generic.
 - Modified `GridArray::pid_index` to accept both `0` and `21` for the Gluon.
 - Modified the NeoPDF format with the inclusion of `alphas_type` and
   `number_flavors` in the `MetaData` struct. This breaks the lazy loader using
