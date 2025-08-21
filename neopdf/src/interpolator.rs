@@ -163,7 +163,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     grid_slice,
                     BilinearInterpolation,
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 2D interpolator"),
             ),
@@ -173,7 +173,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     grid_slice,
                     LogBilinearInterpolation,
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 2D interpolator"),
             ),
@@ -183,7 +183,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     grid_slice,
                     LogBicubicInterpolation::default(),
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 2D interpolator"),
             ),
@@ -193,7 +193,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     grid_slice,
                     LogChebyshevInterpolation::<2>::default(),
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 2D interpolator"),
             ),
@@ -221,7 +221,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     reshaped_data,
                     LogTricubicInterpolation,
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 3D interpolator"),
             ),
@@ -232,7 +232,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     reshaped_data,
                     LogChebyshevInterpolation::<3>::default(),
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 3D interpolator"),
             ),
@@ -260,7 +260,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     reshaped_data,
                     LogTricubicInterpolation,
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 3D interpolator"),
             ),
@@ -271,7 +271,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     reshaped_data,
                     LogChebyshevInterpolation::<3>::default(),
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 3D interpolator"),
             ),
@@ -299,7 +299,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     reshaped_data,
                     LogTricubicInterpolation,
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 3D interpolator"),
             ),
@@ -310,7 +310,7 @@ impl InterpolatorFactory {
                     subgrid.q2s.to_owned(),
                     reshaped_data,
                     LogChebyshevInterpolation::<3>::default(),
-                    Extrapolate::Error,
+                    Extrapolate::Clamp,
                 )
                 .expect("Failed to create 3D interpolator"),
             ),
@@ -343,7 +343,7 @@ impl InterpolatorFactory {
             .expect("Failed to reshape 4D data");
         match interp_type {
             InterpolatorType::InterpNDLinear => Box::new(
-                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Error)
+                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Clamp)
                     .expect("Failed to create 4D interpolator"),
             ),
             _ => panic!("Unsupported 4D interpolator: {:?}", interp_type),
@@ -375,7 +375,7 @@ impl InterpolatorFactory {
             .expect("Failed to reshape 4D data");
         match interp_type {
             InterpolatorType::InterpNDLinear => Box::new(
-                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Error)
+                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Clamp)
                     .expect("Failed to create 4D interpolator"),
             ),
             _ => panic!("Unsupported 4D interpolator: {:?}", interp_type),
@@ -407,7 +407,7 @@ impl InterpolatorFactory {
             .expect("Failed to reshape 4D data");
         match interp_type {
             InterpolatorType::InterpNDLinear => Box::new(
-                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Error)
+                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Clamp)
                     .expect("Failed to create 4D interpolator"),
             ),
             _ => panic!("Unsupported 4D interpolator: {:?}", interp_type),
@@ -441,7 +441,7 @@ impl InterpolatorFactory {
             .expect("Failed to reshape 5D data");
         match interp_type {
             InterpolatorType::InterpNDLinear => Box::new(
-                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Error)
+                InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Clamp)
                     .expect("Failed to create 5D interpolator"),
             ),
             _ => panic!("Unsupported 5D interpolator: {:?}", interp_type),

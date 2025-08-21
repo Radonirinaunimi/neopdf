@@ -11,7 +11,7 @@ use regex::Regex;
 use super::gridpdf::GridArray;
 use super::metadata::{InterpolatorType, MetaData};
 use super::parser::LhapdfSet;
-use super::subgrid::SubGrid;
+use super::subgrid::{ParamRange, SubGrid};
 use super::writer::GridArrayCollection;
 
 /// Converts an LHAPDF set to the NeoPDF format and writes it to disk.
@@ -90,6 +90,17 @@ pub fn combine_lhapdf_npdfs<P: AsRef<std::path::Path>>(
         all_members.push(members);
     }
 
+    let nucleons_range = ParamRange::new(
+        *a_values
+            .iter()
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap(),
+        *a_values
+            .iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap(),
+    );
+
     // Check all sets have the same number of members
     let num_members = all_members[0].len();
     if !all_members.iter().all(|v| v.len() == num_members) {
@@ -147,7 +158,7 @@ pub fn combine_lhapdf_npdfs<P: AsRef<std::path::Path>>(
                 grid: concatenated,
                 nucleons,
                 alphas: alphas.clone(),
-                nucleons_range: subgrids[0].nucleons_range,
+                nucleons_range,
                 alphas_range: subgrids[0].alphas_range,
                 kt_range: subgrids[0].kt_range,
                 x_range: subgrids[0].x_range,
@@ -206,6 +217,17 @@ pub fn combine_lhapdf_alphas<P: AsRef<std::path::Path>>(
         }
         all_members.push(members);
     }
+
+    let alphas_range = ParamRange::new(
+        *alphas_values
+            .iter()
+            .min_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap(),
+        *alphas_values
+            .iter()
+            .max_by(|a, b| a.partial_cmp(b).unwrap())
+            .unwrap(),
+    );
 
     // Check all sets have the same number of members
     let num_members = all_members[0].len();
@@ -266,7 +288,7 @@ pub fn combine_lhapdf_alphas<P: AsRef<std::path::Path>>(
                 nucleons: nucleons.clone(),
                 alphas,
                 nucleons_range: subgrids[0].nucleons_range,
-                alphas_range: subgrids[0].alphas_range,
+                alphas_range,
                 kt_range: subgrids[0].kt_range,
                 x_range: subgrids[0].x_range,
                 q2_range: subgrids[0].q2_range,
