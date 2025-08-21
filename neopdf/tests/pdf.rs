@@ -79,8 +79,12 @@ fn test_xfxq2_interpolations() {
 fn test_xfxq2_extrapolations() {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 
+    let q2_range = pdf.param_ranges().q2;
+    let endpoint_res = pdf.xfxq2(2, &[1.0, q2_range.min]);
+
     // Interpolate outside of the subgrids
-    _ = pdf.xfxq2(2, &[1.0, 1e20 * 1e20]);
+    let extrapol_res = pdf.xfxq2(2, &[1.0, 1e20 * 1e20]);
+    assert!((endpoint_res - extrapol_res).abs() < PRECISION);
 }
 
 #[test]
@@ -90,6 +94,15 @@ fn test_inconsistent_inputs() {
 
     // Attempts to interpolate on the nucleon number
     _ = pdf.xfxq2(2, &[208.0, 1e-2, 1e2]);
+}
+
+#[test]
+fn test_combined_npdfs_range() {
+    let pdf = PDF::load("nNNPDF30_nlo_as_0118.neopdf.lz4", 0);
+
+    let a_range = pdf.param_ranges().nucleons;
+    assert_eq!(a_range.min, 1.0);
+    assert_eq!(a_range.max, 208.0);
 }
 
 #[test]
