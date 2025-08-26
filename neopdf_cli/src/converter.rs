@@ -172,6 +172,7 @@ pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
                         "logbicubic" => InterpolatorType::LogBicubic,
                         "logtricubic" => InterpolatorType::LogTricubic,
                         "interpndlinear" => InterpolatorType::InterpNDLinear,
+                        "chebyshev" => InterpolatorType::LogChebyshev,
                         _ => return Err(format!("Unknown InterpolatorType: {value}").into()),
                     }
                 }
