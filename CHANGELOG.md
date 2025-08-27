@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added the logic to determine the Euclidean distance of a point to the closest
+  subgrid in order to allow extrapolation.
 - Added version-aware serialization of the `MetaData` struct to ensure backward
   and forward compatibility in writing and reading grids.
 - Added a new module `alphas.rs` to store the logics of computing the strong
@@ -21,6 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   interpolated values.
 - Python API: Added `pdf:LoaderMehod` to select the method to load all the PDF
   members.
+
+### Fixed
+
+- Fixed how the subgrid ranges are determined for `A` and `alpha_s` when combining
+  multiple sets.
 
 ### Changed
 
