@@ -104,7 +104,7 @@ fn read_gitversion_neopdf() {
         ])
         .assert()
         .success()
-        .stdout("v0.1.1-68-g5b6ca65-dirty\n");
+        .stdout("v0.2.0-alpha1-22-gfb6af13-dirty\n");
 }
 
 #[test]

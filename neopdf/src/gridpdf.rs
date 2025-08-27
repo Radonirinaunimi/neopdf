@@ -107,18 +107,30 @@ impl GridArray {
         self.subgrids[subgrid_idx].grid[[nucleon_idx, alpha_idx, pid_idx, kt_idx, x_idx, q2_idx]]
     }
 
-    /// Finds the index of the subgrid that contains the given `(x, q2)` point.
+    /// Finds the index of the subgrid that contains the given point.
     ///
     /// # Arguments
     ///
-    /// * `x` - The momentum fraction `x`.
-    /// * `q2` - The energy scale squared `q2`.
+    /// * `points` - A slice of coordinates for the point.
     ///
     /// # Returns
     ///
     /// An `Option<usize>` containing the index of the subgrid if found, otherwise `None`.
-    pub fn find_subgrid(&self, x: f64, q2: f64) -> Option<usize> {
-        self.subgrids.iter().position(|sg| sg.contains_point(x, q2))
+    pub fn find_subgrid(&self, points: &[f64]) -> Option<usize> {
+        self.subgrids
+            .iter()
+            .position(|sg| sg.contains_point(points))
+            .or_else(|| {
+                self.subgrids
+                    .iter()
+                    .enumerate()
+                    .min_by(|(_, a), (_, b)| {
+                        a.distance_to_point(points)
+                            .partial_cmp(&b.distance_to_point(points))
+                            .unwrap()
+                    })
+                    .map(|(idx, _)| idx)
+            })
     }
 
     /// Gets the index corresponding to a given flavor ID.
@@ -271,11 +283,10 @@ impl GridPDF {
     ///
     /// A `Result` containing the interpolated PDF value or an `Error`.
     pub fn xfxq2(&self, flavor_id: i32, points: &[f64]) -> Result<f64, Error> {
-        let (x, q2) = self.get_x_q2(points);
-        let subgrid_idx = self
-            .knot_array
-            .find_subgrid(x, q2)
-            .ok_or(Error::SubgridNotFound { x, q2 })?;
+        let subgrid_idx = self.knot_array.find_subgrid(points).ok_or_else(|| {
+            let (x, q2) = self.get_x_q2(points);
+            Error::SubgridNotFound { x, q2 }
+        })?;
 
         let pid_idx = self.knot_array.pid_index(flavor_id).ok_or_else(|| {
             Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
@@ -375,6 +386,6 @@ mod tests {
         let grid_array = GridArray::new(subgrid_data, flavors);
 
         assert_eq!(grid_array.subgrids[0].grid.shape(), &[1, 1, 2, 1, 3, 2]);
-        assert!(grid_array.find_subgrid(1.5, 4.5).is_some());
+        assert!(grid_array.find_subgrid(&[1.5, 4.5]).is_some());
     }
 }

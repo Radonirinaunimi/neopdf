@@ -110,7 +110,7 @@ where
 
     /// Indicates that this strategy does not allow extrapolation.
     fn allow_extrapolate(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -221,7 +221,7 @@ where
 
     /// Indicates that this strategy does not allow extrapolation.
     fn allow_extrapolate(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -501,7 +501,7 @@ where
     }
 
     fn allow_extrapolate(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -813,7 +813,7 @@ where
     }
 
     fn allow_extrapolate(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -977,7 +977,7 @@ where
     }
 
     fn allow_extrapolate(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -1151,7 +1151,7 @@ where
     }
 
     fn allow_extrapolate(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -1239,7 +1239,7 @@ where
     }
 
     fn allow_extrapolate(&self) -> bool {
-        false
+        true
     }
 }
 
@@ -1359,7 +1359,7 @@ where
     }
 
     fn allow_extrapolate(&self) -> bool {
-        false
+        true
     }
 }
 
