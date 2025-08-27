@@ -223,22 +223,15 @@ impl SubGrid {
 
     /// Calculates the squared distance from a point to the subgrid's bounding box.
     pub fn distance_to_point(&self, points: &[f64]) -> f64 {
-        let ranges = self.parameter_ranges();
-        let mut total_distance = 0.0;
-
-        for (idx, range) in ranges.iter().enumerate() {
-            let point = points[idx];
-            let distance = if point < range.min {
-                (range.min - point).powi(2)
-            } else if point > range.max {
-                (point - range.max).powi(2)
-            } else {
-                0.0
-            };
-            total_distance += distance;
-        }
-
-        total_distance
+        self.parameter_ranges()
+            .iter()
+            .zip(points)
+            .map(|(range, &point)| match point {
+                p if p < range.min => (range.min - p) * (range.min - p),
+                p if p > range.max => (p - range.max) * (p - range.max),
+                _ => 0.0,
+            })
+            .sum()
     }
 
     /// Gathers the parameter ranges for the subgrid based on its configuration.
@@ -257,8 +250,7 @@ impl SubGrid {
                 vec![self.nucleons_range, self.alphas_range, self.kt_range]
             }
         };
-        ranges.push(self.x_range);
-        ranges.push(self.q2_range);
+        ranges.extend([self.x_range, self.q2_range]);
         ranges
     }
 
