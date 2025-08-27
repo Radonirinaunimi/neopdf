@@ -22,7 +22,7 @@ use ninterp::strategy::Linear;
 
 use super::metadata::InterpolatorType;
 use super::strategy::{
-    BilinearInterpolation, LogBicubicInterpolation, LogBilinearInterpolation,
+    BilinearInterpolation, LogBicubicInterpolation,
     LogChebyshevInterpolation, LogTricubicInterpolation,
 };
 use super::subgrid::SubGrid;
@@ -157,46 +157,64 @@ impl InterpolatorFactory {
     ) -> Box<dyn DynInterpolator> {
         let grid_slice = subgrid.grid_slice(pid_index).to_owned();
         match interp_type {
-            InterpolatorType::Bilinear => Box::new(
-                Interp2D::new(
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    grid_slice,
-                    BilinearInterpolation,
-                    Extrapolate::Error,
+            InterpolatorType::Bilinear => {
+                let grid_slice = grid_slice.mapv(f64::ln);
+                Box::new(
+                    Interp2D::new(
+                        subgrid.xs.to_owned(),
+                        subgrid.q2s.to_owned(),
+                        grid_slice,
+                        BilinearInterpolation,
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 2D interpolator"),
                 )
-                .expect("Failed to create 2D interpolator"),
-            ),
-            InterpolatorType::LogBilinear => Box::new(
-                Interp2D::new(
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    grid_slice,
-                    LogBilinearInterpolation,
-                    Extrapolate::Error,
+            }
+            InterpolatorType::LogBilinear => {
+                let xs = subgrid.xs.mapv(f64::ln);
+                let q2s = subgrid.q2s.mapv(f64::ln);
+                let grid_slice = grid_slice.mapv(f64::ln);
+                Box::new(
+                    Interp2D::new(
+                        xs,
+                        q2s,
+                        grid_slice,
+                        BilinearInterpolation,
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 2D interpolator"),
                 )
-                .expect("Failed to create 2D interpolator"),
-            ),
-            InterpolatorType::LogBicubic => Box::new(
-                Interp2D::new(
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    grid_slice,
-                    LogBicubicInterpolation::default(),
-                    Extrapolate::Error,
+            }
+            InterpolatorType::LogBicubic => {
+                let xs = subgrid.xs.mapv(f64::ln);
+                let q2s = subgrid.q2s.mapv(f64::ln);
+                let grid_slice = grid_slice.mapv(f64::ln);
+                Box::new(
+                    Interp2D::new(
+                        xs,
+                        q2s,
+                        grid_slice,
+                        LogBicubicInterpolation::default(),
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 2D interpolator"),
                 )
-                .expect("Failed to create 2D interpolator"),
-            ),
-            InterpolatorType::LogChebyshev => Box::new(
-                Interp2D::new(
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    grid_slice,
-                    LogChebyshevInterpolation::<2>::default(),
-                    Extrapolate::Error,
+            }
+            InterpolatorType::LogChebyshev => {
+                let xs = subgrid.xs.mapv(f64::ln);
+                let q2s = subgrid.q2s.mapv(f64::ln);
+                let grid_slice = grid_slice.mapv(f64::ln);
+                Box::new(
+                    Interp2D::new(
+                        xs,
+                        q2s,
+                        grid_slice,
+                        LogChebyshevInterpolation::<2>::default(),
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 2D interpolator"),
                 )
-                .expect("Failed to create 2D interpolator"),
-            ),
+            }
             _ => panic!("Unsupported 2D interpolator: {:?}", interp_type),
         }
     }
@@ -214,28 +232,40 @@ impl InterpolatorFactory {
             .into_shape_with_order((subgrid.nucleons.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
         match interp_type {
-            InterpolatorType::LogTricubic => Box::new(
-                Interp3D::new(
-                    subgrid.nucleons.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    reshaped_data,
-                    LogTricubicInterpolation,
-                    Extrapolate::Error,
+            InterpolatorType::LogTricubic => {
+                let nucleons = subgrid.nucleons.mapv(f64::ln);
+                let xs = subgrid.xs.mapv(f64::ln);
+                let q2s = subgrid.q2s.mapv(f64::ln);
+                let reshaped_data = reshaped_data.mapv(f64::ln);
+                Box::new(
+                    Interp3D::new(
+                        nucleons,
+                        xs,
+                        q2s,
+                        reshaped_data,
+                        LogTricubicInterpolation,
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 3D interpolator"),
                 )
-                .expect("Failed to create 3D interpolator"),
-            ),
-            InterpolatorType::LogChebyshev => Box::new(
-                Interp3D::new(
-                    subgrid.nucleons.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    reshaped_data,
-                    LogChebyshevInterpolation::<3>::default(),
-                    Extrapolate::Error,
+            }
+            InterpolatorType::LogChebyshev => {
+                let nucleons = subgrid.nucleons.mapv(f64::ln);
+                let xs = subgrid.xs.mapv(f64::ln);
+                let q2s = subgrid.q2s.mapv(f64::ln);
+                let reshaped_data = reshaped_data.mapv(f64::ln);
+                Box::new(
+                    Interp3D::new(
+                        nucleons,
+                        xs,
+                        q2s,
+                        reshaped_data,
+                        LogChebyshevInterpolation::<3>::default(),
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 3D interpolator"),
                 )
-                .expect("Failed to create 3D interpolator"),
-            ),
+            }
             _ => panic!("Unsupported 3D interpolator: {:?}", interp_type),
         }
     }
@@ -253,28 +283,40 @@ impl InterpolatorFactory {
             .into_shape_with_order((subgrid.alphas.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
         match interp_type {
-            InterpolatorType::LogTricubic => Box::new(
-                Interp3D::new(
-                    subgrid.alphas.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    reshaped_data,
-                    LogTricubicInterpolation,
-                    Extrapolate::Error,
+            InterpolatorType::LogTricubic => {
+                let alphas = subgrid.alphas.mapv(f64::ln);
+                let xs = subgrid.xs.mapv(f64::ln);
+                let q2s = subgrid.q2s.mapv(f64::ln);
+                let reshaped_data = reshaped_data.mapv(f64::ln);
+                Box::new(
+                    Interp3D::new(
+                        alphas,
+                        xs,
+                        q2s,
+                        reshaped_data,
+                        LogTricubicInterpolation,
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 3D interpolator"),
                 )
-                .expect("Failed to create 3D interpolator"),
-            ),
-            InterpolatorType::LogChebyshev => Box::new(
-                Interp3D::new(
-                    subgrid.alphas.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    reshaped_data,
-                    LogChebyshevInterpolation::<3>::default(),
-                    Extrapolate::Error,
+            }
+            InterpolatorType::LogChebyshev => {
+                let alphas = subgrid.alphas.mapv(f64::ln);
+                let xs = subgrid.xs.mapv(f64::ln);
+                let q2s = subgrid.q2s.mapv(f64::ln);
+                let reshaped_data = reshaped_data.mapv(f64::ln);
+                Box::new(
+                    Interp3D::new(
+                        alphas,
+                        xs,
+                        q2s,
+                        reshaped_data,
+                        LogChebyshevInterpolation::<3>::default(),
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 3D interpolator"),
                 )
-                .expect("Failed to create 3D interpolator"),
-            ),
+            }
             _ => panic!("Unsupported 3D interpolator: {:?}", interp_type),
         }
     }
@@ -292,28 +334,40 @@ impl InterpolatorFactory {
             .into_shape_with_order((subgrid.kts.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
         match interp_type {
-            InterpolatorType::LogTricubic => Box::new(
-                Interp3D::new(
-                    subgrid.kts.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    reshaped_data,
-                    LogTricubicInterpolation,
-                    Extrapolate::Error,
+            InterpolatorType::LogTricubic => {
+                let kts = subgrid.kts.mapv(f64::ln);
+                let xs = subgrid.xs.mapv(f64::ln);
+                let q2s = subgrid.q2s.mapv(f64::ln);
+                let reshaped_data = reshaped_data.mapv(f64::ln);
+                Box::new(
+                    Interp3D::new(
+                        kts,
+                        xs,
+                        q2s,
+                        reshaped_data,
+                        LogTricubicInterpolation,
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 3D interpolator"),
                 )
-                .expect("Failed to create 3D interpolator"),
-            ),
-            InterpolatorType::LogChebyshev => Box::new(
-                Interp3D::new(
-                    subgrid.kts.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
-                    reshaped_data,
-                    LogChebyshevInterpolation::<3>::default(),
-                    Extrapolate::Error,
+            }
+            InterpolatorType::LogChebyshev => {
+                let kts = subgrid.kts.mapv(f64::ln);
+                let xs = subgrid.xs.mapv(f64::ln);
+                let q2s = subgrid.q2s.mapv(f64::ln);
+                let reshaped_data = reshaped_data.mapv(f64::ln);
+                Box::new(
+                    Interp3D::new(
+                        kts,
+                        xs,
+                        q2s,
+                        reshaped_data,
+                        LogChebyshevInterpolation::<3>::default(),
+                        Extrapolate::Error,
+                    )
+                    .expect("Failed to create 3D interpolator"),
                 )
-                .expect("Failed to create 3D interpolator"),
-            ),
+            }
             _ => panic!("Unsupported 3D interpolator: {:?}", interp_type),
         }
     }
@@ -453,8 +507,9 @@ impl InterpolatorFactory {
 mod tests {
     use super::*;
     use crate::subgrid::SubGrid;
+    use ninterp::num_traits::Float;
 
-    const MAXDIFF: f64 = 1e-16;
+    const MAXDIFF: f64 = 1e-9;
 
     fn mock_subgrid_2d() -> SubGrid {
         let xs = vec![0.1, 0.2];
@@ -539,31 +594,37 @@ mod tests {
         let subgrid = mock_subgrid_2d();
         let interpolator = InterpolatorFactory::create(InterpolatorType::Bilinear, &subgrid, 0);
         let result = interpolator.interpolate_point(&[0.15, 1.5]).unwrap();
-        assert!((result - 2.5).abs() < MAXDIFF);
+        assert!((result.exp() - 2.5).abs() < MAXDIFF);
     }
 
     #[test]
     fn test_3d_nucleons_interpolation() {
         let subgrid = mock_subgrid_3d_nucleons();
         let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
-        let result = interpolator.interpolate_point(&[2.0, 0.2, 2.0]).unwrap();
-        assert!((result - 22.0).abs() < MAXDIFF);
+        let result = interpolator
+            .interpolate_point(&[2.0.ln(), 0.2.ln(), 2.0.ln()])
+            .unwrap();
+        assert!((result.exp() - 22.0).abs() < MAXDIFF);
     }
 
     #[test]
     fn test_3d_alphas_interpolation() {
         let subgrid = mock_subgrid_3d_alphas();
         let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
-        let result = interpolator.interpolate_point(&[0.120, 0.2, 2.0]).unwrap();
-        assert!((result - 22.0).abs() < MAXDIFF);
+        let result = interpolator
+            .interpolate_point(&[0.120.ln(), 0.2.ln(), 2.0.ln()])
+            .unwrap();
+        assert!((result.exp() - 22.0).abs() < MAXDIFF);
     }
 
     #[test]
     fn test_3d_kts_interpolation() {
         let subgrid = mock_subgrid_3d_kts();
         let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
-        let result = interpolator.interpolate_point(&[1.0, 0.2, 2.0]).unwrap();
-        assert!((result - 22.0).abs() < MAXDIFF);
+        let result = interpolator
+            .interpolate_point(&[1.0.ln(), 0.2.ln(), 2.0.ln()])
+            .unwrap();
+        assert!((result.exp() - 22.0).abs() < MAXDIFF);
     }
 
     #[test]

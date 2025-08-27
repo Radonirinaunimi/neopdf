@@ -114,117 +114,6 @@ where
     }
 }
 
-/// Performs bilinear interpolation in log space.
-///
-/// This strategy transforms the input coordinates to their natural logarithms
-/// before performing bilinear interpolation, which is suitable for data
-/// that is linear in log-log space. It is particularly useful for physical
-/// quantities that span several orders of magnitude, such as momentum transfer
-/// squared (Q²) or Bjorken x.
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct LogBilinearInterpolation;
-
-impl<D> Strategy2D<D> for LogBilinearInterpolation
-where
-    D: Data<Elem = f64> + RawDataClone + Clone,
-{
-    /// Initializes the strategy, performing validation checks.
-    ///
-    /// Ensures that all x and y coordinates are positive, as logarithmic scaling
-    /// is applied.
-    ///
-    /// # Arguments
-    ///
-    /// * `data` - The interpolation data to validate.
-    fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
-        // Get the coordinate arrays and data values
-        let x_coords = data.grid[0].as_slice().unwrap();
-        let y_coords = data.grid[1].as_slice().unwrap();
-
-        if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
-            return Err(ValidateError::Other(
-                "The input values must be positive for logarithmic scaling".to_string(),
-            ));
-        }
-
-        Ok(())
-    }
-
-    /// Performs log-bilinear interpolation at a given point.
-    ///
-    /// The input `point` coordinates are first transformed to log space,
-    /// then bilinear interpolation is applied.
-    ///
-    /// # Arguments
-    ///
-    /// * `data` - The interpolation data containing grid coordinates and values.
-    /// * `point` - A 2-element array `[x, y]` representing the coordinates to interpolate at.
-    ///
-    /// # Returns
-    ///
-    /// The interpolated value as a `Result`.
-    fn interpolate(
-        &self,
-        data: &InterpData2D<D>,
-        point: &[f64; 2],
-    ) -> Result<f64, InterpolateError> {
-        let [x, y] = *point;
-
-        // Get the coordinate arrays and data values
-        let x_coords = data.grid[0].as_slice().unwrap();
-        let y_coords = data.grid[1].as_slice().unwrap();
-        let values = &data.values;
-
-        // Transform coordinates to log space
-        let x_interp = x.ln();
-        let y_interp = y.ln();
-
-        // Transform grid coordinates to log space
-        let x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
-        let y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
-
-        // Find the grid cell containing the point
-        let i = utils::find_interval_index(&x_grid, x_interp)?;
-        let j = utils::find_interval_index(&y_grid, y_interp)?;
-
-        // Get the four corner points of the grid cell
-        let x1 = x_grid[i];
-        let x2 = x_grid[i + 1];
-        let y1 = y_grid[j];
-        let y2 = y_grid[j + 1];
-
-        // Get the four corner values
-        let z11 = values[[i, j]];
-        let z12 = values[[i, j + 1]];
-        let z21 = values[[i + 1, j]];
-        let z22 = values[[i + 1, j + 1]];
-
-        // Perform bilinear interpolation
-        let dx = x2 - x1;
-        let dy = y2 - y1;
-
-        if dx == 0.0 || dy == 0.0 {
-            unreachable!();
-        }
-
-        let wx = (x_interp - x1) / dx;
-        let wy = (y_interp - y1) / dy;
-
-        // Bilinear interpolation formula
-        let z_interp = z11 * (1.0 - wx) * (1.0 - wy)
-            + z21 * wx * (1.0 - wy)
-            + z12 * (1.0 - wx) * wy
-            + z22 * wx * wy;
-
-        Ok(z_interp)
-    }
-
-    /// Indicates that this strategy does not allow extrapolation.
-    fn allow_extrapolate(&self) -> bool {
-        false
-    }
-}
-
 /// LogBicubic interpolation strategy for PDF-like data.
 ///
 /// This strategy implements bicubic interpolation with logarithmic coordinate scaling.
@@ -280,16 +169,15 @@ impl LogBicubicInterpolation {
     {
         let nxknots = data.grid[0].len();
         let x_coords = data.grid[0].as_slice().unwrap();
-        let log_x_coords: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
         let values = &data.values;
 
         let del1 = match ix {
             0 => 0.0,
-            i => log_x_coords[i] - log_x_coords[i - 1],
+            i => x_coords[i] - x_coords[i - 1],
         };
 
-        let del2 = match log_x_coords.get(ix + 1) {
-            Some(&next) => next - log_x_coords[ix],
+        let del2 = match x_coords.get(ix + 1) {
+            Some(&next) => next - x_coords[ix],
             None => 0.0,
         };
 
@@ -324,13 +212,13 @@ impl LogBicubicInterpolation {
 
         for ix in 0..nxknots - 1 {
             for iq2 in 0..nq2knots {
-                let dlogx = data.grid[0].as_slice().unwrap()[ix + 1].ln()
-                    - data.grid[0].as_slice().unwrap()[ix].ln();
+                let dx = data.grid[0].as_slice().unwrap()[ix + 1]
+                    - data.grid[0].as_slice().unwrap()[ix];
 
                 let vl = values[[ix, iq2]];
                 let vh = values[[ix + 1, iq2]];
-                let vdl = Self::calculate_ddx(data, ix, iq2) * dlogx;
-                let vdh = Self::calculate_ddx(data, ix + 1, iq2) * dlogx;
+                let vdl = Self::calculate_ddx(data, ix, iq2) * dx;
+                let vdh = Self::calculate_ddx(data, ix + 1, iq2) * dx;
 
                 // polynomial coefficients
                 let a = vdh + vdl - 2.0 * vh + 2.0 * vl;
@@ -376,14 +264,9 @@ impl LogBicubicInterpolation {
         let vh = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vh);
 
         // Derivatives in Q2 (y-interpolation)
-        let log_q2_grid: Vec<f64> = data.grid[1]
-            .as_slice()
-            .unwrap()
-            .iter()
-            .map(|&qi| qi.ln())
-            .collect();
+        let y_coords: &[f64] = data.grid[1].as_slice().unwrap();
 
-        let dlogq_1 = log_q2_grid[iq2 + 1] - log_q2_grid[iq2];
+        let dy_1 = y_coords[iq2 + 1] - y_coords[iq2];
 
         let vdl: f64;
         let vdh: f64;
@@ -397,8 +280,8 @@ impl LogBicubicInterpolation {
                 .try_into()
                 .unwrap();
             let vhh = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
-            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
-            vdh = (vdl + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
+            let dy_2 = 1.0 / (y_coords[iq2 + 2] - y_coords[iq2 + 1]);
+            vdh = (vdl + (vhh - vh) * dy_1 * dy_2) * 0.5;
         } else if iq2 == nq2knots - 2 {
             // Backward difference for higher q
             vdh = vh - vl;
@@ -408,8 +291,8 @@ impl LogBicubicInterpolation {
                 .try_into()
                 .unwrap();
             let vll = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
-            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
-            vdl = (vdh + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
+            let dy_0 = 1.0 / (y_coords[iq2] - y_coords[iq2 - 1]);
+            vdl = (vdh + (vl - vll) * dy_1 * dy_0) * 0.5;
         } else {
             // Central difference for both q
             let vll_base_idx = (ix * nq2knots + iq2 - 1) * 4;
@@ -417,17 +300,17 @@ impl LogBicubicInterpolation {
                 .try_into()
                 .unwrap();
             let vll = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vll);
-            let dlogq_0 = 1.0 / (log_q2_grid[iq2] - log_q2_grid[iq2 - 1]);
+            let dy_0 = 1.0 / (y_coords[iq2] - y_coords[iq2 - 1]);
 
             let vhh_base_idx = (ix * nq2knots + iq2 + 2) * 4;
             let coeffs_vhh: [f64; 4] = self.coeffs[vhh_base_idx..vhh_base_idx + 4]
                 .try_into()
                 .unwrap();
             let vhh = Self::hermite_cubic_interpolate_from_coeffs(u, &coeffs_vhh);
-            let dlogq_2 = 1.0 / (log_q2_grid[iq2 + 2] - log_q2_grid[iq2 + 1]);
+            let dy_2 = 1.0 / (y_coords[iq2 + 2] - y_coords[iq2 + 1]);
 
-            vdl = ((vh - vl) + (vl - vll) * dlogq_1 * dlogq_0) * 0.5;
-            vdh = ((vh - vl) + (vhh - vh) * dlogq_1 * dlogq_2) * 0.5;
+            vdl = ((vh - vl) + (vl - vll) * dy_1 * dy_0) * 0.5;
+            vdh = ((vh - vl) + (vhh - vh) * dy_1 * dy_2) * 0.5;
         }
 
         utils::hermite_cubic_interpolate(v, vl, vdl, vh, vdh)
@@ -442,12 +325,6 @@ where
         // Get the coordinate arrays and data values
         let x_coords = data.grid[0].as_slice().unwrap();
         let y_coords = data.grid[1].as_slice().unwrap();
-
-        if x_coords.iter().any(|&x| x <= 0.0) || y_coords.iter().any(|&y| y <= 0.0) {
-            return Err(ValidateError::Other(
-                "The input values must be positive for logarithmic scaling".to_string(),
-            ));
-        }
 
         // Check that we have at least 4x4 grid for bicubic interpolation
         if x_coords.len() < 4 || y_coords.len() < 4 {
@@ -471,28 +348,20 @@ where
         let x_coords = data.grid[0].as_slice().unwrap();
         let y_coords = data.grid[1].as_slice().unwrap();
 
-        // Transform coordinates to log space
-        let log_x = x.ln();
-        let log_y = y.ln();
-
-        // Transform grid coordinates to log space
-        let log_x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
-        let log_y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
-
         // Find the grid cell containing the point
-        let i = Self::find_bicubic_interval(&log_x_grid, log_x)?;
-        let j = Self::find_bicubic_interval(&log_y_grid, log_y)?;
+        let i = Self::find_bicubic_interval(x_coords, x)?;
+        let j = Self::find_bicubic_interval(y_coords, y)?;
 
         // Normalize coordinates to [0,1] within the central cell
-        let dx = log_x_grid[i + 1] - log_x_grid[i];
-        let dy = log_y_grid[j + 1] - log_y_grid[j];
+        let dx = x_coords[i + 1] - x_coords[i];
+        let dy = y_coords[j + 1] - y_coords[j];
 
         if dx == 0.0 || dy == 0.0 {
             return Err(InterpolateError::Other("Grid spacing is zero".to_string()));
         }
 
-        let u = (log_x - log_x_grid[i]) / dx;
-        let v = (log_y - log_y_grid[j]) / dy;
+        let u = (x - x_coords[i]) / dx;
+        let v = (y - y_coords[j]) / dy;
 
         // Perform bicubic interpolation using pre-computed coefficients
         let result = self.interpolate_with_coeffs(data, i, j, u, v);
@@ -542,16 +411,15 @@ impl LogTricubicInterpolation {
     {
         let nxknots = data.grid[0].len();
         let x_coords = data.grid[0].as_slice().unwrap();
-        let log_x_coords: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
         let values = &data.values;
 
         let del1 = match ix {
             0 => 0.0,
-            i => log_x_coords[i] - log_x_coords[i - 1],
+            i => x_coords[i] - x_coords[i - 1],
         };
 
-        let del2 = match log_x_coords.get(ix + 1) {
-            Some(&next) => next - log_x_coords[ix],
+        let del2 = match x_coords.get(ix + 1) {
+            Some(&next) => next - x_coords[ix],
             None => 0.0,
         };
 
@@ -579,16 +447,15 @@ impl LogTricubicInterpolation {
     {
         let nq2knots = data.grid[1].len();
         let q2_coords = data.grid[1].as_slice().unwrap();
-        let log_q2_coords: Vec<f64> = q2_coords.iter().map(|&qi| qi.ln()).collect();
         let values = &data.values;
 
         let del1 = match iq2 {
             0 => 0.0,
-            i => log_q2_coords[i] - log_q2_coords[i - 1],
+            i => q2_coords[i] - q2_coords[i - 1],
         };
 
-        let del2 = match log_q2_coords.get(iq2 + 1) {
-            Some(&next) => next - log_q2_coords[iq2],
+        let del2 = match q2_coords.get(iq2 + 1) {
+            Some(&next) => next - q2_coords[iq2],
             None => 0.0,
         };
 
@@ -615,16 +482,15 @@ impl LogTricubicInterpolation {
     {
         let nmu2knots = data.grid[2].len();
         let mu2_coords = data.grid[2].as_slice().unwrap();
-        let log_mu2_coords: Vec<f64> = mu2_coords.iter().map(|&mui| mui.ln()).collect();
         let values = &data.values;
 
         let del1 = match iz {
             0 => 0.0,
-            i => log_mu2_coords[i] - log_mu2_coords[i - 1],
+            i => mu2_coords[i] - mu2_coords[i - 1],
         };
 
-        let del2 = match log_mu2_coords.get(iz + 1) {
-            Some(&next) => next - log_mu2_coords[iz],
+        let del2 = match mu2_coords.get(iz + 1) {
+            Some(&next) => next - mu2_coords[iz],
             None => 0.0,
         };
 
@@ -744,16 +610,6 @@ where
         let y_coords = data.grid[1].as_slice().unwrap();
         let z_coords = data.grid[2].as_slice().unwrap();
 
-        // Check that all coordinates are positive for logarithmic scaling
-        if x_coords.iter().any(|&x| x <= 0.0)
-            || y_coords.iter().any(|&y| y <= 0.0)
-            || z_coords.iter().any(|&z| z <= 0.0)
-        {
-            return Err(ValidateError::Other(
-                "All input values must be positive for logarithmic scaling".to_string(),
-            ));
-        }
-
         // Check that we have at least 4x4x4 grid for tricubic interpolation
         if x_coords.len() < 4 || y_coords.len() < 4 || z_coords.len() < 4 {
             return Err(ValidateError::Other(
@@ -778,33 +634,23 @@ where
         let y_coords = data.grid[1].as_slice().unwrap();
         let z_coords = data.grid[2].as_slice().unwrap();
 
-        // Transform coordinates to log space
-        let log_x = x.ln();
-        let log_y = y.ln();
-        let log_z = z.ln();
-
-        // Transform grid coordinates to log space
-        let log_x_grid: Vec<f64> = x_coords.iter().map(|&xi| xi.ln()).collect();
-        let log_y_grid: Vec<f64> = y_coords.iter().map(|&yi| yi.ln()).collect();
-        let log_z_grid: Vec<f64> = z_coords.iter().map(|&zi| zi.ln()).collect();
-
         // Find the grid cell containing the point
-        let i = Self::find_tricubic_interval(&log_x_grid, log_x)?;
-        let j = Self::find_tricubic_interval(&log_y_grid, log_y)?;
-        let k = Self::find_tricubic_interval(&log_z_grid, log_z)?;
+        let i = Self::find_tricubic_interval(x_coords, x)?;
+        let j = Self::find_tricubic_interval(y_coords, y)?;
+        let k = Self::find_tricubic_interval(z_coords, z)?;
 
         // Normalize coordinates to [0,1] within the cell
-        let dx = log_x_grid[i + 1] - log_x_grid[i];
-        let dy = log_y_grid[j + 1] - log_y_grid[j];
-        let dz = log_z_grid[k + 1] - log_z_grid[k];
+        let dx = x_coords[i + 1] - x_coords[i];
+        let dy = y_coords[j + 1] - y_coords[j];
+        let dz = z_coords[k + 1] - z_coords[k];
 
         if dx == 0.0 || dy == 0.0 || dz == 0.0 {
             return Err(InterpolateError::Other("Grid spacing is zero".to_string()));
         }
 
-        let u = (log_x - log_x_grid[i]) / dx;
-        let v = (log_y - log_y_grid[j]) / dy;
-        let w = (log_z - log_z_grid[k]) / dz;
+        let u = (x - x_coords[i]) / dx;
+        let v = (y - y_coords[j]) / dy;
+        let w = (z - z_coords[k]) / dz;
 
         // Use the corrected Hermite tricubic interpolation
         let result = self.hermite_tricubic_interpolate(data, (i, j, k), (u, v, w), (dx, dy, dz));
@@ -1093,11 +939,6 @@ where
 {
     fn init(&mut self, data: &InterpData1D<D>) -> Result<(), ValidateError> {
         let x_coords = data.grid[0].as_slice().unwrap();
-        if x_coords.iter().any(|&x| x <= 0.0) {
-            return Err(ValidateError::Other(
-                "The input values must be positive for logarithmic scaling".to_string(),
-            ));
-        }
         let n = x_coords.len();
         if n < 2 {
             return Err(ValidateError::Other(
@@ -1133,14 +974,10 @@ where
             )));
         }
 
-        let log_x = x.ln();
-        let log_x_min = x_min.ln();
-        let log_x_max = x_max.ln();
-
-        if (log_x_max - log_x_min).abs() < 1e-15 {
+        if (x_max - x_min).abs() < 1e-15 {
             return Ok(f_values[0]);
         }
-        let t = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
+        let t = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
 
         Ok(Self::barycentric_interpolate(
             t,
@@ -1162,11 +999,6 @@ where
     fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
         for dim in 0..2 {
             let x_coords = data.grid[dim].as_slice().unwrap();
-            if x_coords.iter().any(|&x| x <= 0.0) {
-                return Err(ValidateError::Other(
-                    "The input values must be positive for logarithmic scaling".to_string(),
-                ));
-            }
             let n = x_coords.len();
             if n < 2 {
                 return Err(ValidateError::Other(
@@ -1199,10 +1031,7 @@ where
                 x, x_min, x_max
             )));
         }
-        let log_x = x.ln();
-        let log_x_min = x_min.ln();
-        let log_x_max = x_max.ln();
-        let t_x = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
+        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
 
         let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
@@ -1212,10 +1041,7 @@ where
                 y, y_min, y_max
             )));
         }
-        let log_y = y.ln();
-        let log_y_min = y_min.ln();
-        let log_y_max = y_max.ln();
-        let t_y = 2.0 * (log_y - log_y_min) / (log_y_max - log_y_min) - 1.0;
+        let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
 
         // Interpolate along y for each x grid line
         let mut y_interp_values = Vec::with_capacity(x_coords.len());
@@ -1250,11 +1076,6 @@ where
     fn init(&mut self, data: &InterpData3D<D>) -> Result<(), ValidateError> {
         for dim in 0..3 {
             let x_coords = data.grid[dim].as_slice().unwrap();
-            if x_coords.iter().any(|&x| x <= 0.0) {
-                return Err(ValidateError::Other(
-                    "The input values must be positive for logarithmic scaling".to_string(),
-                ));
-            }
             let n = x_coords.len();
             if n < 2 {
                 return Err(ValidateError::Other(
@@ -1288,10 +1109,7 @@ where
                 x, x_min, x_max
             )));
         }
-        let log_x = x.ln();
-        let log_x_min = x_min.ln();
-        let log_x_max = x_max.ln();
-        let t_x = 2.0 * (log_x - log_x_min) / (log_x_max - log_x_min) - 1.0;
+        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
 
         let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
@@ -1301,10 +1119,7 @@ where
                 y, y_min, y_max
             )));
         }
-        let log_y = y.ln();
-        let log_y_min = y_min.ln();
-        let log_y_max = y_max.ln();
-        let t_y = 2.0 * (log_y - log_y_min) / (log_y_max - log_y_min) - 1.0;
+        let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
 
         let z_min = *z_coords.first().unwrap();
         let z_max = *z_coords.last().unwrap();
@@ -1314,10 +1129,7 @@ where
                 z, z_min, z_max
             )));
         }
-        let log_z = z.ln();
-        let log_z_min = z_min.ln();
-        let log_z_max = z_max.ln();
-        let t_z = 2.0 * (log_z - log_z_min) / (log_z_max - log_z_min) - 1.0;
+        let t_z = 2.0 * (z - z_min) / (z_max - z_min) - 1.0;
 
         // Interpolate along z for each (x, y) grid plane
         let mut z_interp_values = Vec::with_capacity(x_coords.len() * y_coords.len());
@@ -1373,6 +1185,7 @@ mod tests {
     use ninterp::prelude::Interpolator;
     use ninterp::strategy::Linear;
     use std::f64::consts::PI;
+    use ninterp::num_traits::Float;
 
     // Helper constants for commonly used values
     const EPSILON: f64 = 1e-9;
@@ -1489,44 +1302,6 @@ mod tests {
             let result = BilinearInterpolation.interpolate(&data, &point).unwrap();
             assert_close(result, expected, EPSILON);
         }
-    }
-
-    #[test]
-    fn test_log_bilinear_interpolation() {
-        let data = create_test_data_2d(
-            vec![1.0, 10.0, 100.0],
-            vec![1.0, 10.0, 100.0],
-            vec![0.0, 1.0, 2.0, 1.0, 2.0, 3.0, 2.0, 3.0, 4.0],
-        );
-        LogBilinearInterpolation.init(&data).unwrap();
-
-        let test_cases = [
-            ([3.16227766, 3.16227766], 1.0), // sqrt(10)
-            ([10.0, 10.0], 2.0),             // Grid point
-            ([1.77827941, 5.62341325], 1.0), // 10^0.25, 10^0.75
-        ];
-
-        for (point, expected) in test_cases {
-            let result = LogBilinearInterpolation.interpolate(&data, &point).unwrap();
-            assert_close(result, expected, EPSILON);
-        }
-    }
-
-    #[test]
-    fn test_log_bilinear_init_validation() {
-        let invalid_data = create_test_data_2d(
-            vec![0.0, 1.0, 2.0],  // Contains zero-valued
-            vec![-1.0, 2.0, 3.0], // contains negative alue
-            vec![0.0; 9],
-        );
-
-        let result = LogBilinearInterpolation.init(&invalid_data);
-
-        assert!(result.is_err());
-        assert_eq!(
-            result.unwrap_err().to_string(),
-            "The input values must be positive for logarithmic scaling"
-        );
     }
 
     #[test]
@@ -1649,25 +1424,6 @@ mod tests {
 
     #[test]
     fn test_log_bicubic_init_validation() {
-        let test_cases = [
-            // Non-positive x_coords
-            (vec![-1.0, 1.0, 2.0, 3.0], vec![1.0, 2.0, 3.0, 4.0]),
-            // Non-positive y_coords
-            (vec![1.0, 2.0, 3.0, 4.0], vec![-1.0, 2.0, 3.0, 4.0]),
-        ];
-
-        for (x_coords, y_coords) in test_cases {
-            let data = create_test_data_2d(x_coords, y_coords, vec![0.0; 16]);
-            let mut log_bicubic = LogBicubicInterpolation::default();
-            let result = log_bicubic.init(&data);
-
-            assert!(result.is_err());
-            assert_eq!(
-                result.unwrap_err().to_string(),
-                "The input values must be positive for logarithmic scaling"
-            );
-        }
-
         // Test insufficient grid size
         let data_small =
             create_test_data_2d(vec![1.0, 2.0, 3.0], vec![1.0, 2.0, 3.0], vec![0.0; 9]);
@@ -1692,20 +1448,24 @@ mod tests {
 
     #[test]
     fn test_log_bicubic_interpolation() {
-        let target_data = create_target_data_2d(4);
-        let data = create_test_data_2d(
-            vec![1.0, 10.0, 100.0, 1000.0],
-            vec![1.0, 10.0, 100.0, 1000.0],
-            target_data,
-        );
+        let target_data: Vec<f64> = create_target_data_2d(4).iter().map(|v| v.ln()).collect();
+        let x_coords: Vec<f64> = vec![1.0, 10.0, 100.0, 1000.0]
+            .iter()
+            .map(|v| v.ln())
+            .collect();
+        let y_coords: Vec<f64> = vec![1.0, 10.0, 100.0, 1000.0]
+            .iter()
+            .map(|v| v.ln())
+            .collect();
+        let data = create_test_data_2d(x_coords, y_coords, target_data);
 
         let mut log_bicubic = LogBicubicInterpolation::default();
         log_bicubic.init(&data).unwrap();
 
         let test_cases = [
-            ([10.0, 10.0], 4.0),              // Grid point
-            ([3.16227766, 3.16227766], 2.25), // sqrt(10)
-            ([31.6227766, 31.6227766], 6.25), // 10^1.5
+            ([10.0.ln(), 10.0.ln()], 4.0.ln()),
+            ([3.16227766.ln(), 3.16227766.ln()], 2.25.ln()),
+            ([31.6227766.ln(), 31.6227766.ln()], 6.25.ln()),
         ];
 
         for (point, expected) in test_cases {

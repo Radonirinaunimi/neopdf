@@ -14,7 +14,7 @@ use thiserror::Error;
 
 use super::alphas::AlphaS;
 use super::interpolator::{DynInterpolator, InterpolatorFactory};
-use super::metadata::MetaData;
+use super::metadata::{InterpolatorType, MetaData};
 use super::parser::SubgridData;
 use super::subgrid::{ParamRange, RangeParameters, SubGrid};
 
@@ -281,9 +281,29 @@ impl GridPDF {
             Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
         })?;
 
+        let is_log_interp = matches!(
+            self.info.interpolator_type,
+            InterpolatorType::LogBilinear
+                | InterpolatorType::LogBicubic
+                | InterpolatorType::LogTricubic
+                | InterpolatorType::LogChebyshev
+        );
+
+        let transformed_points = if is_log_interp {
+            points.iter().map(|p| p.ln()).collect::<Vec<_>>()
+        } else {
+            points.to_vec()
+        };
+
         let result = self.interpolators[subgrid_idx][pid_idx]
-            .interpolate_point(points)
+            .interpolate_point(&transformed_points)
             .map_err(|e| Error::InterpolationError(e.to_string()))?;
+
+        let result = match self.info.interpolator_type {
+            InterpolatorType::Bilinear => result.exp(),
+            _ if is_log_interp => result.exp(),
+            _ => result,
+        };
 
         Ok(self.apply_force_positive(result))
     }
