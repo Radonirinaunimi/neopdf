@@ -156,11 +156,19 @@ impl InterpolatorFactory {
         pid_index: usize,
     ) -> Box<dyn DynInterpolator> {
         let grid_slice = subgrid.grid_slice(pid_index).to_owned();
+
+        // Transform the coordinates into logarithmic scale.
+        let (xs, q2s) = if matches!(interp_type, InterpolatorType::Bilinear) {
+            (subgrid.xs.to_owned(), subgrid.q2s.to_owned())
+        } else {
+            (subgrid.xs.mapv(f64::ln), subgrid.q2s.mapv(f64::ln))
+        };
+
         match interp_type {
             InterpolatorType::Bilinear => Box::new(
                 Interp2D::new(
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    xs,
+                    q2s,
                     grid_slice,
                     BilinearInterpolation,
                     Extrapolate::Clamp,
@@ -169,8 +177,8 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogBilinear => Box::new(
                 Interp2D::new(
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    xs,
+                    q2s,
                     grid_slice,
                     LogBilinearInterpolation,
                     Extrapolate::Clamp,
@@ -179,8 +187,8 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogBicubic => Box::new(
                 Interp2D::new(
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    xs,
+                    q2s,
                     grid_slice,
                     LogBicubicInterpolation::default(),
                     Extrapolate::Clamp,
@@ -189,8 +197,8 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogChebyshev => Box::new(
                 Interp2D::new(
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    xs,
+                    q2s,
                     grid_slice,
                     LogChebyshevInterpolation::<2>::default(),
                     Extrapolate::Clamp,
@@ -216,9 +224,9 @@ impl InterpolatorFactory {
         match interp_type {
             InterpolatorType::LogTricubic => Box::new(
                 Interp3D::new(
-                    subgrid.nucleons.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    subgrid.nucleons.mapv(f64::ln),
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
                     reshaped_data,
                     LogTricubicInterpolation,
                     Extrapolate::Clamp,
@@ -227,9 +235,9 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogChebyshev => Box::new(
                 Interp3D::new(
-                    subgrid.nucleons.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    subgrid.nucleons.mapv(f64::ln),
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
                     reshaped_data,
                     LogChebyshevInterpolation::<3>::default(),
                     Extrapolate::Clamp,
@@ -255,9 +263,9 @@ impl InterpolatorFactory {
         match interp_type {
             InterpolatorType::LogTricubic => Box::new(
                 Interp3D::new(
-                    subgrid.alphas.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    subgrid.alphas.mapv(f64::ln),
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
                     reshaped_data,
                     LogTricubicInterpolation,
                     Extrapolate::Clamp,
@@ -266,9 +274,9 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogChebyshev => Box::new(
                 Interp3D::new(
-                    subgrid.alphas.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    subgrid.alphas.mapv(f64::ln),
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
                     reshaped_data,
                     LogChebyshevInterpolation::<3>::default(),
                     Extrapolate::Clamp,
@@ -294,9 +302,9 @@ impl InterpolatorFactory {
         match interp_type {
             InterpolatorType::LogTricubic => Box::new(
                 Interp3D::new(
-                    subgrid.kts.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    subgrid.kts.mapv(f64::ln),
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
                     reshaped_data,
                     LogTricubicInterpolation,
                     Extrapolate::Clamp,
@@ -305,9 +313,9 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogChebyshev => Box::new(
                 Interp3D::new(
-                    subgrid.kts.to_owned(),
-                    subgrid.xs.to_owned(),
-                    subgrid.q2s.to_owned(),
+                    subgrid.kts.mapv(f64::ln),
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
                     reshaped_data,
                     LogChebyshevInterpolation::<3>::default(),
                     Extrapolate::Clamp,
@@ -360,10 +368,10 @@ impl InterpolatorFactory {
             .slice(s![.., 0, pid_index, .., .., ..])
             .to_owned();
         let coords = vec![
-            subgrid.nucleons.to_owned(),
-            subgrid.kts.to_owned(),
-            subgrid.xs.to_owned(),
-            subgrid.q2s.to_owned(),
+            subgrid.nucleons.mapv(f64::ln),
+            subgrid.kts.mapv(f64::ln),
+            subgrid.xs.mapv(f64::ln),
+            subgrid.q2s.mapv(f64::ln),
         ];
         let reshaped_data = grid_data
             .into_shape_with_order((
@@ -392,10 +400,10 @@ impl InterpolatorFactory {
             .slice(s![0, .., pid_index, .., .., ..])
             .to_owned();
         let coords = vec![
-            subgrid.alphas.to_owned(),
-            subgrid.kts.to_owned(),
-            subgrid.xs.to_owned(),
-            subgrid.q2s.to_owned(),
+            subgrid.alphas.mapv(f64::ln),
+            subgrid.kts.mapv(f64::ln),
+            subgrid.xs.mapv(f64::ln),
+            subgrid.q2s.mapv(f64::ln),
         ];
         let reshaped_data = grid_data
             .into_shape_with_order((
@@ -424,11 +432,11 @@ impl InterpolatorFactory {
             .slice(s![.., .., pid_index, .., .., ..])
             .to_owned();
         let coords = vec![
-            subgrid.nucleons.to_owned(),
-            subgrid.alphas.to_owned(),
-            subgrid.kts.to_owned(),
-            subgrid.xs.to_owned(),
-            subgrid.q2s.to_owned(),
+            subgrid.nucleons.mapv(f64::ln),
+            subgrid.alphas.mapv(f64::ln),
+            subgrid.kts.mapv(f64::ln),
+            subgrid.xs.mapv(f64::ln),
+            subgrid.q2s.mapv(f64::ln),
         ];
         let reshaped_data = grid_data
             .into_shape_with_order((
@@ -454,7 +462,7 @@ mod tests {
     use super::*;
     use crate::subgrid::SubGrid;
 
-    const MAXDIFF: f64 = 1e-16;
+    const MAXDIFF: f64 = 1e-15;
 
     fn mock_subgrid_2d() -> SubGrid {
         let xs = vec![0.1, 0.2];
@@ -546,7 +554,9 @@ mod tests {
     fn test_3d_nucleons_interpolation() {
         let subgrid = mock_subgrid_3d_nucleons();
         let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
-        let result = interpolator.interpolate_point(&[2.0, 0.2, 2.0]).unwrap();
+        let result = interpolator
+            .interpolate_point(&[2.0f64.ln(), 0.2f64.ln(), 2.0f64.ln()])
+            .unwrap();
         assert!((result - 22.0).abs() < MAXDIFF);
     }
 
@@ -554,7 +564,9 @@ mod tests {
     fn test_3d_alphas_interpolation() {
         let subgrid = mock_subgrid_3d_alphas();
         let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
-        let result = interpolator.interpolate_point(&[0.120, 0.2, 2.0]).unwrap();
+        let result = interpolator
+            .interpolate_point(&[0.120f64.ln(), 0.2f64.ln(), 2.0f64.ln()])
+            .unwrap();
         assert!((result - 22.0).abs() < MAXDIFF);
     }
 
@@ -562,7 +574,9 @@ mod tests {
     fn test_3d_kts_interpolation() {
         let subgrid = mock_subgrid_3d_kts();
         let interpolator = InterpolatorFactory::create(InterpolatorType::LogTricubic, &subgrid, 0);
-        let result = interpolator.interpolate_point(&[1.0, 0.2, 2.0]).unwrap();
+        let result = interpolator
+            .interpolate_point(&[1.0f64.ln(), 0.2f64.ln(), 2.0f64.ln()])
+            .unwrap();
         assert!((result - 22.0).abs() < MAXDIFF);
     }
 

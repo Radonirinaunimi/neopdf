@@ -14,7 +14,7 @@ use thiserror::Error;
 
 use super::alphas::AlphaS;
 use super::interpolator::{DynInterpolator, InterpolatorFactory};
-use super::metadata::MetaData;
+use super::metadata::{InterpolatorType, MetaData};
 use super::parser::SubgridData;
 use super::subgrid::{ParamRange, RangeParameters, SubGrid};
 
@@ -292,11 +292,23 @@ impl GridPDF {
             Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
         })?;
 
-        let result = self.interpolators[subgrid_idx][pid_idx]
-            .interpolate_point(points)
-            .map_err(|e| Error::InterpolationError(e.to_string()))?;
+        let use_log = matches!(
+            self.info.interpolator_type,
+            InterpolatorType::LogBilinear
+                | InterpolatorType::LogBicubic
+                | InterpolatorType::LogTricubic
+                | InterpolatorType::LogChebyshev
+        );
 
-        Ok(self.apply_force_positive(result))
+        self.interpolators[subgrid_idx][pid_idx]
+            .interpolate_point(
+                &points
+                    .iter()
+                    .map(|&p| if use_log { p.ln() } else { p })
+                    .collect::<Vec<_>>(),
+            )
+            .map_err(|e| Error::InterpolationError(e.to_string()))
+            .map(|result| self.apply_force_positive(result))
     }
 
     /// Interpolates PDF values for multiple points in parallel.
