@@ -739,35 +739,35 @@ pub struct AlphaSCubicInterpolation;
 impl AlphaSCubicInterpolation {
     /// Get the index of the closest Q2 knot row <= q2
     ///
-    /// If the value is >= q2_max, return i_max-1 (for polynomial spine construction)
-    fn iq2below<D>(data: &InterpData1D<D>, q2: f64) -> usize
+    /// If the value is >= q2_max, return (i_max-1).
+    fn ilogq2below<D>(data: &InterpData1D<D>, logq2: f64) -> usize
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
-        let q2s = data.grid[0].as_slice().unwrap();
+        let logq2s = data.grid[0].as_slice().unwrap();
         // Test that Q2 is in the grid range
-        if q2 < *q2s.first().unwrap() {
+        if logq2 < *logq2s.first().unwrap() {
             panic!(
                 "Q2 value {} is lower than lowest-Q2 grid point at {}",
-                q2,
-                q2s.first().unwrap()
+                logq2.exp(),
+                logq2s.first().unwrap().exp()
             );
         }
-        if q2 > *q2s.last().unwrap() {
+        if logq2 > *logq2s.last().unwrap() {
             panic!(
                 "Q2 value {} is higher than highest-Q2 grid point at {}",
-                q2,
-                q2s.last().unwrap()
+                logq2.exp(),
+                logq2s.last().unwrap().exp()
             );
         }
 
         // Find the closest knot below the requested value
-        let idx = q2s.partition_point(|&x| x < q2);
+        let idx = logq2s.partition_point(|&x| x < logq2);
 
-        if idx == q2s.len() {
+        if idx == logq2s.len() {
             idx - 1
-        } else if (q2s[idx] - q2).abs() < 1e-9 {
-            if idx == q2s.len() - 1 && q2s.len() >= 2 {
+        } else if (logq2s[idx] - logq2).abs() < 1e-9 {
+            if idx == logq2s.len() - 1 && logq2s.len() >= 2 {
                 idx - 1
             } else {
                 idx
@@ -782,12 +782,7 @@ impl AlphaSCubicInterpolation {
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
-        let logq2s: Vec<f64> = data.grid[0]
-            .as_slice()
-            .unwrap()
-            .iter()
-            .map(|&q2| q2.ln())
-            .collect();
+        let logq2s = data.grid[0].as_slice().unwrap();
         let alphas = data.values.as_slice().unwrap();
         (alphas[i + 1] - alphas[i]) / (logq2s[i + 1] - logq2s[i])
     }
@@ -797,12 +792,7 @@ impl AlphaSCubicInterpolation {
     where
         D: Data<Elem = f64> + RawDataClone + Clone,
     {
-        let logq2s: Vec<f64> = data.grid[0]
-            .as_slice()
-            .unwrap()
-            .iter()
-            .map(|&q2| q2.ln())
-            .collect();
+        let logq2s = data.grid[0].as_slice().unwrap();
         let alphas = data.values.as_slice().unwrap();
         (alphas[i] - alphas[i - 1]) / (logq2s[i] - logq2s[i - 1])
     }
@@ -825,29 +815,26 @@ where
         data: &InterpData1D<D>,
         point: &[f64; 1],
     ) -> Result<f64, InterpolateError> {
-        let q2 = point[0];
-        let q2s = data.grid[0].as_slice().unwrap();
+        let logq2 = point[0];
+        let logq2s = data.grid[0].as_slice().unwrap();
         let alphas = data.values.as_slice().unwrap();
-        let logq2s: Vec<f64> = q2s.iter().map(|&q2| q2.ln()).collect();
 
-        assert!(q2 >= 0.0);
-
-        if q2 < *q2s.first().unwrap() {
+        if logq2 < *logq2s.first().unwrap() {
             let mut next_point = 1;
-            while q2s[0] == q2s[next_point] {
+            while logq2s[0] == logq2s[next_point] {
                 next_point += 1;
             }
-            let dlogq2 = (q2s[next_point] / q2s[0]).log10();
-            let dlogas = (alphas[next_point] / alphas[0]).log10();
+            let dlogq2 = logq2s[next_point] - logq2s[0];
+            let dlogas = (alphas[next_point] / alphas[0]).ln();
             let loggrad = dlogas / dlogq2;
-            return Ok(alphas[0] * (q2 / q2s[0]).powf(loggrad));
+            return Ok(alphas[0] * (loggrad * (logq2 - logq2s[0])).exp());
         }
 
-        if q2 > *q2s.last().unwrap() {
+        if logq2 > *logq2s.last().unwrap() {
             return Ok(*alphas.last().unwrap());
         }
 
-        let i = Self::iq2below(data, q2);
+        let i = Self::ilogq2below(data, logq2);
 
         // Calculate derivatives
         let didlogq2: f64;
@@ -865,7 +852,7 @@ where
 
         // Calculate alpha_s
         let dlogq2 = logq2s[i + 1] - logq2s[i];
-        let tlogq2 = (q2.ln() - logq2s[i]) / dlogq2;
+        let tlogq2 = (logq2 - logq2s[i]) / dlogq2;
         Ok(utils::hermite_cubic_interpolate(
             tlogq2,
             alphas[i],
@@ -1428,26 +1415,26 @@ mod tests {
 
     #[test]
     fn test_alphas_cubic_interpolation() {
-        let q_values = [1.0, 2.0, 3.0, 4.0, 5.0];
+        let q_values = [1.0f64, 2.0, 3.0, 4.0, 5.0];
         let alphas_vals = vec![0.1, 0.11, 0.12, 0.13, 0.14];
-        let q2_values: Vec<f64> = q_values.iter().map(|&q| q * q).collect();
-        let data = create_test_data_1d(q2_values, alphas_vals);
+        let logq2_values: Vec<f64> = q_values.iter().map(|&q| (q * q).ln()).collect();
+        let data = create_test_data_1d(logq2_values, alphas_vals);
         let alphas_cubic = AlphaSCubicInterpolation;
 
         // Test within interpolation range
-        let result = alphas_cubic.interpolate(&data, &[2.25]).unwrap(); // Q=1.5
+        let result = alphas_cubic.interpolate(&data, &[2.25f64.ln()]).unwrap(); // Q=1.5
         assert!(result > 0.1 && result < 0.14);
 
         // Test at grid point
-        let result = alphas_cubic.interpolate(&data, &[4.0]).unwrap(); // Q=2.0
+        let result = alphas_cubic.interpolate(&data, &[4.0f64.ln()]).unwrap(); // Q=2.0
         assert_close(result, 0.11, EPSILON);
 
         // Test extrapolation below range
-        let result = alphas_cubic.interpolate(&data, &[0.5]).unwrap(); // Q=sqrt(0.5)
+        let result = alphas_cubic.interpolate(&data, &[0.5f64.ln()]).unwrap(); // Q=sqrt(0.5)
         assert!(result < 0.1);
 
         // Test extrapolation above range
-        let result = alphas_cubic.interpolate(&data, &[30.0]).unwrap(); // Q=sqrt(30)
+        let result = alphas_cubic.interpolate(&data, &[30.0f64.ln()]).unwrap(); // Q=sqrt(30)
         assert_close(result, 0.14, EPSILON);
     }
 
@@ -1523,10 +1510,13 @@ mod tests {
 
     #[test]
     fn test_ddlogq_derivatives() {
-        let data = create_test_data_1d(vec![1.0, 2.0, 3.0, 4.0], vec![0.1, 0.2, 0.3, 0.4]);
+        let data = create_test_data_1d(
+            vec![1.0f64.ln(), 2.0f64.ln(), 3.0f64.ln(), 4.0f64.ln()],
+            vec![0.1, 0.2, 0.3, 0.4],
+        );
 
         // Forward derivative
-        let expected_forward = 0.1 / 2.0f64.ln();
+        let expected_forward = 0.1 / (2.0f64.ln() - 1.0f64.ln());
         assert_close(
             AlphaSCubicInterpolation::ddlogq_forward(&data, 0),
             expected_forward,
@@ -1534,7 +1524,7 @@ mod tests {
         );
 
         // Backward derivative
-        let expected_backward = 0.1 / 2.0f64.ln();
+        let expected_backward = 0.1 / (2.0f64.ln() - 1.0f64.ln());
         assert_close(
             AlphaSCubicInterpolation::ddlogq_backward(&data, 1),
             expected_backward,
@@ -1552,42 +1542,59 @@ mod tests {
     }
 
     #[test]
-    fn test_iq2below() {
-        let data =
-            create_test_data_1d(vec![1.0, 2.0, 3.0, 4.0, 5.0], vec![0.1, 0.2, 0.3, 0.4, 0.5]);
+    fn test_ilogq2below() {
+        let data = create_test_data_1d(
+            vec![
+                1.0f64.ln(),
+                2.0f64.ln(),
+                3.0f64.ln(),
+                4.0f64.ln(),
+                5.0f64.ln(),
+            ],
+            vec![0.1, 0.2, 0.3, 0.4, 0.5],
+        );
 
         let test_cases = [
-            (1.5, 0),
-            (2.0, 1),
-            (3.9, 2), // Within range
-            (1.0, 0),
-            (5.0, 3), // At boundaries
+            (1.5f64.ln(), 0),
+            (2.0f64.ln(), 1),
+            (3.9f64.ln(), 2), // Within range
+            (1.0f64.ln(), 0),
+            (5.0f64.ln(), 3), // At boundaries
         ];
 
         for (q2_val, expected_idx) in test_cases {
             assert_eq!(
-                AlphaSCubicInterpolation::iq2below(&data, q2_val),
+                AlphaSCubicInterpolation::ilogq2below(&data, q2_val),
                 expected_idx
             );
         }
 
         // Test edge cases with different data sizes
-        let data_small = create_test_data_1d(vec![1.0, 2.0], vec![0.1, 0.2]);
-        assert_eq!(AlphaSCubicInterpolation::iq2below(&data_small, 2.0), 0);
+        let data_small = create_test_data_1d(vec![1.0f64.ln(), 2.0f64.ln()], vec![0.1, 0.2]);
+        assert_eq!(
+            AlphaSCubicInterpolation::ilogq2below(&data_small, 2.0f64.ln()),
+            0
+        );
 
-        let data_with_mid = create_test_data_1d(vec![1.0, 2.0, 3.0], vec![0.1, 0.2, 0.3]);
-        assert_eq!(AlphaSCubicInterpolation::iq2below(&data_with_mid, 2.0), 1);
+        let data_with_mid = create_test_data_1d(
+            vec![1.0f64.ln(), 2.0f64.ln(), 3.0f64.ln()],
+            vec![0.1, 0.2, 0.3],
+        );
+        assert_eq!(
+            AlphaSCubicInterpolation::ilogq2below(&data_with_mid, 2.0f64.ln()),
+            1
+        );
 
         // Test panic conditions
-        let data_single = create_test_data_1d(vec![1.0], vec![0.1]);
+        let data_single = create_test_data_1d(vec![1.0f64.ln()], vec![0.1]);
 
         let result = std::panic::catch_unwind(|| {
-            AlphaSCubicInterpolation::iq2below(&data_single, 0.5);
+            AlphaSCubicInterpolation::ilogq2below(&data_single, 0.5f64.ln());
         });
         assert!(result.is_err());
 
         let result = std::panic::catch_unwind(|| {
-            AlphaSCubicInterpolation::iq2below(&data_single, 1.5);
+            AlphaSCubicInterpolation::ilogq2below(&data_single, 1.5f64.ln());
         });
         assert!(result.is_err());
     }
