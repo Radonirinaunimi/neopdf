@@ -157,18 +157,11 @@ impl InterpolatorFactory {
     ) -> Box<dyn DynInterpolator> {
         let grid_slice = subgrid.grid_slice(pid_index).to_owned();
 
-        // Transform the coordinates into logarithmic scale.
-        let (xs, q2s) = if matches!(interp_type, InterpolatorType::Bilinear) {
-            (subgrid.xs.to_owned(), subgrid.q2s.to_owned())
-        } else {
-            (subgrid.xs.mapv(f64::ln), subgrid.q2s.mapv(f64::ln))
-        };
-
         match interp_type {
             InterpolatorType::Bilinear => Box::new(
                 Interp2D::new(
-                    xs,
-                    q2s,
+                    subgrid.xs.to_owned(),
+                    subgrid.q2s.to_owned(),
                     grid_slice,
                     BilinearInterpolation,
                     Extrapolate::Clamp,
@@ -177,8 +170,8 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogBilinear => Box::new(
                 Interp2D::new(
-                    xs,
-                    q2s,
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
                     grid_slice,
                     LogBilinearInterpolation,
                     Extrapolate::Clamp,
@@ -187,8 +180,8 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogBicubic => Box::new(
                 Interp2D::new(
-                    xs,
-                    q2s,
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
                     grid_slice,
                     LogBicubicInterpolation::default(),
                     Extrapolate::Clamp,
@@ -197,8 +190,8 @@ impl InterpolatorFactory {
             ),
             InterpolatorType::LogChebyshev => Box::new(
                 Interp2D::new(
-                    xs,
-                    q2s,
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
                     grid_slice,
                     LogChebyshevInterpolation::<2>::default(),
                     Extrapolate::Clamp,
@@ -221,6 +214,7 @@ impl InterpolatorFactory {
         let reshaped_data = grid_data
             .into_shape_with_order((subgrid.nucleons.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
+
         match interp_type {
             InterpolatorType::LogTricubic => Box::new(
                 Interp3D::new(
@@ -260,6 +254,7 @@ impl InterpolatorFactory {
         let reshaped_data = grid_data
             .into_shape_with_order((subgrid.alphas.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
+
         match interp_type {
             InterpolatorType::LogTricubic => Box::new(
                 Interp3D::new(
@@ -299,6 +294,7 @@ impl InterpolatorFactory {
         let reshaped_data = grid_data
             .into_shape_with_order((subgrid.kts.len(), subgrid.xs.len(), subgrid.q2s.len()))
             .expect("Failed to reshape 3D data");
+
         match interp_type {
             InterpolatorType::LogTricubic => Box::new(
                 Interp3D::new(
@@ -349,6 +345,7 @@ impl InterpolatorFactory {
                 subgrid.q2s.len(),
             ))
             .expect("Failed to reshape 4D data");
+
         match interp_type {
             InterpolatorType::InterpNDLinear => Box::new(
                 InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Clamp)
@@ -381,6 +378,7 @@ impl InterpolatorFactory {
                 subgrid.q2s.len(),
             ))
             .expect("Failed to reshape 4D data");
+
         match interp_type {
             InterpolatorType::InterpNDLinear => Box::new(
                 InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Clamp)
@@ -413,6 +411,7 @@ impl InterpolatorFactory {
                 subgrid.q2s.len(),
             ))
             .expect("Failed to reshape 4D data");
+
         match interp_type {
             InterpolatorType::InterpNDLinear => Box::new(
                 InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Clamp)
@@ -447,6 +446,7 @@ impl InterpolatorFactory {
                 subgrid.q2s.len(),
             ))
             .expect("Failed to reshape 5D data");
+
         match interp_type {
             InterpolatorType::InterpNDLinear => Box::new(
                 InterpND::new(coords, reshaped_data.into_dyn(), Linear, Extrapolate::Clamp)

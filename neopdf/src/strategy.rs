@@ -50,7 +50,7 @@ impl BilinearInterpolation {
     /// The interpolated y-value.
     fn linear_interpolate(x1: f64, x2: f64, y1: f64, y2: f64, x: f64) -> f64 {
         if x1 == x2 {
-            return y1; // Avoid division by zero
+            return y1;
         }
         y1 + (y2 - y1) * (x - x1) / (x2 - x1)
     }
@@ -262,18 +262,14 @@ impl LogBicubicInterpolation {
         };
 
         if ix != 0 && ix != nxknots - 1 {
-            // Central difference
             let lddx = (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1;
             let rddx = (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2;
             (lddx + rddx) / 2.0
         } else if ix == 0 {
-            // Forward difference
             (values[[ix + 1, iq2]] - values[[ix, iq2]]) / del2
         } else if ix == nxknots - 1 {
-            // Backward difference
             (values[[ix, iq2]] - values[[ix - 1, iq2]]) / del1
         } else {
-            // This case should ideally not be reached given the checks above
             panic!("Should not reach here: Invalid index for derivative calculation.");
         }
     }
@@ -504,18 +500,14 @@ impl LogTricubicInterpolation {
         };
 
         if ix != 0 && ix != nxknots - 1 {
-            // Central difference
             let lddx = (values[[ix, iq2, iz]] - values[[ix - 1, iq2, iz]]) / del1;
             let rddx = (values[[ix + 1, iq2, iz]] - values[[ix, iq2, iz]]) / del2;
             (lddx + rddx) / 2.0
         } else if ix == 0 {
-            // Forward difference
             (values[[ix + 1, iq2, iz]] - values[[ix, iq2, iz]]) / del2
         } else if ix == nxknots - 1 {
-            // Backward difference
             (values[[ix, iq2, iz]] - values[[ix - 1, iq2, iz]]) / del1
         } else {
-            // This case should ideally not be reached given the checks above
             panic!("Should not reach here: Invalid index for derivative calculation.");
         }
     }
@@ -540,15 +532,12 @@ impl LogTricubicInterpolation {
         };
 
         if iq2 != 0 && iq2 != nq2knots - 1 {
-            // Central difference
             let lddq = (values[[ix, iq2, iz]] - values[[ix, iq2 - 1, iz]]) / del1;
             let rddq = (values[[ix, iq2 + 1, iz]] - values[[ix, iq2, iz]]) / del2;
             (lddq + rddq) / 2.0
         } else if iq2 == 0 {
-            // Forward difference
             (values[[ix, iq2 + 1, iz]] - values[[ix, iq2, iz]]) / del2
         } else if iq2 == nq2knots - 1 {
-            // Backward difference
             (values[[ix, iq2, iz]] - values[[ix, iq2 - 1, iz]]) / del1
         } else {
             panic!("Should not reach here: Invalid index for derivative calculation.");
@@ -575,15 +564,12 @@ impl LogTricubicInterpolation {
         };
 
         if iz != 0 && iz != nmu2knots - 1 {
-            // Central difference
             let lddmu = (values[[ix, iq2, iz]] - values[[ix, iq2, iz - 1]]) / del1;
             let rddmu = (values[[ix, iq2, iz + 1]] - values[[ix, iq2, iz]]) / del2;
             (lddmu + rddmu) / 2.0
         } else if iz == 0 {
-            // Forward difference
             (values[[ix, iq2, iz + 1]] - values[[ix, iq2, iz]]) / del2
         } else if iz == nmu2knots - 1 {
-            // Backward difference
             (values[[ix, iq2, iz]] - values[[ix, iq2, iz - 1]]) / del1
         } else {
             panic!("Should not reach here: Invalid index for derivative calculation.");
@@ -779,22 +765,14 @@ impl AlphaSCubicInterpolation {
         let idx = q2s.partition_point(|&x| x < q2);
 
         if idx == q2s.len() {
-            // q2 is greater than or equal to the last element.
-            // Since we already checked q2 > last element, it must be equal.
-            // For interpolation, we need the interval [idx-1, idx].
             idx - 1
         } else if (q2s[idx] - q2).abs() < 1e-9 {
-            // q2 is exactly a knot.
-            // If it's the last knot, we need the interval [idx-1, idx].
-            // Otherwise, we use the knot itself as the lower bound of the interval.
             if idx == q2s.len() - 1 && q2s.len() >= 2 {
                 idx - 1
             } else {
                 idx
             }
         } else {
-            // q2 is between two knots.
-            // idx is the first element greater than q2, so idx-1 is the lower bound.
             idx - 1
         }
     }
@@ -854,11 +832,7 @@ where
 
         assert!(q2 >= 0.0);
 
-        // Using base 10 for logs to get constant gradient extrapolation in
-        // a log 10 - log 10 plot
         if q2 < *q2s.first().unwrap() {
-            // Remember to take situations where the first knot also is a
-            // flavor threshold into account
             let mut next_point = 1;
             while q2s[0] == q2s[next_point] {
                 next_point += 1;
@@ -873,7 +847,6 @@ where
             return Ok(*alphas.last().unwrap());
         }
 
-        // Get the Q/alpha_s index on this array which is *below* this Q point
         let i = Self::iq2below(data, q2);
 
         // Calculate derivatives
