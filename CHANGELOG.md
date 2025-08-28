@@ -31,8 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Fixed a bug in determining the new parameters range when combining multiple
-  `A`- and `alphas`-dependent sets.
+- Move the computation of the logarithmic transformation out of the interpolation.
 - Modified `GridArray::find_subgrid` to accept more combinations of variables
   so that the construction of subgrids is generic.
 - Modified `GridArray::pid_index` to accept both `0` and `21` for the Gluon.

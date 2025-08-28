@@ -202,7 +202,7 @@ pub struct AlphaSInterpol {
 
 impl AlphaSInterpol {
     pub fn from_metadata(meta: &MetaData) -> Result<Self, String> {
-        let q2_values: Vec<f64> = meta.alphas_q_values.iter().map(|&q| q * q).collect();
+        let q2_values: Vec<f64> = meta.alphas_q_values.iter().map(|&q| (q * q).ln()).collect();
         let interpolator = Interp1D::new(
             q2_values.into(),
             meta.alphas_vals.to_owned().into(),
@@ -210,10 +210,11 @@ impl AlphaSInterpol {
             Extrapolate::Error,
         )
         .map_err(|e| e.to_string())?;
+
         Ok(Self { interpolator })
     }
 
     pub fn alphas_q2(&self, q2: f64) -> f64 {
-        self.interpolator.interpolate(&[q2]).unwrap_or(0.0)
+        self.interpolator.interpolate(&[q2.ln()]).unwrap_or(0.0)
     }
 }
