@@ -952,14 +952,38 @@ impl<const DIM: usize> LogChebyshevInterpolation<DIM> {
         weights
     }
 
-    /// Evaluates the Chebyshev interpolant using the barycentric formula. This approach is more
-    /// numerically stable than direct evaluation of the high-degree polynomial.
+    /// Computes normalized barycentric coefficients for interpolation
+    /// Returns a vector of coefficients that sum to 1
+    fn compute_barycentric_coefficients(t: f64, t_coords: &[f64], weights: &[f64]) -> Vec<f64> {
+        let mut coeffs = vec![0.0; t_coords.len()];
+
+        for (j, &t_j) in t_coords.iter().enumerate() {
+            if (t - t_j).abs() < 1e-15 {
+                // t is exactly at grid point j - return unit vector
+                coeffs[j] = 1.0;
+                return coeffs;
+            }
+        }
+
+        let mut terms = Vec::with_capacity(t_coords.len());
+        for (j, &t_j) in t_coords.iter().enumerate() {
+            terms.push(weights[j] / (t - t_j));
+        }
+
+        let sum: f64 = terms.iter().sum();
+        for (j, &term) in terms.iter().enumerate() {
+            coeffs[j] = term / sum;
+        }
+
+        coeffs
+    }
+
+    /// Legacy barycentric interpolation method (kept for compatibility)
     fn barycentric_interpolate(t: f64, t_coords: &[f64], f_values: &[f64], weights: &[f64]) -> f64 {
         let mut numer = 0.0;
         let mut denom = 0.0;
 
         for (j, &t_j) in t_coords.iter().enumerate() {
-            // If t is exactly at a grid point, return the value to avoid division by zero
             if (t - t_j).abs() < 1e-15 {
                 return f_values[j];
             }
@@ -1071,7 +1095,6 @@ where
                 x, x_min, x_max
             )));
         }
-        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
 
         let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
@@ -1081,27 +1104,23 @@ where
                 y, y_min, y_max
             )));
         }
+
+        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
         let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
 
-        // Interpolate along y for each x grid line
-        let mut y_interp_values = Vec::with_capacity(x_coords.len());
-        for i in 0..x_coords.len() {
-            let f_values_y: Vec<f64> = (0..y_coords.len()).map(|j| data.values[[i, j]]).collect();
-            y_interp_values.push(Self::barycentric_interpolate(
-                t_y,
-                &self.t_coords[1],
-                &f_values_y,
-                &self.weights[1],
-            ));
+        let x_coeffs =
+            Self::compute_barycentric_coefficients(t_x, &self.t_coords[0], &self.weights[0]);
+        let y_coeffs =
+            Self::compute_barycentric_coefficients(t_y, &self.t_coords[1], &self.weights[1]);
+
+        let mut result = 0.0;
+        for (i, &x_coeff) in x_coeffs.iter().enumerate() {
+            for (j, &y_coeff) in y_coeffs.iter().enumerate() {
+                result += x_coeff * y_coeff * data.values[[i, j]];
+            }
         }
 
-        // Interpolate along x using the results from the y-interpolations
-        Ok(Self::barycentric_interpolate(
-            t_x,
-            &self.t_coords[0],
-            &y_interp_values,
-            &self.weights[0],
-        ))
+        Ok(result)
     }
 
     fn allow_extrapolate(&self) -> bool {
@@ -1149,7 +1168,6 @@ where
                 x, x_min, x_max
             )));
         }
-        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
 
         let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
@@ -1159,7 +1177,6 @@ where
                 y, y_min, y_max
             )));
         }
-        let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
 
         let z_min = *z_coords.first().unwrap();
         let z_max = *z_coords.last().unwrap();
@@ -1169,45 +1186,28 @@ where
                 z, z_min, z_max
             )));
         }
+
+        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
+        let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
         let t_z = 2.0 * (z - z_min) / (z_max - z_min) - 1.0;
 
-        // Interpolate along z for each (x, y) grid plane
-        let mut z_interp_values = Vec::with_capacity(x_coords.len() * y_coords.len());
-        for i in 0..x_coords.len() {
-            for j in 0..y_coords.len() {
-                let f_values_z: Vec<f64> = (0..z_coords.len())
-                    .map(|k| data.values[[i, j, k]])
-                    .collect();
-                z_interp_values.push(Self::barycentric_interpolate(
-                    t_z,
-                    &self.t_coords[2],
-                    &f_values_z,
-                    &self.weights[2],
-                ));
+        let x_coeffs =
+            Self::compute_barycentric_coefficients(t_x, &self.t_coords[0], &self.weights[0]);
+        let y_coeffs =
+            Self::compute_barycentric_coefficients(t_y, &self.t_coords[1], &self.weights[1]);
+        let z_coeffs =
+            Self::compute_barycentric_coefficients(t_z, &self.t_coords[2], &self.weights[2]);
+
+        let mut result = 0.0;
+        for (i, &x_coeff) in x_coeffs.iter().enumerate() {
+            for (j, &y_coeff) in y_coeffs.iter().enumerate() {
+                for (k, &z_coeff) in z_coeffs.iter().enumerate() {
+                    result += x_coeff * y_coeff * z_coeff * data.values[[i, j, k]];
+                }
             }
         }
 
-        // Interpolate along y for each x grid line
-        let mut y_interp_values = Vec::with_capacity(x_coords.len());
-        for i in 0..x_coords.len() {
-            let f_values_y: Vec<f64> = (0..y_coords.len())
-                .map(|j| z_interp_values[i * y_coords.len() + j])
-                .collect();
-            y_interp_values.push(Self::barycentric_interpolate(
-                t_y,
-                &self.t_coords[1],
-                &f_values_y,
-                &self.weights[1],
-            ));
-        }
-
-        // Interpolate along x
-        Ok(Self::barycentric_interpolate(
-            t_x,
-            &self.t_coords[0],
-            &y_interp_values,
-            &self.weights[0],
-        ))
+        Ok(result)
     }
 
     fn allow_extrapolate(&self) -> bool {
