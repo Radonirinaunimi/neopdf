@@ -10,7 +10,8 @@ Usage: neopdf read <COMMAND>
 Commands:
   metadata      Print the metadata of a PDF set
   num_subgrids  Print the number of subgrids in a PDF set
-  subgrid_info  Print the subgrid info (nucleons, alphas, x, Q2) for a given subgrid index
+  subgrid-info  Print the subgrid info (nucleons, alphas, x, Q2) for a given subgrid index
+  subgrid       Print the contents of a subgrid
   git-version   Print the git version of the code that generated the PDF
   help          Print this message or the help of the given subcommand(s)
 
@@ -143,7 +144,7 @@ fn read_num_subgrid_info_lhapdf() {
         .unwrap()
         .args([
             "read",
-            "subgrid_info",
+            "subgrid-info",
             "--pdf-name",
             "NNPDF40_nnlo_as_01180",
             "--member",
@@ -162,7 +163,7 @@ fn read_num_subgrid_info_neopdf() {
         .unwrap()
         .args([
             "read",
-            "subgrid_info",
+            "subgrid-info",
             "--pdf-name",
             "NNPDF40_nnlo_as_01180.neopdf.lz4",
             "--member",
