@@ -954,7 +954,7 @@ impl<const DIM: usize> LogChebyshevInterpolation<DIM> {
 
     /// Computes normalized barycentric coefficients for interpolation
     /// Returns a vector of coefficients that sum to 1
-    fn compute_barycentric_coefficients(t: f64, t_coords: &[f64], weights: &[f64]) -> Vec<f64> {
+    fn barycentric_coefficients(t: f64, t_coords: &[f64], weights: &[f64]) -> Vec<f64> {
         let mut coeffs = vec![0.0; t_coords.len()];
 
         for (j, &t_j) in t_coords.iter().enumerate() {
@@ -1108,10 +1108,8 @@ where
         let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
         let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
 
-        let x_coeffs =
-            Self::compute_barycentric_coefficients(t_x, &self.t_coords[0], &self.weights[0]);
-        let y_coeffs =
-            Self::compute_barycentric_coefficients(t_y, &self.t_coords[1], &self.weights[1]);
+        let x_coeffs = Self::barycentric_coefficients(t_x, &self.t_coords[0], &self.weights[0]);
+        let y_coeffs = Self::barycentric_coefficients(t_y, &self.t_coords[1], &self.weights[1]);
 
         let mut result = 0.0;
         for (i, &x_coeff) in x_coeffs.iter().enumerate() {
@@ -1191,12 +1189,9 @@ where
         let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
         let t_z = 2.0 * (z - z_min) / (z_max - z_min) - 1.0;
 
-        let x_coeffs =
-            Self::compute_barycentric_coefficients(t_x, &self.t_coords[0], &self.weights[0]);
-        let y_coeffs =
-            Self::compute_barycentric_coefficients(t_y, &self.t_coords[1], &self.weights[1]);
-        let z_coeffs =
-            Self::compute_barycentric_coefficients(t_z, &self.t_coords[2], &self.weights[2]);
+        let x_coeffs = Self::barycentric_coefficients(t_x, &self.t_coords[0], &self.weights[0]);
+        let y_coeffs = Self::barycentric_coefficients(t_y, &self.t_coords[1], &self.weights[1]);
+        let z_coeffs = Self::barycentric_coefficients(t_z, &self.t_coords[2], &self.weights[2]);
 
         let mut result = 0.0;
         for (i, &x_coeff) in x_coeffs.iter().enumerate() {
