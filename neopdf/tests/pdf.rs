@@ -301,3 +301,30 @@ fn test_pdf_download() {
     assert!(gluon_as.is_finite());
     assert!(gluon_xf.is_finite());
 }
+
+#[test]
+#[ignore]
+pub fn test_xfxq2_cheby_batch() {
+    // TODO: Use proper grid with Chebyshev interpolations
+    let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
+
+    let ids: Vec<i32> = (-4..=4).filter(|&x| x != 0).collect();
+    let xs = [1e-5, 1e-3, 1e-3, 1.0];
+    let q2s = [5.0, 10.0, 100.0];
+
+    let flatten_points: Vec<Vec<f64>> = xs
+        .iter()
+        .flat_map(|&x| q2s.iter().map(move |&q2| vec![x, q2]))
+        .collect();
+    let points_interp: Vec<&[f64]> = flatten_points.iter().map(Vec::as_slice).collect();
+    let slice_points: &[&[f64]] = &points_interp;
+
+    for &pid in &ids {
+        let results_batch = pdf.xfxq2_cheby_batch(pid, slice_points);
+        let results_single: Vec<f64> = slice_points.iter().map(|p| pdf.xfxq2(pid, p)).collect();
+
+        for (res_b, res_s) in results_batch.iter().zip(results_single.iter()) {
+            assert!((res_b - res_s).abs() < LOW_PRECISION);
+        }
+    }
+}
