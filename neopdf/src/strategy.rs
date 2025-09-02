@@ -1326,14 +1326,7 @@ impl LogChebyshevBatchInterpolation<1> {
 
         let mut t_x_vals = Vec::with_capacity(points.len());
         for &[x] in points {
-            if x < x_min || x > x_max {
-                return Err(InterpolateError::Other(format!(
-                    "Input point x={} is outside the grid range [{}, {}]",
-                    x, x_min, x_max
-                )));
-            }
-            let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
-            t_x_vals.push(t_x);
+            t_x_vals.push(2.0 * (x - x_min) / (x_max - x_min) - 1.0);
         }
 
         let c_x = Self::barycentric_coefficients(&t_x_vals, &self.t_coords[0], &self.weights[0]);
@@ -1384,27 +1377,9 @@ impl LogChebyshevBatchInterpolation<2> {
 
         let mut t_x_vals = Vec::with_capacity(points.len());
         let mut t_y_vals = Vec::with_capacity(points.len());
-
-        // TODO: Remove this for extrapolation -> speed gain
         for &[x, y] in points {
-            if x < x_min || x > x_max {
-                return Err(InterpolateError::Other(format!(
-                    "Input point x={} is outside the grid range [{}, {}]",
-                    x, x_min, x_max
-                )));
-            }
-            if y < y_min || y > y_max {
-                return Err(InterpolateError::Other(format!(
-                    "Input point y={} is outside the grid range [{}, {}]",
-                    y, y_min, y_max
-                )));
-            }
-
-            let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
-            let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
-
-            t_x_vals.push(t_x);
-            t_y_vals.push(t_y);
+            t_x_vals.push(2.0 * (x - x_min) / (x_max - x_min) - 1.0);
+            t_y_vals.push(2.0 * (y - y_min) / (y_max - y_min) - 1.0);
         }
 
         let c_x = Self::barycentric_coefficients(&t_x_vals, &self.t_coords[0], &self.weights[0]);
@@ -1461,13 +1436,7 @@ impl LogChebyshevBatchInterpolation<3> {
         let mut t_y_vals = Vec::with_capacity(points.len());
         let mut t_z_vals = Vec::with_capacity(points.len());
 
-        // TODO: Remove this for extrapolation -> speed gain
         for &[x, y, z] in points {
-            if x < x_min || x > x_max || y < y_min || y > y_max || z < z_min || z > z_max {
-                return Err(InterpolateError::Other(
-                    "Point outside grid range".to_string(),
-                ));
-            }
             t_x_vals.push(2.0 * (x - x_min) / (x_max - x_min) - 1.0);
             t_y_vals.push(2.0 * (y - y_min) / (y_max - y_min) - 1.0);
             t_z_vals.push(2.0 * (z - z_min) / (z_max - z_min) - 1.0);
