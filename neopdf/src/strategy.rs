@@ -1939,4 +1939,93 @@ mod tests {
 
         assert_close(result, expected, EPSILON);
     }
+
+    #[test]
+    fn test_log_chebyshev_batch_interpolation_1d() {
+        let n = 21;
+        let x_min: f64 = 0.1;
+        let x_max: f64 = 10.0;
+        let x_coords = create_cheby_grid(n, x_min, x_max);
+
+        let f_values: Vec<f64> = x_coords.iter().map(|&x| x.ln()).collect();
+        let data = create_test_data_1d(x_coords.iter().map(|v| v.ln()).collect(), f_values);
+        let mut cheby = LogChebyshevBatchInterpolation::<1>::default();
+        cheby.init(&data).unwrap();
+
+        let test_points = [[2.5f64.ln()], [5.0f64.ln()], [7.5f64.ln()]];
+        let expected: Vec<f64> = test_points.iter().map(|p| p[0]).collect();
+        let results = cheby.interpolate(&data, &test_points).unwrap();
+
+        for (res, exp) in results.iter().zip(expected.iter()) {
+            assert_close(*res, *exp, EPSILON);
+        }
+    }
+
+    #[test]
+    fn test_log_chebyshev_batch_interpolation_2d() {
+        let n = 11;
+        let x_coords = create_cheby_grid(n, 0.1, 10.0);
+        let y_coords = create_cheby_grid(n, 0.1, 10.0);
+
+        let f_values: Vec<f64> = x_coords
+            .iter()
+            .flat_map(|&x| y_coords.iter().map(move |&y| x.ln() + y.ln()))
+            .collect();
+
+        let data = create_test_data_2d(
+            x_coords.iter().map(|v| v.ln()).collect(),
+            y_coords.iter().map(|v| v.ln()).collect(),
+            f_values,
+        );
+        let mut cheby = LogChebyshevBatchInterpolation::<2>::default();
+        cheby.init(&data).unwrap();
+
+        let test_points = [
+            [2.5f64.ln(), 3.5f64.ln()],
+            [5.0f64.ln(), 6.0f64.ln()],
+            [7.5f64.ln(), 8.5f64.ln()],
+        ];
+        let expected: Vec<f64> = test_points.iter().map(|p| p[0] + p[1]).collect();
+        let results = cheby.interpolate(&data, &test_points).unwrap();
+
+        for (res, exp) in results.iter().zip(expected.iter()) {
+            assert_close(*res, *exp, EPSILON);
+        }
+    }
+
+    #[test]
+    fn test_log_chebyshev_batch_interpolation_3d() {
+        let n = 7;
+        let x_coords = create_cheby_grid(n, 0.1, 10.0);
+        let y_coords = create_cheby_grid(n, 0.1, 10.0);
+        let z_coords = create_cheby_grid(n, 0.1, 10.0);
+
+        let f_values: Vec<f64> = x_coords
+            .iter()
+            .cartesian_product(y_coords.iter())
+            .cartesian_product(z_coords.iter())
+            .map(|((&x, &y), &z)| x.ln() + y.ln() + z.ln())
+            .collect();
+
+        let data = create_test_data_3d(
+            x_coords.iter().map(|v| v.ln()).collect(),
+            y_coords.iter().map(|v| v.ln()).collect(),
+            z_coords.iter().map(|v| v.ln()).collect(),
+            f_values,
+        );
+        let mut cheby = LogChebyshevBatchInterpolation::<3>::default();
+        cheby.init(&data).unwrap();
+
+        let test_points = [
+            [2.5f64.ln(), 3.5f64.ln(), 4.5f64.ln()],
+            [5.0f64.ln(), 6.0f64.ln(), 7.0f64.ln()],
+            [7.5f64.ln(), 8.5f64.ln(), 9.5f64.ln()],
+        ];
+        let expected: Vec<f64> = test_points.iter().map(|p| p[0] + p[1] + p[2]).collect();
+        let results = cheby.interpolate(&data, &test_points).unwrap();
+
+        for (res, exp) in results.iter().zip(expected.iter()) {
+            assert_close(*res, *exp, EPSILON);
+        }
+    }
 }
