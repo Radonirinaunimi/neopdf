@@ -1031,13 +1031,6 @@ where
         let x_min = *x_coords.first().unwrap();
         let x_max = *x_coords.last().unwrap();
 
-        if x < x_min || x > x_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point {} is outside the grid range [{}, {}]",
-                x, x_min, x_max
-            )));
-        }
-
         if (x_max - x_min).abs() < 1e-15 {
             return Ok(f_values[0]);
         }
@@ -1089,21 +1082,8 @@ where
 
         let x_min = *x_coords.first().unwrap();
         let x_max = *x_coords.last().unwrap();
-        if x < x_min || x > x_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point x={} is outside the grid range [{}, {}]",
-                x, x_min, x_max
-            )));
-        }
-
         let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
-        if y < y_min || y > y_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point y={} is outside the grid range [{}, {}]",
-                y, y_min, y_max
-            )));
-        }
 
         let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
         let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
@@ -1160,30 +1140,10 @@ where
 
         let x_min = *x_coords.first().unwrap();
         let x_max = *x_coords.last().unwrap();
-        if x < x_min || x > x_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point x={} is outside the grid range [{}, {}]",
-                x, x_min, x_max
-            )));
-        }
-
         let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
-        if y < y_min || y > y_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point y={} is outside the grid range [{}, {}]",
-                y, y_min, y_max
-            )));
-        }
-
         let z_min = *z_coords.first().unwrap();
         let z_max = *z_coords.last().unwrap();
-        if z < z_min || z > z_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point z={} is outside the grid range [{}, {}]",
-                z, z_min, z_max
-            )));
-        }
 
         let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
         let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
@@ -1425,6 +1385,7 @@ impl LogChebyshevBatchInterpolation<2> {
         let mut t_x_vals = Vec::with_capacity(points.len());
         let mut t_y_vals = Vec::with_capacity(points.len());
 
+        // TODO: Remove this for extrapolation -> speed gain
         for &[x, y] in points {
             if x < x_min || x > x_max {
                 return Err(InterpolateError::Other(format!(
@@ -1500,6 +1461,7 @@ impl LogChebyshevBatchInterpolation<3> {
         let mut t_y_vals = Vec::with_capacity(points.len());
         let mut t_z_vals = Vec::with_capacity(points.len());
 
+        // TODO: Remove this for extrapolation -> speed gain
         for &[x, y, z] in points {
             if x < x_min || x > x_max || y < y_min || y > y_max || z < z_min || z > z_max {
                 return Err(InterpolateError::Other(
@@ -1746,19 +1708,19 @@ mod tests {
         let alphas_cubic = AlphaSCubicInterpolation;
 
         // Test within interpolation range
-        let result = alphas_cubic.interpolate(&data, &[2.25f64.ln()]).unwrap(); // Q=1.5
+        let result = alphas_cubic.interpolate(&data, &[2.25f64.ln()]).unwrap();
         assert!(result > 0.1 && result < 0.14);
 
         // Test at grid point
-        let result = alphas_cubic.interpolate(&data, &[4.0f64.ln()]).unwrap(); // Q=2.0
+        let result = alphas_cubic.interpolate(&data, &[4.0f64.ln()]).unwrap();
         assert_close(result, 0.11, EPSILON);
 
         // Test extrapolation below range
-        let result = alphas_cubic.interpolate(&data, &[0.5f64.ln()]).unwrap(); // Q=sqrt(0.5)
+        let result = alphas_cubic.interpolate(&data, &[0.5f64.ln()]).unwrap();
         assert!(result < 0.1);
 
         // Test extrapolation above range
-        let result = alphas_cubic.interpolate(&data, &[30.0f64.ln()]).unwrap(); // Q=sqrt(30)
+        let result = alphas_cubic.interpolate(&data, &[30.0f64.ln()]).unwrap();
         assert_close(result, 0.14, EPSILON);
     }
 
