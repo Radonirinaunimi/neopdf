@@ -7,8 +7,7 @@
 
 use core::panic;
 
-use ndarray::{s, Array1, Array2};
-use ninterp::data::{InterpData2D, InterpData3D};
+use ndarray::{Array1, Array2};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -17,7 +16,6 @@ use super::alphas::AlphaS;
 use super::interpolator::{DynInterpolator, InterpolatorFactory};
 use super::metadata::{InterpolatorType, MetaData};
 use super::parser::SubgridData;
-use super::strategy::LogChebyshevBatchInterpolation;
 use super::subgrid::{ParamRange, RangeParameters, SubGrid};
 
 /// Errors that can occur during PDF grid operations.
@@ -367,129 +365,19 @@ impl GridPDF {
 
         if !matches!(self.info.interpolator_type, InterpolatorType::LogChebyshev) {
             return Err(Error::InterpolationError(
-                "xfxq2_cheby_batch only supports LogChebyshev interpolator".to_string(),
+                "xfxq2_cheby_batch only supports `LogChebyshev` interpolator".to_string(),
             ));
         }
 
         let subgrid = &self.knot_array.subgrids[subgrid_idx];
-        let use_log = true; // LogChebyshev is always log
-
         let log_points: Vec<Vec<f64>> = points
             .iter()
-            .map(|p| {
-                p.iter()
-                    .map(|&v| if use_log { v.ln() } else { v })
-                    .collect()
-            })
+            .map(|p| p.iter().map(|&v| v.ln()).collect())
             .collect();
 
-        let results = match subgrid.interpolation_config() {
-            super::interpolator::InterpolationConfig::TwoD => {
-                let mut batch_interpolator = LogChebyshevBatchInterpolation::<2>::default();
-                let grid_slice = subgrid.grid_slice(pid_idx).to_owned();
-                let data = InterpData2D::new(
-                    subgrid.xs.mapv(f64::ln),
-                    subgrid.q2s.mapv(f64::ln),
-                    grid_slice,
-                )
-                .map_err(|e| Error::InterpolationError(e.to_string()))?;
-                batch_interpolator
-                    .init(&data)
-                    .map_err(|e| Error::InterpolationError(e.to_string()))?;
-
-                let points_2d: Vec<[f64; 2]> = log_points
-                    .into_iter()
-                    .map(|p| p.try_into().expect("Invalid point dimension for 2D"))
-                    .collect();
-
-                batch_interpolator
-                    .interpolate(&data, &points_2d)
-                    .map_err(|e| Error::InterpolationError(e.to_string()))
-            }
-            super::interpolator::InterpolationConfig::ThreeDNucleons => {
-                let mut batch_interpolator = LogChebyshevBatchInterpolation::<3>::default();
-                let grid_data = subgrid.grid.slice(s![.., 0, pid_idx, 0, .., ..]).to_owned();
-                let reshaped_data = grid_data
-                    .into_shape_with_order((
-                        subgrid.nucleons.len(),
-                        subgrid.xs.len(),
-                        subgrid.q2s.len(),
-                    ))
-                    .expect("Failed to reshape 3D data");
-                let data = InterpData3D::new(
-                    subgrid.nucleons.mapv(f64::ln),
-                    subgrid.xs.mapv(f64::ln),
-                    subgrid.q2s.mapv(f64::ln),
-                    reshaped_data,
-                )
-                .map_err(|e| Error::InterpolationError(e.to_string()))?;
-                batch_interpolator
-                    .init(&data)
-                    .map_err(|e| Error::InterpolationError(e.to_string()))?;
-                let points_3d: Vec<[f64; 3]> = log_points
-                    .into_iter()
-                    .map(|p| p.try_into().expect("Invalid point dimension for 3D"))
-                    .collect();
-                batch_interpolator
-                    .interpolate(&data, &points_3d)
-                    .map_err(|e| Error::InterpolationError(e.to_string()))
-            }
-            super::interpolator::InterpolationConfig::ThreeDAlphas => {
-                let mut batch_interpolator = LogChebyshevBatchInterpolation::<3>::default();
-                let grid_data = subgrid.grid.slice(s![0, .., pid_idx, 0, .., ..]).to_owned();
-                let reshaped_data = grid_data
-                    .into_shape_with_order((
-                        subgrid.alphas.len(),
-                        subgrid.xs.len(),
-                        subgrid.q2s.len(),
-                    ))
-                    .expect("Failed to reshape 3D data");
-                let data = InterpData3D::new(
-                    subgrid.alphas.mapv(f64::ln),
-                    subgrid.xs.mapv(f64::ln),
-                    subgrid.q2s.mapv(f64::ln),
-                    reshaped_data,
-                )
-                .map_err(|e| Error::InterpolationError(e.to_string()))?;
-                batch_interpolator
-                    .init(&data)
-                    .map_err(|e| Error::InterpolationError(e.to_string()))?;
-                let points_3d: Vec<[f64; 3]> = log_points
-                    .into_iter()
-                    .map(|p| p.try_into().expect("Invalid point dimension for 3D"))
-                    .collect();
-                batch_interpolator
-                    .interpolate(&data, &points_3d)
-                    .map_err(|e| Error::InterpolationError(e.to_string()))
-            }
-            super::interpolator::InterpolationConfig::ThreeDKt => {
-                let mut batch_interpolator = LogChebyshevBatchInterpolation::<3>::default();
-                let grid_data = subgrid.grid.slice(s![0, 0, pid_idx, .., .., ..]).to_owned();
-                let reshaped_data = grid_data
-                    .into_shape_with_order((subgrid.kts.len(), subgrid.xs.len(), subgrid.q2s.len()))
-                    .expect("Failed to reshape 3D data");
-                let data = InterpData3D::new(
-                    subgrid.kts.mapv(f64::ln),
-                    subgrid.xs.mapv(f64::ln),
-                    subgrid.q2s.mapv(f64::ln),
-                    reshaped_data,
-                )
-                .map_err(|e| Error::InterpolationError(e.to_string()))?;
-                batch_interpolator
-                    .init(&data)
-                    .map_err(|e| Error::InterpolationError(e.to_string()))?;
-                let points_3d: Vec<[f64; 3]> = log_points
-                    .into_iter()
-                    .map(|p| p.try_into().expect("Invalid point dimension for 3D"))
-                    .collect();
-                batch_interpolator
-                    .interpolate(&data, &points_3d)
-                    .map_err(|e| Error::InterpolationError(e.to_string()))
-            }
-            _ => Err(Error::InterpolationError(
-                "Unsupported dimension for xfxq2_cheby_batch".to_string(),
-            )),
-        }?;
+        let results =
+            super::interpolator::chebyshev_batch_interpolate(subgrid, pid_idx, log_points)
+                .map_err(Error::InterpolationError)?;
 
         Ok(results
             .into_iter()
