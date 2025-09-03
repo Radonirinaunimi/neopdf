@@ -1,5 +1,6 @@
 [workspace]
 members = ["neopdf", "neopdf_capi", "neopdf_cli", "neopdf_pyapi", "neopdf_tmdlib"]
+default-members = ["neopdf", "neopdf_capi", "neopdf_cli", "neopdf_pyapi"]
 resolver = "2"
 
 [workspace.package]
