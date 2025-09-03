@@ -7,3 +7,5 @@ pub mod converter;
 pub mod install;
 pub mod pdf;
 pub mod read;
+#[cfg(feature = "tmdlib")]
+pub mod tmd_converter;

@@ -218,3 +218,83 @@ fn combine_alphas_pdfs() {
         .success()
         .stdout("34.352827400641736\n");
 }
+
+#[test]
+#[cfg(feature = "tmdlib")]
+fn convert_tmd() {
+    let config_content = r#"
+set_name = "MAP22_grids_FF_Km_N3LL"
+set_desc = "MAP22 TMDs for K- fragmentation, converted to NeoPDF"
+set_index = 42
+n_members = 2
+
+# Grid parameters
+n_x = 5
+n_q = 5
+n_kt = 5
+
+# Inner edges for the grid. Boundaries are taken from TMDlib.
+x_inner_edges = [1e-4, 0.9]
+q_inner_edges = [1.7, 100.0] # Q, not Q2
+kt_inner_edges = [1e-3, 50.0]
+
+# Grid axes that are not part of the TMD interpolation
+nucleons = [1.0] # Proton
+alphas = [0.118]
+
+# Metadata
+pids = [-3, -2, -1, 21, 1, 2, 3] # smaller set for testing
+polarised = false
+set_type = "SpaceLike"
+interpolator_type = "LogTricubic"
+error_type = "replicas"
+hadron_pid = 2212 # Proton
+
+alphas_qs = [91.1876]
+alphas_vals = [0.118]
+
+[phys_params]
+flavor_scheme = "fixed"
+order_qcd = 2
+alphas_order_qcd = 2
+m_w = 80.352
+m_z = 91.1876
+m_up = 0.0
+m_down = 0.0
+m_strange = 0.0
+m_charm = 1.51
+m_bottom = 4.92
+m_top = 172.5
+alphas_type = "ipol"
+number_flavors = 4
+"#;
+    let mut config_file = tempfile::NamedTempFile::new().unwrap();
+    write!(config_file, "{config_content}").unwrap();
+
+    let output = assert_fs::NamedTempFile::new("map22.neopdf.lz4").unwrap();
+
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "write",
+            "convert-tmd",
+            "--input",
+            config_file.path().to_str().unwrap(),
+            "--output",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success();
+
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "read",
+            "metadata",
+            "--pdf-name",
+            output.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("MAP22 TMDs"));
+}

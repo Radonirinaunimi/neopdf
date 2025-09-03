@@ -21,10 +21,12 @@ ndarray.workspace = true
 neopdf.workspace = true
 terminal_size.workspace = true
 neopdf_tmdlib = { path = "../neopdf_tmdlib", optional = true }
+toml = { version = "0.8", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
 
 [features]
 default = []
-tmdlib = ["dep:neopdf_tmdlib"]
+tmdlib = ["dep:neopdf_tmdlib", "dep:toml", "dep:serde"]
 
 [[bin]]
 name = "neopdf"
