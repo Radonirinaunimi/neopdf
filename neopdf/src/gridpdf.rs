@@ -365,7 +365,7 @@ impl GridPDF {
 
         if !matches!(self.info.interpolator_type, InterpolatorType::LogChebyshev) {
             return Err(Error::InterpolationError(
-                "xfxq2_cheby_batch only supports `LogChebyshev` interpolator".to_string(),
+                "xfxq2_cheby_batch only supports LogChebyshev interpolator".to_string(),
             ));
         }
 
@@ -375,9 +375,12 @@ impl GridPDF {
             .map(|p| p.iter().map(|&v| v.ln()).collect())
             .collect();
 
-        let results =
-            super::interpolator::chebyshev_batch_interpolate(subgrid, pid_idx, log_points)
-                .map_err(Error::InterpolationError)?;
+        let batch_interpolator = InterpolatorFactory::create_batch_interpolator(subgrid, pid_idx)
+            .map_err(Error::InterpolationError)?;
+
+        let results = batch_interpolator
+            .interpolate(log_points)
+            .map_err(|e| Error::InterpolationError(e.to_string()))?;
 
         Ok(results
             .into_iter()
