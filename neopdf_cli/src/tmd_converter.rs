@@ -111,30 +111,26 @@ fn create_grid_data(
     xs: &[f64],
     q2s: &[f64],
 ) -> Vec<f64> {
-    // Hard-coded definition of how `TMDlib` flavours are constructed.
+    // NOTE: Hard-coded definition of how `TMDlib` flavours are constructed.
     const TMDLIB_PIDS: &[i32] = &[-6, -5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5, 6];
 
-    let mut grid_data = Vec::new();
-    for _nuc in &config.nucleons {
-        for _alpha in &config.alphas {
-            for &kt in kts {
-                for &x in xs {
-                    for &q2 in q2s {
-                        let tmd_pds = tmd.xfxq2kt(x, kt, q2.sqrt());
-                        for &pid in &config.pids {
-                            let value = TMDLIB_PIDS
-                                .iter()
-                                .position(|&p| p == pid)
-                                .map_or(0.0, |pos| tmd_pds[pos]);
-                            grid_data.push(value);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    grid_data
+    config
+        .nucleons
+        .iter()
+        .flat_map(|_nuc| config.alphas.iter())
+        .flat_map(|_alpha| kts.iter())
+        .flat_map(|&kt| xs.iter().map(move |&x| (kt, x)))
+        .flat_map(|(kt, x)| q2s.iter().map(move |&q2| (kt, x, q2)))
+        .flat_map(|(kt, x, q2)| {
+            let tmd_pds = tmd.xfxq2kt(x, kt, q2.sqrt());
+            config.pids.iter().map(move |&pid| {
+                TMDLIB_PIDS
+                    .iter()
+                    .position(|&p| p == pid)
+                    .map_or(0.0, |pos| tmd_pds[pos])
+            })
+        })
+        .collect()
 }
 
 #[allow(clippy::cast_possible_truncation)]
