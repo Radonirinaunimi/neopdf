@@ -46,6 +46,14 @@ double tmd_get_q2max(TMDlib::TMD& tmd) {
     return tmd.TMDgetQ2max();
 }
 
+double tmd_get_ktmin(TMDlib::TMD& tmd) {
+    return tmd.TMDgetKtmin();
+}
+
+double tmd_get_ktmax(TMDlib::TMD& tmd) {
+    return tmd.TMDgetKtmax();
+}
+
 rust::Vec<double> tmd_pdf(TMDlib::TMD& tmd, double x, double kt, double q) {
     std::vector<double> pdfs = tmd.TMDpdf(x, 0.0, kt, q);
     return std_vector_to_rust_vec(pdfs);

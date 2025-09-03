@@ -229,14 +229,14 @@ set_index = 42
 n_members = 2
 
 # Grid parameters
-n_x = 5
-n_q = 5
-n_kt = 5
+n_x = [5]
+n_q = [5, 5, 4]
+n_kt = [5, 5, 4]
 
 # Inner edges for the grid. Boundaries are taken from TMDlib.
-x_inner_edges = [1e-4, 0.9]
-q_inner_edges = [1.7, 100.0] # Q, not Q2
-kt_inner_edges = [1e-3, 50.0]
+x_inner_edges = [0.2]
+q_inner_edges = [4.0, 50.0] # Q, not Q2
+kt_inner_edges = [1e-2, 1.0]
 
 # Grid axes that are not part of the TMD interpolation
 nucleons = [1.0] # Proton
@@ -245,15 +245,15 @@ alphas = [0.118]
 # Metadata
 pids = [-3, -2, -1, 21, 1, 2, 3] # smaller set for testing
 polarised = false
-set_type = "SpaceLike"
-interpolator_type = "LogTricubic"
+set_type = "TimeLike"
+interpolator_type = "LogChebyshev"
 error_type = "replicas"
 hadron_pid = 2212 # Proton
 
 alphas_qs = [91.1876]
 alphas_vals = [0.118]
 
-[phys_params]
+# Physics Parameters
 flavor_scheme = "fixed"
 order_qcd = 2
 alphas_order_qcd = 2

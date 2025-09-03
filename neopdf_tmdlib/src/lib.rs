@@ -26,6 +26,8 @@ pub mod ffi {
         fn tmd_get_xmax(tmd: Pin<&mut TMD>) -> f64;
         fn tmd_get_q2min(tmd: Pin<&mut TMD>) -> f64;
         fn tmd_get_q2max(tmd: Pin<&mut TMD>) -> f64;
+        fn tmd_get_ktmin(tmd: Pin<&mut TMD>) -> f64;
+        fn tmd_get_ktmax(tmd: Pin<&mut TMD>) -> f64;
         fn tmd_pdf(tmd: Pin<&mut TMD>, x: f64, kt: f64, q: f64) -> Vec<f64>;
         fn tmd_set_verbosity(tmd: Pin<&mut TMD>, verbosity: i32);
     }
@@ -68,6 +70,14 @@ impl Tmd {
 
     pub fn q2_max(&mut self) -> f64 {
         ffi::tmd_get_q2max(self.ptr.pin_mut())
+    }
+
+    pub fn kt_min(&mut self) -> f64 {
+        ffi::tmd_get_ktmin(self.ptr.pin_mut())
+    }
+
+    pub fn kt_max(&mut self) -> f64 {
+        ffi::tmd_get_ktmax(self.ptr.pin_mut())
     }
 
     pub fn xfxq2kt(&mut self, x: f64, kt: f64, q: f64) -> Vec<f64> {

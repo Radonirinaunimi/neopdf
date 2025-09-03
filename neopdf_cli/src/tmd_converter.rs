@@ -15,12 +15,12 @@ struct TmdConfig {
     set_desc: String,
     set_index: u32,
     n_members: Option<usize>,
-    n_x: usize,
-    n_q: usize,
-    n_kt: usize,
-    x_inner_edges: [f64; 2],
-    q_inner_edges: [f64; 2],
-    kt_inner_edges: [f64; 2],
+    n_x: Vec<usize>,
+    n_q: Vec<usize>,
+    n_kt: Vec<usize>,
+    x_inner_edges: Vec<f64>,
+    q_inner_edges: Vec<f64>,
+    kt_inner_edges: Vec<f64>,
     pids: Vec<i32>,
     nucleons: Vec<f64>,
     alphas: Vec<f64>,
@@ -73,9 +73,35 @@ fn parse_set_type(s: &str) -> Result<SetType, String> {
 fn parse_interpolator_type(s: &str) -> Result<InterpolatorType, String> {
     match s.to_ascii_lowercase().as_str() {
         "logtricubic" => Ok(InterpolatorType::LogTricubic),
-        "chebyshev" => Ok(InterpolatorType::LogChebyshev),
+        "logchebyshev" => Ok(InterpolatorType::LogChebyshev),
         _ => Err(format!("Unknown InterpolatorType: {s}")),
     }
+}
+
+fn construct_subgrids(
+    zmin: f64,
+    zmax: f64,
+    z_inner_edges: &[f64],
+    nz_points: &[usize],
+) -> Vec<Vec<f64>> {
+    assert!(
+        &zmin < z_inner_edges.first().unwrap(),
+        "The lower edge must be greater than the minimum value."
+    );
+    assert!(
+        z_inner_edges.last().unwrap() < &zmax,
+        "The upper edge must be smaller than the maximum value."
+    );
+
+    let mut boundaries = vec![zmin];
+    boundaries.extend_from_slice(z_inner_edges);
+    boundaries.push(zmax);
+
+    boundaries
+        .windows(2)
+        .zip(nz_points.iter())
+        .map(|(window, &n_points)| create_cheby_grid(n_points, window[0], window[1]))
+        .collect()
 }
 
 fn create_grid_data(
@@ -85,10 +111,10 @@ fn create_grid_data(
     xs: &[f64],
     q2s: &[f64],
 ) -> Vec<f64> {
+    // Hard-coded definition of how `TMDlib` flavours are constructed.
     const TMDLIB_PIDS: &[i32] = &[-6, -5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5, 6];
 
     let mut grid_data = Vec::new();
-
     for _nuc in &config.nucleons {
         for _alpha in &config.alphas {
             for &kt in kts {
@@ -117,27 +143,35 @@ fn create_member_grid(
     tmd: &mut Tmd,
     config: &TmdConfig,
     member: usize,
-    kts: &[f64],
-    xs: &[f64],
-    q2s: &[f64],
+    kt_subgrids: &[&[f64]],
+    x_subgrids: &[&[f64]],
+    q2_subgrids: &[&[f64]],
 ) -> GridArray {
     tmd.init(&config.set_name, member as i32);
 
-    let grid_data = create_grid_data(tmd, config, kts, xs, q2s);
+    let mut subgrids = Vec::new();
+    for kts in kt_subgrids {
+        for xs in x_subgrids {
+            for q2s in q2_subgrids {
+                let grid_data = create_grid_data(tmd, config, kts, xs, q2s);
 
-    let subgrid = SubGrid::new(
-        config.nucleons.clone(),
-        config.alphas.clone(),
-        kts.to_vec(),
-        xs.to_vec(),
-        q2s.to_vec(),
-        config.pids.len(),
-        grid_data,
-    );
+                let subgrid = SubGrid::new(
+                    config.nucleons.clone(),
+                    config.alphas.clone(),
+                    kts.to_vec(),
+                    xs.to_vec(),
+                    q2s.to_vec(),
+                    config.pids.len(),
+                    grid_data,
+                );
+                subgrids.push(subgrid);
+            }
+        }
+    }
 
     GridArray {
         pids: config.pids.clone().into(),
-        subgrids: vec![subgrid],
+        subgrids,
     }
 }
 
@@ -153,24 +187,30 @@ pub fn convert_tmd(input_path: &str, output_path: &str) -> Result<(), Box<dyn st
 
     let mut tmd = Tmd::new();
     tmd.set_verbosity(0);
-    tmd.init_set(&config.set_name);
+    tmd.init(&config.set_name, 0);
+    let xmin = tmd.x_min();
+    let xmax = tmd.x_max();
+    let q2min = tmd.q2_min();
+    let q2max = tmd.q2_max();
+    let ktmin = tmd.kt_min();
+    let ktmax = tmd.kt_max();
 
     let n_members = config.n_members.unwrap_or_else(|| tmd.num_members());
+    let q2_inner_edges: Vec<f64> = config.q_inner_edges.iter().map(|&q| q.ln()).collect();
+    let x_subgrids = construct_subgrids(xmin, xmax, &config.x_inner_edges, &config.n_x);
+    let q2_subgrids = construct_subgrids(q2min, q2max, &q2_inner_edges, &config.n_q);
+    let kt_subgrids = construct_subgrids(ktmin, ktmax, &config.kt_inner_edges, &config.n_kt);
 
-    let xs = create_cheby_grid(config.n_x, config.x_inner_edges[0], config.x_inner_edges[1]);
-    let q2s = create_cheby_grid(
-        config.n_q,
-        config.q_inner_edges[0].powi(2),
-        config.q_inner_edges[1].powi(2),
-    );
-    let kts = create_cheby_grid(
-        config.n_kt,
-        config.kt_inner_edges[0],
-        config.kt_inner_edges[1],
-    );
+    // TODO: Find a better way to do this!
+    let kts: Vec<&[f64]> = kt_subgrids.iter().map(Vec::as_slice).collect();
+    let xs: Vec<&[f64]> = x_subgrids.iter().map(Vec::as_slice).collect();
+    let q2s: Vec<&[f64]> = q2_subgrids.iter().map(Vec::as_slice).collect();
 
     let member_grids: Vec<_> = (0..n_members)
-        .map(|m| create_member_grid(&mut tmd, &config, m, &kts, &xs, &q2s))
+        .map(|m| {
+            tmd.init(&config.set_name, m as i32);
+            create_member_grid(&mut tmd, &config, m, &kts, &xs, &q2s)
+        })
         .collect();
 
     let member_grid_refs: Vec<&GridArray> = member_grids.iter().collect();
