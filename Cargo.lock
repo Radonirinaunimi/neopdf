@@ -1303,6 +1303,7 @@ dependencies = [
  "clap 4.5.41",
  "ndarray",
  "neopdf",
+ "neopdf_tmdlib",
  "predicates",
  "tempfile",
  "terminal_size",

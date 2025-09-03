@@ -20,6 +20,11 @@ clap.workspace = true
 ndarray.workspace = true
 neopdf.workspace = true
 terminal_size.workspace = true
+neopdf_tmdlib = { path = "../neopdf_tmdlib", optional = true }
+
+[features]
+default = []
+tmdlib = ["dep:neopdf_tmdlib"]
 
 [[bin]]
 name = "neopdf"
