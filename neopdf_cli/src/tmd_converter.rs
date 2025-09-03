@@ -1,13 +1,15 @@
 //! CLI logic for `NeoPDF` TMD conversion utilities.
 
+use ndarray::Array1;
+use serde::Deserialize;
+use std::f64::consts::PI;
+use std::fs;
+
 use neopdf::gridpdf::GridArray;
 use neopdf::metadata::{InterpolatorType, MetaData, MetaDataV1, SetType};
 use neopdf::subgrid::SubGrid;
 use neopdf::writer::GridArrayCollection;
 use neopdf_tmdlib::Tmd;
-use serde::Deserialize;
-use std::f64::consts::PI;
-use std::fs;
 
 #[derive(Deserialize)]
 struct TmdConfig {
@@ -62,6 +64,12 @@ fn create_cheby_grid(n_points: usize, min: f64, max: f64) -> Vec<f64> {
         .collect()
 }
 
+fn create_geomspace_grid(n_points: usize, min: f64, max: f64) -> Vec<f64> {
+    Array1::linspace(min.ln(), max.ln(), n_points)
+        .mapv(f64::exp)
+        .to_vec()
+}
+
 fn parse_set_type(s: &str) -> Result<SetType, String> {
     match s.to_ascii_lowercase().as_str() {
         "spacelike" => Ok(SetType::SpaceLike),
@@ -83,15 +91,18 @@ fn construct_subgrids(
     zmax: f64,
     z_inner_edges: &[f64],
     nz_points: &[usize],
+    grid_fn: fn(usize, f64, f64) -> Vec<f64>,
 ) -> Vec<Vec<f64>> {
-    assert!(
-        &zmin < z_inner_edges.first().unwrap(),
-        "The lower edge must be greater than the minimum value."
-    );
-    assert!(
-        z_inner_edges.last().unwrap() < &zmax,
-        "The upper edge must be smaller than the maximum value."
-    );
+    if !z_inner_edges.is_empty() {
+        assert!(
+            &zmin < z_inner_edges.first().unwrap(),
+            "The lower edge must be greater than the minimum value."
+        );
+        assert!(
+            z_inner_edges.last().unwrap() < &zmax,
+            "The upper edge must be smaller than the maximum value."
+        );
+    }
 
     let mut boundaries = vec![zmin];
     boundaries.extend_from_slice(z_inner_edges);
@@ -100,7 +111,7 @@ fn construct_subgrids(
     boundaries
         .windows(2)
         .zip(nz_points.iter())
-        .map(|(window, &n_points)| create_cheby_grid(n_points, window[0], window[1]))
+        .map(|(window, &n_points)| grid_fn(n_points, window[0], window[1]))
         .collect()
 }
 
@@ -191,11 +202,35 @@ pub fn convert_tmd(input_path: &str, output_path: &str) -> Result<(), Box<dyn st
     let ktmin = tmd.kt_min();
     let ktmax = tmd.kt_max();
 
+    let interpol_type = parse_interpolator_type(&config.interpolator_type)?;
+    let create_grid_fn = match interpol_type {
+        InterpolatorType::LogChebyshev => create_cheby_grid,
+        _ => create_geomspace_grid,
+    };
+
     let n_members = config.n_members.unwrap_or_else(|| tmd.num_members());
-    let q2_inner_edges: Vec<f64> = config.q_inner_edges.iter().map(|&q| q.ln()).collect();
-    let x_subgrids = construct_subgrids(xmin, xmax, &config.x_inner_edges, &config.n_x);
-    let q2_subgrids = construct_subgrids(q2min, q2max, &q2_inner_edges, &config.n_q);
-    let kt_subgrids = construct_subgrids(ktmin, ktmax, &config.kt_inner_edges, &config.n_kt);
+    let config_q2_inner_edges: Vec<f64> = config.q_inner_edges.iter().map(|&q| q.ln()).collect();
+    let x_subgrids = construct_subgrids(
+        xmin,
+        xmax,
+        &config.x_inner_edges,
+        &config.n_x,
+        create_grid_fn,
+    );
+    let q2_subgrids = construct_subgrids(
+        q2min,
+        q2max,
+        &config_q2_inner_edges,
+        &config.n_q,
+        create_grid_fn,
+    );
+    let kt_subgrids = construct_subgrids(
+        ktmin,
+        ktmax,
+        &config.kt_inner_edges,
+        &config.n_kt,
+        create_grid_fn,
+    );
 
     // TODO: Find a better way to do this!
     let kts: Vec<&[f64]> = kt_subgrids.iter().map(Vec::as_slice).collect();
@@ -225,7 +260,7 @@ pub fn convert_tmd(input_path: &str, output_path: &str) -> Result<(), Box<dyn st
         alphas_vals: config.alphas_vals,
         polarised: config.polarised,
         set_type: parse_set_type(&config.set_type)?,
-        interpolator_type: parse_interpolator_type(&config.interpolator_type)?,
+        interpolator_type: interpol_type,
         error_type: config.error_type,
         hadron_pid: config.hadron_pid,
         git_version: String::new(),

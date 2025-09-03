@@ -4,10 +4,11 @@
 //! and for combining multiple nuclear PDFs into a single `NeoPDF` file with explicit A dependence.
 
 use clap::{Parser, Subcommand};
-use neopdf::converter;
-use neopdf::metadata::{InterpolatorType, SetType};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+
+use neopdf::converter;
+use neopdf::metadata::{InterpolatorType, SetType};
 
 /// Command-line interface for `NeoPDF` conversion utilities.
 #[derive(Parser)]

@@ -228,15 +228,15 @@ set_desc = "MAP22 TMDs for K- fragmentation, converted to NeoPDF"
 set_index = 42
 n_members = 2
 
-# Grid parameters
-n_x = [5]
-n_q = [5, 5, 4]
-n_kt = [5, 5, 4]
-
-# Inner edges for the grid. Boundaries are taken from TMDlib.
+# Inner edges for the grid. Leave empty for no subgrids.
 x_inner_edges = [0.2]
-q_inner_edges = [4.0, 50.0] # Q, not Q2
+q_inner_edges = [] # Q, not Q2
 kt_inner_edges = [1e-2, 1.0]
+
+# Number of points for (subg)grids.
+n_x = [5, 5]
+n_q = [6]
+n_kt = [5, 5, 4]
 
 # Grid axes that are not part of the TMD interpolation
 nucleons = [1.0] # Proton
