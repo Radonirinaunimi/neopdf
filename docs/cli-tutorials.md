@@ -64,7 +64,7 @@ neopdf read num_subgrids --pdf-name NNPDF40_nnlo_as_01180
 To get the knot values for a given subgrid:
 
 ```bash
-neopdf read subgrid_info --pdf-name NNPDF40_nnlo_as_01180 --member 0 --subgrid-index 1
+neopdf read subgrid-info --pdf-name NNPDF40_nnlo_as_01180 --member 0 --subgrid-index 1
 ```
 
 - `--pdf-name`: Name of the PDF set.
@@ -74,12 +74,17 @@ neopdf read subgrid_info --pdf-name NNPDF40_nnlo_as_01180 --member 0 --subgrid-i
 The above command will print out the following output:
 
 ```yaml
-Nucleon Numbers A: [1.0], shape=[1], strides=[1], layout=CFcf (0xf), const ndim=1
-Alphas values: [0.118], shape=[1], strides=[1], layout=CFcf (0xf), const ndim=1
+Nucleon Numbers A: [0.0], shape=[1], strides=[1], layout=CFcf (0xf), const ndim=1
+Alphas values: [0.0], shape=[1], strides=[1], layout=CFcf (0xf), const ndim=1
 kT values: [0.0], shape=[1], strides=[1], layout=CFcf (0xf), const ndim=1
 x values: [1e-9, 1.2970848e-9, ...], shape=[196], strides=[1], layout=CFcf (0xf), const ndim=1
 Q2 values: [2.7224999999999997, ...], shape=[12], strides=[1], layout=CFcf (0xf), const ndim=1
 ```
+
+!!! note
+
+    Note that the values of `A` and `alphas` are set to zero by default as there is no
+    proper way to extract their values from LHAPDF.
 
 ### Updating Grid Metadata
 
@@ -242,3 +247,39 @@ neopdf compute xfx_q2 --pdf-name NNPDF40_nnlo.neopdf.lz4 --member 0 --pid 21 0.1
     ```
 
     This approach is not fullproof and some PDF sets might not be supported at all.
+
+---
+
+## Inspecting subgrid contents
+
+The contents of the subgrids can be printed into human-readable format. Given that a set might contain
+multiple subgrids (as we have seen before using the `subgrid-info` command), it is instructive to check
+first how many subgrids a given set member contains.
+
+```bash
+> neopdf read num_subgrids --pdf-name NNPDF40_nnlo_as_01180.neopdf.lz4
+
+2
+```
+
+We can look at the contents of the first subgrid for the **gluon** PDF:
+
+```bash
+> neopdf read subgrid --pdf-name NNPDF40_nnlo_as_01180.neopdf.lz4 --member 0 --subgrid-index 0 --pid 21
+
+  [x | Q2]   2.72250e0   3.19494e0   3.77488e0   4.49175e0   5.38430e0   6.50400e0   7.91974e0
+1.00000e-9  1.48441e-1  -1.47266e0  -3.42816e0  -5.57841e0  -7.73893e0  -9.65268e0  -1.10375e1
+1.29708e-9  1.53954e-1  -1.36579e0  -3.16487e0  -5.10066e0  -6.98714e0  -8.57386e0  -9.57904e0
+1.68243e-9  1.59670e-1  -1.26122e0  -2.90961e0  -4.64076e0  -6.26809e0  -7.54804e0  -8.20073e0
+2.18225e-9  1.65601e-1  -1.15891e0  -2.66220e0  -4.19823e0  -5.58080e0  -6.57342e0  -6.89951e0
+2.83057e-9  1.71754e-1  -1.05882e0  -2.42248e0  -3.77263e0  -4.92430e0  -5.64825e0  -5.67242e0
+3.67149e-9  1.78142e-1 -9.60911e-1  -2.19028e0  -3.36352e0  -4.29764e0  -4.77083e0  -4.51658e0
+...
+  [x | Q2]   9.72449e0   1.20449e1   1.50550e1   1.89961e1   2.42064e1
+1.00000e-9  -1.15252e1  -1.06011e1  -7.88260e0  -2.66303e0   5.44604e0
+1.29708e-9  -9.64489e0  -8.29955e0  -5.12278e0  5.21491e-1   8.89615e0
+1.68243e-9  -7.87939e0  -6.15103e0  -2.56742e0   3.44402e0   1.20386e1
+2.18225e-9  -6.22381e0  -4.14868e0 -2.06304e-1   6.11881e0   1.48905e1
+2.83057e-9  -4.67345e0  -2.28589e0   1.97036e0   8.55949e0   1.74680e1
+...
+```

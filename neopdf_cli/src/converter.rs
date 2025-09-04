@@ -4,10 +4,11 @@
 //! and for combining multiple nuclear PDFs into a single `NeoPDF` file with explicit A dependence.
 
 use clap::{Parser, Subcommand};
-use neopdf::converter;
-use neopdf::metadata::{InterpolatorType, SetType};
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+
+use neopdf::converter;
+use neopdf::metadata::{InterpolatorType, SetType};
 
 /// Command-line interface for `NeoPDF` conversion utilities.
 #[derive(Parser)]
@@ -59,6 +60,16 @@ pub enum Commands {
         #[arg(short = 'f', long = "names-file", conflicts_with = "pdf_names")]
         names_file: Option<String>,
         /// Output path for the combined `NeoPDF` file.
+        #[arg(short, long)]
+        output: String,
+    },
+    /// Convert a TMD set to `NeoPDF` format.
+    #[cfg(feature = "tmdlib")]
+    ConvertTmd {
+        /// Path to the input configuration file.
+        #[arg(short, long)]
+        input: String,
+        /// Output path for the `NeoPDF` file.
         #[arg(short, long)]
         output: String,
     },
@@ -151,6 +162,10 @@ pub fn run_cli(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
             let names = load_pdf_names(pdf_names.as_deref(), names_file.as_deref())?;
             let names_str: Vec<&str> = names.iter().map(String::as_str).collect();
             converter::combine_lhapdf_alphas(&names_str, output)?;
+        }
+        #[cfg(feature = "tmdlib")]
+        Commands::ConvertTmd { input, output } => {
+            crate::tmd_converter::convert_tmd(input, output)?;
         }
         Commands::Metadata { path, key, value } => {
             let grids_with_metadata = neopdf::writer::GridArrayCollection::decompress(path)?;
