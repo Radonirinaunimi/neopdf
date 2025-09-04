@@ -32,8 +32,8 @@ and future plans.
   </tr>
   <tr>
     <td style="border: 1px solid #888;">Fortran API</td>
-    <td style="border: 1px solid #888;">❌</td>
-    <td style="border: 1px solid #888;">Not yet implemented</td>
+    <td style="border: 1px solid #888;">✅</td>
+    <td style="border: 1px solid #888;">Fully supported</td>
   </tr>
   <tr>
     <td rowspan="7" style="text-align: center; vertical-align: middle; border: 1px solid #888;">Features</td>
@@ -242,22 +242,6 @@ into diverse computational workflows:
 This compatibility is crucial for the physics community, as it allows for immediate adoption
 without requiring extensive code rewrites or validation efforts.
 
-### Thread and Memory Safety
-
-`NeoPDF` leverages Rust's safety guarantees for robust multi-threaded applications:
-
-- **Memory Safety**:
-  Rust's ownership system prevents common memory errors (use-after-free, double-free, data races)
-  that could lead to incorrect physics results or program crashes.
-
-- **Thread Safety**:
-  Built-in support for safe concurrent access to PDF objects, essential for parallel event
-  generation and Monte Carlo simulations.
-
-- **FFI Safety**:
-  Careful design of the foreign function interface ensures that safety guarantees extend to Python,
-  C, and C++ code, preventing crashes and undefined behavior.
-
 ### Extensible Interpolation
 
 `NeoPDF`'s modular architecture enables easy extension and customization:
@@ -294,6 +278,22 @@ without requiring extensive code rewrites or validation efforts.
   Comprehensive benchmarking against LHAPDF ensures that performance improvements don't come at the
   cost of accuracy, maintaining the precision required for physics calculations.
 
+### Thread and Memory Safety
+
+`NeoPDF` leverages Rust's safety guarantees for robust multi-threaded applications:
+
+- **Memory Safety**:
+  Rust's ownership system prevents common memory errors (use-after-free, double-free, data races)
+  that could lead to incorrect physics results or program crashes.
+
+- **Thread Safety**:
+  Built-in support for safe concurrent access to PDF objects, essential for parallel event
+  generation and Monte Carlo simulations.
+
+- **FFI Safety**:
+  Careful design of the foreign function interface ensures that safety guarantees extend to Python,
+  C, and C++ code, preventing crashes and undefined behavior.
+
 ## Architecture Overview
 
 ```mermaid
@@ -321,4 +321,5 @@ Lower-dimensional (bilinear, (log)-tricubic) are also available for performance 
     The difference between NeoPDF and LHAPDF, using the default interpolation, is **below machine
     precision** for floating-point numbers.
 
-    ![diff_NNPDF40_nnlo_as_01180_flav21](https://github.com/user-attachments/assets/d47bfa13-9930-4247-89fb-f2c2eab68bd7)
+    ![as_x](https://github.com/user-attachments/assets/90faf0ad-bbaf-4917-81e1-fb4edd351766)
+    ![as_q](https://github.com/user-attachments/assets/3cbeecfe-9e12-4900-99ad-dd92d8bcf299)
