@@ -150,3 +150,26 @@ fn alphasq2_neopdf() {
         .success()
         .stdout("0.2485925816007479\n");
 }
+
+#[test]
+#[cfg(feature = "tmdlib")]
+fn xfxq2_kt_tmdlib() {
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "compute",
+            "xfx_q2_kt",
+            "--pdf-name",
+            "MAP22_grids_FF_Km_N3LL",
+            "--member",
+            "0",
+            "--pid",
+            "2",
+            "1.0",
+            "0.1",
+            "10.0",
+        ])
+        .assert()
+        .success()
+        .stdout("0.0655544\n");
+}

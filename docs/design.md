@@ -18,7 +18,7 @@ respectively.
   built for each subgrid and flavor, supporting log-space and linear strategies for high accuracy.
 
 Therefore, using the notations from [[2112.09703](https://arxiv.org/pdf/2112.09703)], the full
-`GridArray`, which is a conjunction of $k$ subgrids, can be represented as:
+`GridArray` (for 1D grid), which is a conjunction of $k$ subgrids, can be represented as:
 
 $$ \left[ z_0, z_1, \cdots, z_{\mathrm{max}} \right]_{\left( n_1, n_2, \cdots, n_k \right)} \qquad \text{with} \qquad z=A, \alpha_s, k_T, x, Q^2 $$
 
@@ -28,9 +28,10 @@ points is $n_{\mathrm{pts}} = \sum_i n_i - (k - i)$.
 
 The diagram below schematically summarizes the `NeoPDF` data structure:
 
-![data-structure](https://github.com/user-attachments/assets/dff9a9cd-ce24-485e-a08c-106f2845b437)
+![grid](https://github.com/user-attachments/assets/0637f61f-348f-4507-a6f5-08fac127368f){ .center-medium }
 
-where the `GridArray` object represents an instance of a set member.
+where the `GridArray` object represents an instance of a set member. The subgrid $S_k$ is a
+**hyperrectangle** given by the **Cartesian** product of the dependent variables.
 
 This design enables:
 
@@ -64,7 +65,7 @@ by half the size of a given LHAPDF PDF set:
 | NNPDF4.0 NNLO      | 100         | 158 MB        | 85 MB  |
 | NNPDF4.0 NNLO      | 1000        | 1.55 GB       | 830 MB |
 | Combined nNNPDF3.0 | 200         | -             | 1.43 GB|
-| MAP22 FF @N3LL     | 250         | 2.50 GB       | 1.65 GB|
+| MAP22 FF @N3LL     | 250         | 2.50 GB       | 950 MB |
 
 !!! info "Note"
 

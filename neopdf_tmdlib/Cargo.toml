@@ -1,0 +1,22 @@
+[package]
+name = "neopdf_tmdlib"
+description = "NeoPDF's interface to TMDlib"
+authors = ["Tanjona R. Rabemananjara <tanjona.hepc@gmail.com>"]
+categories.workspace = true
+edition.workspace = true
+keywords.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+cxx = "1.0"
+
+[build-dependencies]
+cc = "1.0"
+cxx-build = "1.0"
+pkg-config = "0.3"
