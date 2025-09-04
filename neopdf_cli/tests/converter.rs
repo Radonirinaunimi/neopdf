@@ -228,7 +228,7 @@ set_desc = "MAP22 TMDs for K- fragmentation, converted to NeoPDF"
 set_index = 42
 n_members = 2
 
-# Inner edges for the grid. Leave empty for no subgrids.
+# Inner edges for the subgrids. Leave empty for no subgrids.
 x_inner_edges = [0.2]
 q_inner_edges = [] # Q, not Q2
 kt_inner_edges = [1e-2, 1.0]
@@ -239,7 +239,7 @@ n_q = [6]
 n_kt = [5, 5, 4]
 
 # Grid axes that are not part of the TMD interpolation
-nucleons = [1.0] # Proton
+nucleons = [0.0] # dummy value
 alphas = [0.118]
 
 # Metadata
@@ -248,7 +248,7 @@ polarised = false
 set_type = "TimeLike"
 interpolator_type = "LogChebyshev"
 error_type = "replicas"
-hadron_pid = 2212 # Proton
+hadron_pid = 321 # Kaon
 
 alphas_qs = [91.1876]
 alphas_vals = [0.118]

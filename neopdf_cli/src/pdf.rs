@@ -73,7 +73,7 @@ pub struct XfxQ2KtArgs {
     /// PDG flavor ID
     #[arg(short = 'i', long)]
     pub pid: i32,
-    /// Input values (kt, x, q)
+    /// Input values (kt, x, Q2)
     #[arg(required = true)]
     pub inputs: Vec<f64>,
 }
@@ -105,12 +105,12 @@ pub fn main(cli: PdfCli) {
             tmd.init(&args.pdf_name, args.member as i32);
 
             if args.inputs.len() < 3 {
-                eprintln!("Error: [kt, x, q] must be provided as input.");
+                eprintln!("Error: [kt, x, Q2] must be provided as input.");
                 process::exit(1);
             }
             let kt = args.inputs[0];
             let x = args.inputs[1];
-            let q = args.inputs[2];
+            let q2 = args.inputs[2];
 
             // The list of PIDs returned by TMDlib
             let pids = [-6, -5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5, 6];
@@ -119,7 +119,7 @@ pub fn main(cli: PdfCli) {
                 process::exit(1);
             });
 
-            let pdfs = tmd.xfxq2kt(x, kt, q);
+            let pdfs = tmd.xfxq2kt(x, kt, q2.sqrt());
             println!("{}", pdfs[pid_idx]);
         }
     }
