@@ -12,6 +12,7 @@
 //! The [`SubGrid`] struct is defined in `subgrid.rs`.
 
 use ndarray::{s, OwnedRepr};
+use ninterp::data::{InterpData2D, InterpData3D};
 use ninterp::error::InterpolateError;
 use ninterp::interpolator::{
     Extrapolate, Interp2D, Interp2DOwned, Interp3D, Interp3DOwned, InterpND, InterpNDOwned,
@@ -23,7 +24,7 @@ use ninterp::strategy::Linear;
 use super::metadata::InterpolatorType;
 use super::strategy::{
     BilinearInterpolation, LogBicubicInterpolation, LogBilinearInterpolation,
-    LogChebyshevInterpolation, LogTricubicInterpolation,
+    LogChebyshevBatchInterpolation, LogChebyshevInterpolation, LogTricubicInterpolation,
 };
 use super::subgrid::SubGrid;
 
@@ -112,6 +113,40 @@ where
 {
     fn interpolate_point(&self, point: &[f64]) -> Result<f64, InterpolateError> {
         self.interpolate(point)
+    }
+}
+
+/// An enum to dispatch batch interpolation to the correct Chebyshev interpolator.
+pub enum BatchInterpolator {
+    Chebyshev2D(
+        LogChebyshevBatchInterpolation<2>,
+        InterpData2D<OwnedRepr<f64>>,
+    ),
+    Chebyshev3D(
+        LogChebyshevBatchInterpolation<3>,
+        InterpData3D<OwnedRepr<f64>>,
+    ),
+}
+
+impl BatchInterpolator {
+    /// Interpolates a batch of points.
+    pub fn interpolate(&self, points: Vec<Vec<f64>>) -> Result<Vec<f64>, InterpolateError> {
+        match self {
+            BatchInterpolator::Chebyshev2D(strategy, data) => {
+                let points_2d: Vec<[f64; 2]> = points
+                    .into_iter()
+                    .map(|p| p.try_into().expect("Invalid point dimension for 2D"))
+                    .collect();
+                strategy.interpolate(data, &points_2d)
+            }
+            BatchInterpolator::Chebyshev3D(strategy, data) => {
+                let points_3d: Vec<[f64; 3]> = points
+                    .into_iter()
+                    .map(|p| p.try_into().expect("Invalid point dimension for 3D"))
+                    .collect();
+                strategy.interpolate(data, &points_3d)
+            }
+        }
     }
 }
 
@@ -453,6 +488,94 @@ impl InterpolatorFactory {
                     .expect("Failed to create 5D interpolator"),
             ),
             _ => panic!("Unsupported 5D interpolator: {:?}", interp_type),
+        }
+    }
+
+    pub fn create_batch_interpolator(
+        subgrid: &SubGrid,
+        pid_idx: usize,
+    ) -> Result<BatchInterpolator, String> {
+        match subgrid.interpolation_config() {
+            InterpolationConfig::TwoD => {
+                let mut strategy = LogChebyshevBatchInterpolation::<2>::default();
+                let grid_slice = subgrid.grid_slice(pid_idx).to_owned();
+
+                let data = InterpData2D::new(
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
+                    grid_slice,
+                )
+                .map_err(|e| e.to_string())?;
+                strategy.init(&data).map_err(|e| e.to_string())?;
+
+                Ok(BatchInterpolator::Chebyshev2D(strategy, data))
+            }
+            InterpolationConfig::ThreeDNucleons => {
+                let mut strategy = LogChebyshevBatchInterpolation::<3>::default();
+                let grid_data = subgrid.grid.slice(s![.., 0, pid_idx, 0, .., ..]).to_owned();
+
+                let reshaped_data = grid_data
+                    .into_shape_with_order((
+                        subgrid.nucleons.len(),
+                        subgrid.xs.len(),
+                        subgrid.q2s.len(),
+                    ))
+                    .expect("Failed to reshape 3D data");
+
+                let data = InterpData3D::new(
+                    subgrid.nucleons.mapv(f64::ln),
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
+                    reshaped_data,
+                )
+                .map_err(|e| e.to_string())?;
+                strategy.init(&data).map_err(|e| e.to_string())?;
+
+                Ok(BatchInterpolator::Chebyshev3D(strategy, data))
+            }
+            InterpolationConfig::ThreeDAlphas => {
+                let mut strategy = LogChebyshevBatchInterpolation::<3>::default();
+                let grid_data = subgrid.grid.slice(s![0, .., pid_idx, 0, .., ..]).to_owned();
+
+                let reshaped_data = grid_data
+                    .into_shape_with_order((
+                        subgrid.alphas.len(),
+                        subgrid.xs.len(),
+                        subgrid.q2s.len(),
+                    ))
+                    .expect("Failed to reshape 3D data");
+
+                let data = InterpData3D::new(
+                    subgrid.alphas.mapv(f64::ln),
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
+                    reshaped_data,
+                )
+                .map_err(|e| e.to_string())?;
+                strategy.init(&data).map_err(|e| e.to_string())?;
+
+                Ok(BatchInterpolator::Chebyshev3D(strategy, data))
+            }
+            InterpolationConfig::ThreeDKt => {
+                let mut strategy = LogChebyshevBatchInterpolation::<3>::default();
+                let grid_data = subgrid.grid.slice(s![0, 0, pid_idx, .., .., ..]).to_owned();
+
+                let reshaped_data = grid_data
+                    .into_shape_with_order((subgrid.kts.len(), subgrid.xs.len(), subgrid.q2s.len()))
+                    .expect("Failed to reshape 3D data");
+
+                let data = InterpData3D::new(
+                    subgrid.kts.mapv(f64::ln),
+                    subgrid.xs.mapv(f64::ln),
+                    subgrid.q2s.mapv(f64::ln),
+                    reshaped_data,
+                )
+                .map_err(|e| e.to_string())?;
+                strategy.init(&data).map_err(|e| e.to_string())?;
+
+                Ok(BatchInterpolator::Chebyshev3D(strategy, data))
+            }
+            _ => Err("Unsupported dimension for batch interpolation".to_string()),
         }
     }
 }
