@@ -1,0 +1,13 @@
+[package]
+name = "neopdf_wolfram"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+neopdf = { path = "../neopdf" }
+wolfram-library-link = "0.2.10"
+lazy_static = "1.4.0"
+parking_lot = "0.12.1"
