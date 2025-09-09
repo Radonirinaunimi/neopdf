@@ -21,6 +21,9 @@ use ninterp::strategy::traits::{Strategy1D, Strategy2D, Strategy3D};
 use serde::{Deserialize, Serialize};
 use std::f64::consts::PI;
 
+// Tolerance for coincidence detection
+const COINCIDENCE_TOL: f64 = 1e-15;
+
 use super::utils;
 
 /// Implements bilinear interpolation for 2D data.
@@ -881,12 +884,17 @@ where
 ///   number of grid points in each dimension.
 /// - **Grid Requirement**: For optimal stability and to avoid Runge's phenomenon, the grid
 ///   points should correspond to the roots or extrema of Chebyshev polynomials.
+
 #[derive(Debug, Clone)]
 pub struct LogChebyshevInterpolation<const DIM: usize> {
     // Pre-computed weights for the barycentric formula for each dimension.
     weights: [Vec<f64>; DIM],
     // Grid points in the t-domain [-1, 1] for each dimension.
     t_coords: [Vec<f64>; DIM],
+    // Pre-computed bounds for fast bounds checking and coordinate transformation.
+    bounds: [(f64, f64); DIM],
+    // Pre-computed scaling factors for coordinate transformation.
+    scale_factors: [f64; DIM],
 }
 
 impl<const DIM: usize> Default for LogChebyshevInterpolation<DIM> {
@@ -894,6 +902,8 @@ impl<const DIM: usize> Default for LogChebyshevInterpolation<DIM> {
         Self {
             weights: std::array::from_fn(|_| Vec::new()),
             t_coords: std::array::from_fn(|_| Vec::new()),
+            bounds: [(0.0, 0.0); DIM],
+            scale_factors: [1.0; DIM],
         }
     }
 }
@@ -904,9 +914,11 @@ impl<const DIM: usize> Serialize for LogChebyshevInterpolation<DIM> {
         S: serde::Serializer,
     {
         use serde::ser::SerializeStruct;
-        let mut state = serializer.serialize_struct("LogChebyshevInterpolation", 2)?;
+        let mut state = serializer.serialize_struct("LogChebyshevInterpolation", 4)?;
         state.serialize_field("weights", &self.weights.as_slice())?;
         state.serialize_field("t_coords", &self.t_coords.as_slice())?;
+        state.serialize_field("bounds", &self.bounds.as_slice())?;
+        state.serialize_field("scale_factors", &self.scale_factors.as_slice())?;
         state.end()
     }
 }
@@ -920,17 +932,34 @@ impl<'de, const DIM: usize> Deserialize<'de> for LogChebyshevInterpolation<DIM> 
         struct Helper {
             weights: Vec<Vec<f64>>,
             t_coords: Vec<Vec<f64>>,
+            bounds: Vec<(f64, f64)>,
+            scale_factors: Vec<f64>,
         }
 
         let helper = Helper::deserialize(deserializer)?;
+
         let weights = helper.weights.try_into().map_err(|v: Vec<Vec<f64>>| {
             serde::de::Error::invalid_length(v.len(), &"an array of the correct length")
         })?;
+
         let t_coords = helper.t_coords.try_into().map_err(|v: Vec<Vec<f64>>| {
             serde::de::Error::invalid_length(v.len(), &"an array of the correct length")
         })?;
 
-        Ok(Self { weights, t_coords })
+        let bounds = helper.bounds.try_into().map_err(|v: Vec<(f64, f64)>| {
+            serde::de::Error::invalid_length(v.len(), &"an array of the correct length")
+        })?;
+
+        let scale_factors = helper.scale_factors.try_into().map_err(|v: Vec<f64>| {
+            serde::de::Error::invalid_length(v.len(), &"an array of the correct length")
+        })?;
+
+        Ok(Self {
+            weights,
+            t_coords,
+            bounds,
+            scale_factors,
+        })
     }
 }
 
@@ -952,48 +981,218 @@ impl<const DIM: usize> LogChebyshevInterpolation<DIM> {
         weights
     }
 
-    /// Computes normalized barycentric coefficients for interpolation
-    /// Returns a vector of coefficients that sum to 1
-    fn barycentric_coefficients(t: f64, t_coords: &[f64], weights: &[f64]) -> Vec<f64> {
-        let mut coeffs = vec![0.0; t_coords.len()];
-
+    fn interpolate_1d<F>(&self, t: f64, t_coords: &[f64], weights: &[f64], f_value: F) -> f64
+    where
+        F: Fn(usize) -> f64,
+    {
+        // Check for coincidence first
         for (j, &t_j) in t_coords.iter().enumerate() {
-            if (t - t_j).abs() < 1e-15 {
-                // t is exactly at grid point j - return unit vector
-                coeffs[j] = 1.0;
-                return coeffs;
+            if (t - t_j).abs() < COINCIDENCE_TOL {
+                return f_value(j);
             }
         }
 
-        let mut terms = Vec::with_capacity(t_coords.len());
-        for (j, &t_j) in t_coords.iter().enumerate() {
-            terms.push(weights[j] / (t - t_j));
-        }
-
-        let sum: f64 = terms.iter().sum();
-        for (j, &term) in terms.iter().enumerate() {
-            coeffs[j] = term / sum;
-        }
-
-        coeffs
-    }
-
-    /// Legacy barycentric interpolation method (kept for compatibility)
-    fn barycentric_interpolate(t: f64, t_coords: &[f64], f_values: &[f64], weights: &[f64]) -> f64 {
         let mut numer = 0.0;
         let mut denom = 0.0;
 
         for (j, &t_j) in t_coords.iter().enumerate() {
-            if (t - t_j).abs() < 1e-15 {
-                return f_values[j];
-            }
-
             let term = weights[j] / (t - t_j);
-            numer += term * f_values[j];
+            numer += term * f_value(j);
             denom += term;
         }
 
         numer / denom
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn interpolate_2d<F>(
+        &self,
+        t1: f64,
+        t2: f64,
+        t1_coords: &[f64],
+        t2_coords: &[f64],
+        weights1: &[f64],
+        weights2: &[f64],
+        f_value: F,
+    ) -> f64
+    where
+        F: Fn(usize, usize) -> f64,
+    {
+        let mut coincident_1 = None;
+        let mut coincident_2 = None;
+
+        for (j, &t1_j) in t1_coords.iter().enumerate() {
+            if (t1 - t1_j).abs() < COINCIDENCE_TOL {
+                coincident_1 = Some(j);
+                break;
+            }
+        }
+
+        for (k, &t2_k) in t2_coords.iter().enumerate() {
+            if (t2 - t2_k).abs() < COINCIDENCE_TOL {
+                coincident_2 = Some(k);
+                break;
+            }
+        }
+
+        match (coincident_1, coincident_2) {
+            (Some(j), Some(k)) => f_value(j, k),
+            (Some(j), None) => self.interpolate_1d(t2, t2_coords, weights2, |k| f_value(j, k)),
+            (None, Some(k)) => self.interpolate_1d(t1, t1_coords, weights1, |j| f_value(j, k)),
+            (None, None) => {
+                let mut numer = 0.0;
+                let mut denom = 0.0;
+
+                for (j, &t1_j) in t1_coords.iter().enumerate() {
+                    let term1 = weights1[j] / (t1 - t1_j);
+
+                    for (k, &t2_k) in t2_coords.iter().enumerate() {
+                        let term2 = weights2[k] / (t2 - t2_k);
+                        let weight = term1 * term2;
+
+                        numer += weight * f_value(j, k);
+                        denom += weight;
+                    }
+                }
+
+                numer / denom
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn interpolate_3d<F>(
+        &self,
+        t1: f64,
+        t2: f64,
+        t3: f64,
+        t1_coords: &[f64],
+        t2_coords: &[f64],
+        t3_coords: &[f64],
+        weights1: &[f64],
+        weights2: &[f64],
+        weights3: &[f64],
+        f_value: F,
+    ) -> f64
+    where
+        F: Fn(usize, usize, usize) -> f64,
+    {
+        let mut coincident_dims = [None; 3];
+        let t_vals = [t1, t2, t3];
+        let t_coords_all = [t1_coords, t2_coords, t3_coords];
+
+        for (dim, (&t_val, t_coords)) in t_vals.iter().zip(t_coords_all.iter()).enumerate() {
+            for (idx, &t_coord) in t_coords.iter().enumerate() {
+                if (t_val - t_coord).abs() < COINCIDENCE_TOL {
+                    coincident_dims[dim] = Some(idx);
+                    break;
+                }
+            }
+        }
+
+        match coincident_dims {
+            [Some(i), Some(j), Some(k)] => f_value(i, j, k),
+            [Some(i), Some(j), None] => {
+                self.interpolate_1d(t3, t3_coords, weights3, |k| f_value(i, j, k))
+            }
+            [Some(i), None, Some(k)] => {
+                self.interpolate_1d(t2, t2_coords, weights2, |j| f_value(i, j, k))
+            }
+            [None, Some(j), Some(k)] => {
+                self.interpolate_1d(t1, t1_coords, weights1, |i| f_value(i, j, k))
+            }
+            [Some(i), None, None] => {
+                self.interpolate_2d(t2, t3, t2_coords, t3_coords, weights2, weights3, |j, k| {
+                    f_value(i, j, k)
+                })
+            }
+            [None, Some(j), None] => {
+                self.interpolate_2d(t1, t3, t1_coords, t3_coords, weights1, weights3, |i, k| {
+                    f_value(i, j, k)
+                })
+            }
+            [None, None, Some(k)] => {
+                self.interpolate_2d(t1, t2, t1_coords, t2_coords, weights1, weights2, |i, j| {
+                    f_value(i, j, k)
+                })
+            }
+            [None, None, None] => {
+                let mut result = 0.0;
+                let mut total_weight = 0.0;
+
+                for (i, &t1_i) in t1_coords.iter().enumerate() {
+                    let w1 = weights1[i] / (t1 - t1_i);
+
+                    for (j, &t2_j) in t2_coords.iter().enumerate() {
+                        let w2 = weights2[j] / (t2 - t2_j);
+                        let w12 = w1 * w2;
+
+                        for (k, &t3_k) in t3_coords.iter().enumerate() {
+                            let w3 = weights3[k] / (t3 - t3_k);
+                            let weight = w12 * w3;
+
+                            result += weight * f_value(i, j, k);
+                            total_weight += weight;
+                        }
+                    }
+                }
+
+                result / total_weight
+            }
+        }
+    }
+
+    fn init_dimension(&mut self, dim: usize, x_coords: &[f64]) -> Result<(), ValidateError> {
+        let n = x_coords.len();
+        if n < 2 {
+            return Err(ValidateError::Other(
+                "LogChebyshevInterpolation requires at least 2 grid points per dimension."
+                    .to_string(),
+            ));
+        }
+
+        self.t_coords[dim] = (0..n)
+            .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+            .collect();
+        self.weights[dim] = Self::compute_barycentric_weights(n);
+
+        let x_min = *x_coords.first().unwrap();
+        let x_max = *x_coords.last().unwrap();
+
+        if (x_max - x_min).abs() < 1e-15 {
+            return Err(ValidateError::Other(
+                "Grid coordinates have zero range".to_string(),
+            ));
+        }
+
+        self.bounds[dim] = (x_min, x_max);
+        self.scale_factors[dim] = 1.0 / (x_max - x_min);
+
+        Ok(())
+    }
+
+    fn check_bounds_and_transform_generic(
+        &self,
+        point: &[f64],
+        dim_count: usize,
+    ) -> Result<Vec<f64>, InterpolateError> {
+        let mut transformed = vec![0.0; dim_count];
+
+        for i in 0..dim_count {
+            let val = point[i];
+            let (min, max) = self.bounds[i];
+
+            if val < min || val > max {
+                return Err(InterpolateError::Other(format!(
+                    "Input point coordinate {} = {} is outside the grid range [{}, {}]",
+                    i, val, min, max
+                )));
+            }
+
+            transformed[i] = 2.0 * (val - min) * self.scale_factors[i] - 1.0;
+        }
+
+        Ok(transformed)
     }
 }
 
@@ -1003,20 +1202,7 @@ where
 {
     fn init(&mut self, data: &InterpData1D<D>) -> Result<(), ValidateError> {
         let x_coords = data.grid[0].as_slice().unwrap();
-        let n = x_coords.len();
-        if n < 2 {
-            return Err(ValidateError::Other(
-                "LogChebyshevInterpolation requires at least 2 grid points.".to_string(),
-            ));
-        }
-
-        self.t_coords[0] = (0..n)
-            .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
-            .collect();
-
-        self.weights[0] = Self::compute_barycentric_weights(n);
-
-        Ok(())
+        self.init_dimension(0, x_coords)
     }
 
     fn interpolate(
@@ -1024,24 +1210,13 @@ where
         data: &InterpData1D<D>,
         point: &[f64; 1],
     ) -> Result<f64, InterpolateError> {
-        let x = point[0];
-        let x_coords = data.grid[0].as_slice().unwrap();
+        let t_coords = self.check_bounds_and_transform_generic(&point[..], 1)?;
+        let t = t_coords[0];
+
         let f_values = data.values.as_slice().unwrap();
+        let result = self.interpolate_1d(t, &self.t_coords[0], &self.weights[0], |j| f_values[j]);
 
-        let x_min = *x_coords.first().unwrap();
-        let x_max = *x_coords.last().unwrap();
-
-        if (x_max - x_min).abs() < 1e-15 {
-            return Ok(f_values[0]);
-        }
-        let t = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
-
-        Ok(Self::barycentric_interpolate(
-            t,
-            &self.t_coords[0],
-            f_values,
-            &self.weights[0],
-        ))
+        Ok(result)
     }
 
     fn allow_extrapolate(&self) -> bool {
@@ -1056,17 +1231,7 @@ where
     fn init(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError> {
         for dim in 0..2 {
             let x_coords = data.grid[dim].as_slice().unwrap();
-            let n = x_coords.len();
-            if n < 2 {
-                return Err(ValidateError::Other(
-                    "LogChebyshevInterpolation requires at least 2 grid points per dimension."
-                        .to_string(),
-                ));
-            }
-            self.t_coords[dim] = (0..n)
-                .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
-                .collect();
-            self.weights[dim] = Self::compute_barycentric_weights(n);
+            self.init_dimension(dim, x_coords)?;
         }
         Ok(())
     }
@@ -1076,27 +1241,18 @@ where
         data: &InterpData2D<D>,
         point: &[f64; 2],
     ) -> Result<f64, InterpolateError> {
-        let [x, y] = *point;
-        let x_coords = data.grid[0].as_slice().unwrap();
-        let y_coords = data.grid[1].as_slice().unwrap();
+        let t_coords = self.check_bounds_and_transform_generic(&point[..], 2)?;
+        let [t_x, t_y] = [t_coords[0], t_coords[1]];
 
-        let x_min = *x_coords.first().unwrap();
-        let x_max = *x_coords.last().unwrap();
-        let y_min = *y_coords.first().unwrap();
-        let y_max = *y_coords.last().unwrap();
-
-        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
-        let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
-
-        let x_coeffs = Self::barycentric_coefficients(t_x, &self.t_coords[0], &self.weights[0]);
-        let y_coeffs = Self::barycentric_coefficients(t_y, &self.t_coords[1], &self.weights[1]);
-
-        let mut result = 0.0;
-        for (i, &x_coeff) in x_coeffs.iter().enumerate() {
-            for (j, &y_coeff) in y_coeffs.iter().enumerate() {
-                result += x_coeff * y_coeff * data.values[[i, j]];
-            }
-        }
+        let result = self.interpolate_2d(
+            t_x,
+            t_y,
+            &self.t_coords[0],
+            &self.t_coords[1],
+            &self.weights[0],
+            &self.weights[1],
+            |i, j| data.values[[i, j]],
+        );
 
         Ok(result)
     }
@@ -1113,17 +1269,7 @@ where
     fn init(&mut self, data: &InterpData3D<D>) -> Result<(), ValidateError> {
         for dim in 0..3 {
             let x_coords = data.grid[dim].as_slice().unwrap();
-            let n = x_coords.len();
-            if n < 2 {
-                return Err(ValidateError::Other(
-                    "LogChebyshevInterpolation requires at least 2 grid points per dimension."
-                        .to_string(),
-                ));
-            }
-            self.t_coords[dim] = (0..n)
-                .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
-                .collect();
-            self.weights[dim] = Self::compute_barycentric_weights(n);
+            self.init_dimension(dim, x_coords)?;
         }
         Ok(())
     }
@@ -1133,34 +1279,21 @@ where
         data: &InterpData3D<D>,
         point: &[f64; 3],
     ) -> Result<f64, InterpolateError> {
-        let [x, y, z] = *point;
-        let x_coords = data.grid[0].as_slice().unwrap();
-        let y_coords = data.grid[1].as_slice().unwrap();
-        let z_coords = data.grid[2].as_slice().unwrap();
+        let t_coords = self.check_bounds_and_transform_generic(&point[..], 3)?;
+        let [t_x, t_y, t_z] = [t_coords[0], t_coords[1], t_coords[2]];
 
-        let x_min = *x_coords.first().unwrap();
-        let x_max = *x_coords.last().unwrap();
-        let y_min = *y_coords.first().unwrap();
-        let y_max = *y_coords.last().unwrap();
-        let z_min = *z_coords.first().unwrap();
-        let z_max = *z_coords.last().unwrap();
-
-        let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
-        let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
-        let t_z = 2.0 * (z - z_min) / (z_max - z_min) - 1.0;
-
-        let x_coeffs = Self::barycentric_coefficients(t_x, &self.t_coords[0], &self.weights[0]);
-        let y_coeffs = Self::barycentric_coefficients(t_y, &self.t_coords[1], &self.weights[1]);
-        let z_coeffs = Self::barycentric_coefficients(t_z, &self.t_coords[2], &self.weights[2]);
-
-        let mut result = 0.0;
-        for (i, &x_coeff) in x_coeffs.iter().enumerate() {
-            for (j, &y_coeff) in y_coeffs.iter().enumerate() {
-                for (k, &z_coeff) in z_coeffs.iter().enumerate() {
-                    result += x_coeff * y_coeff * z_coeff * data.values[[i, j, k]];
-                }
-            }
-        }
+        let result = self.interpolate_3d(
+            t_x,
+            t_y,
+            t_z,
+            &self.t_coords[0],
+            &self.t_coords[1],
+            &self.t_coords[2],
+            &self.weights[0],
+            &self.weights[1],
+            &self.weights[2],
+            |i, j, k| data.values[[i, j, k]],
+        );
 
         Ok(result)
     }
