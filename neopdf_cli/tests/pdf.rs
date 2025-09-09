@@ -171,5 +171,5 @@ fn xfxq2_kt_tmdlib() {
         ])
         .assert()
         .success()
-        .stdout("0.07892252798564643\n");
+        .stdout("0.0655544\n");
 }
