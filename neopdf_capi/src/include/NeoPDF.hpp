@@ -157,6 +157,23 @@ class NeoPDF {
             return neopdf_pdf_xfxq2_nd(this->raw, pid, params.data(), params.size());
         }
 
+        /** @brief Compute the `xf` value for a generic set of parameters using batch Chebyshev interpolation. */
+        std::vector<double>
+        xfxQ2_cheby_batch(int pid, const std::vector<std::vector<double>> &points) const {
+            std::vector<const double *> c_points(points.size());
+            std::vector<size_t> lengths(points.size());
+            for (size_t i = 0; i < points.size(); ++i) {
+                c_points[i] = points[i].data();
+                lengths[i] = points[i].size();
+            }
+
+            std::vector<double> results(points.size());
+            neopdf_pdf_xfxq2_cheby_batch(this->raw, pid, c_points.data(), lengths.data(),
+                                        points.size(), results.data());
+
+            return results;
+        }
+
         /** @brief Compute the value of `alphas` at the Q2 value. */
         double alphasQ2(double q2) const {
             return neopdf_pdf_alphas_q2(this->raw, q2);

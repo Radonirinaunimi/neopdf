@@ -338,6 +338,56 @@ impl GridPDF {
         Array2::from_shape_vec(grid_shape, data).unwrap()
     }
 
+    /// Interpolates PDF values for multiple points in parallel using Chebyshev batch interpolation.
+    ///
+    /// # Arguments
+    ///
+    /// * `flavor_id` - The flavor ID.
+    /// * `points` - A slice containing the collection of knots to interpolate on.
+    ///   A knot is a collection of points containing `(nucleon, alphas, x, Q2)`.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<f64>` of interpolated PDF values.
+    pub fn xfxq2_cheby_batch(&self, flavor_id: i32, points: &[&[f64]]) -> Result<Vec<f64>, Error> {
+        if points.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let subgrid_idx = self.knot_array.find_subgrid(points[0]).ok_or_else(|| {
+            let (x, q2) = self.get_x_q2(points[0]);
+            Error::SubgridNotFound { x, q2 }
+        })?;
+
+        let pid_idx = self.knot_array.pid_index(flavor_id).ok_or_else(|| {
+            Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
+        })?;
+
+        if !matches!(self.info.interpolator_type, InterpolatorType::LogChebyshev) {
+            return Err(Error::InterpolationError(
+                "xfxq2_cheby_batch only supports LogChebyshev interpolator".to_string(),
+            ));
+        }
+
+        let subgrid = &self.knot_array.subgrids[subgrid_idx];
+        let log_points: Vec<Vec<f64>> = points
+            .iter()
+            .map(|p| p.iter().map(|&v| v.ln()).collect())
+            .collect();
+
+        let batch_interpolator = InterpolatorFactory::create_batch_interpolator(subgrid, pid_idx)
+            .map_err(Error::InterpolationError)?;
+
+        let results = batch_interpolator
+            .interpolate(log_points)
+            .map_err(|e| Error::InterpolationError(e.to_string()))?;
+
+        Ok(results
+            .into_iter()
+            .map(|r| self.apply_force_positive(r))
+            .collect())
+    }
+
     /// Get the values of the momentum fraction `x` and momentum scale `Q2`.
     ///
     /// # Arguments
