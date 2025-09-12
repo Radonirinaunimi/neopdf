@@ -454,3 +454,47 @@ class GridWriter {
 };
 
 } // namespace neopdf
+
+// Everything below this line is added for LHAPDF compatibility.
+
+namespace LHAPDF {
+
+    class PDF {
+    protected:
+        std::unique_ptr<neopdf::NeoPDF> _neopdf;
+
+        PDF() = default;
+        explicit PDF(std::unique_ptr<neopdf::NeoPDF>&& pdf) : _neopdf(std::move(pdf)) {}
+
+    public:
+        virtual ~PDF() = default;
+
+        virtual double xfxQ2(int id, double x, double q2) const {
+            return _neopdf->xfxQ2(id, x, q2);
+        }
+
+        virtual double alphasQ2(double q2) const {
+            return _neopdf->alphasQ2(q2);
+        }
+
+        double xMin() const { return _neopdf->x_min(); }
+        double xMax() const { return _neopdf->x_max(); }
+        double q2Min() const { return _neopdf->q2_min(); }
+        double q2Max() const { return _neopdf->q2_max(); }
+    };
+
+    class GridPDF : public PDF {
+    public:
+        explicit GridPDF(std::unique_ptr<neopdf::NeoPDF>&& pdf) : PDF(std::move(pdf)) {}
+    };
+
+    inline PDF* mkPDF(const std::string& name, int member = 0) {
+        auto neopdf_ptr = std::make_unique<neopdf::NeoPDF>(name, member);
+        return new GridPDF(std::move(neopdf_ptr));
+    }
+
+    inline void setVerbosity(int /*verbosity*/) {
+        // neopdf doesn't have a verbosity setting, so this is a no-op.
+    }
+
+} // namespace LHAPDF
