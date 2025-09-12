@@ -489,7 +489,7 @@ namespace LHAPDF {
     };
 
     inline PDF* mkPDF(const std::string& name, int member = 0) {
-        auto neopdf_ptr = std::make_unique<neopdf::NeoPDF>(name, member);
+        std::unique_ptr<neopdf::NeoPDF> neopdf_ptr(new neopdf::NeoPDF(name, member));
         return new GridPDF(std::move(neopdf_ptr));
     }
 
