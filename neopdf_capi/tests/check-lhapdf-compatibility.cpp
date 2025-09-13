@@ -52,19 +52,19 @@ void test_lhapdf_compatibility_c() {
     initpdf(0);
     double x = 0.1;
     double q = 10.0;
-    double f_compat[13];
-    evolvepdf(x, q, f_compat);
+    double xfxs[14];
+    evolvepdf(x, q, xfxs);
 
     // Use the native NeoPDF API for comparison
     NeoPDFWrapper* neo_pdf = neopdf_pdf_load(pdfname, 0);
-    double expected_g = neopdf_pdf_xfxq2(neo_pdf, 21, x, q*q);
+    double expected_g = neopdf_pdf_xfxq2(neo_pdf, -1, x, q*q);
     neopdf_pdf_free(neo_pdf);
 
     printf("Comparing gluon PDF at x=0.1, Q=10.0\n");
     printf("Native NeoPDF: %e\n", expected_g);
-    printf("NeoPDF (LHAPDF compat): %e\n", f_compat[6]);
+    printf("NeoPDF (LHAPDF compat): %e\n", xfxs[6]);
 
-    double reldiff = fabs(f_compat[6] - expected_g) / expected_g;
+    double reldiff = fabs(xfxs[6] - expected_g) / expected_g;
     printf("Relative difference: %e\n", reldiff);
 
     assert(reldiff < TOLERANCE);

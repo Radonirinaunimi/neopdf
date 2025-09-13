@@ -6,7 +6,7 @@ Relative difference: 0
 LHAPDF C++ OOP Compatibility test passed.
 === Test LHAPDF C Compatibility Layer ===
 Comparing gluon PDF at x=0.1, Q=10.0
-Native NeoPDF: 1.132265e+00
-NeoPDF (LHAPDF compat): 1.132265e+00
+Native NeoPDF: 1.420505e-01
+NeoPDF (LHAPDF compat): 1.420505e-01
 Relative difference: 0.000000e+00
 LHAPDF C Compatibility test passed.

@@ -10,6 +10,8 @@ use neopdf::parser::SubgridData;
 use neopdf::pdf::PDF;
 use neopdf::writer::GridArrayCollection;
 
+const DEFAULT_PIDS: [i32; 14] = [21, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 22];
+
 /// Result codes for `NeoPDF` operations
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1202,12 +1204,10 @@ pub unsafe extern "C" fn evolvepdf(x: c_double, q: c_double, f: *mut c_double) {
             let q2 = q * q;
 
             let (available_pids, _) = pdf.pids().clone().into_raw_vec_and_offset();
+            let out_slice = slice::from_raw_parts_mut(f, 14);
 
-            let pids_to_calc = [-6, -5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5, 6];
-            let out_slice = slice::from_raw_parts_mut(f, 13);
-
-            for i in 0..13 {
-                let pid = pids_to_calc[i];
+            for i in 0..14 {
+                let pid = DEFAULT_PIDS[i];
                 if available_pids.contains(&pid) {
                     out_slice[i] = pdf.xfxq2(pid, &[x, q2]);
                 } else {
@@ -1237,12 +1237,10 @@ pub unsafe extern "C" fn evolvepdf_(x: *const c_double, q: *const c_double, f: *
             let q2 = (*q) * (*q);
 
             let (available_pids, _) = pdf.pids().clone().into_raw_vec_and_offset();
+            let out_slice = slice::from_raw_parts_mut(f, 14);
 
-            let pids_to_calc = [-6, -5, -4, -3, -2, -1, 21, 1, 2, 3, 4, 5, 6];
-            let out_slice = slice::from_raw_parts_mut(f, 13);
-
-            for i in 0..13 {
-                let pid = pids_to_calc[i];
+            for i in 0..14 {
+                let pid = DEFAULT_PIDS[i];
                 if available_pids.contains(&pid) {
                     out_slice[i] = pdf.xfxq2(pid, &[*x, q2]);
                 } else {
