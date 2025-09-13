@@ -1,0 +1,12 @@
+=== Test LHAPDF C++ OOP Compatibility Layer ===
+pid=21, x=0.0001, Q2=100
+Native NeoPDF: 30.8985
+NeoPDF (LHAPDF compat): 30.8985
+Relative difference: 0
+LHAPDF C++ OOP Compatibility test passed.
+=== Test LHAPDF C Compatibility Layer ===
+Comparing gluon PDF at x=0.1, Q=10.0
+Native NeoPDF: 1.132265e+00
+NeoPDF (LHAPDF compat): 1.132265e+00
+Relative difference: 0.000000e+00
+LHAPDF C Compatibility test passed.

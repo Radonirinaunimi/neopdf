@@ -300,6 +300,29 @@ module neopdf
             character (c_char) :: output_path(*)
             integer (c_int) :: c_neopdf_grid_compress
         end function
+
+        subroutine c_setlhaparm(line, len) bind(c, name="setlhaparm_")
+            use iso_c_binding
+            character(kind=c_char) :: line(*)
+            integer(c_int), value :: len
+        end subroutine
+
+        subroutine c_initpdfsetbyname(name, len) bind(c, name="initpdfsetbyname_")
+            use iso_c_binding
+            character(kind=c_char) :: name(*)
+            integer(c_int), value :: len
+        end subroutine
+
+        subroutine c_initpdf(member) bind(c, name="initpdf_")
+            use iso_c_binding
+            integer(c_int) :: member
+        end subroutine
+
+        subroutine c_evolvepdf(x, q, f) bind(c, name="evolvepdf_")
+            use iso_c_binding
+            real(c_double) :: x, q
+            real(c_double) :: f(*)
+        end subroutine
     end interface
 
 contains
@@ -585,5 +608,26 @@ contains
         integer :: res
         res = c_neopdf_grid_compress(collection%ptr, metadata, output_path // c_null_char)
     end function
+
+    subroutine setlhaparm(line)
+        character(len=*), intent(in) :: line
+        call c_setlhaparm(line, int(len(trim(line)), c_int))
+    end subroutine
+
+    subroutine initpdfsetbyname(name)
+        character(len=*), intent(in) :: name
+        call c_initpdfsetbyname(name, int(len(trim(name)), c_int))
+    end subroutine
+
+    subroutine initpdf(member)
+        integer, intent(in) :: member
+        call c_initpdf(member)
+    end subroutine
+
+    subroutine evolvepdf(x, q, f)
+        real(dp), intent(in) :: x, q
+        real(dp), intent(out) :: f(-6:6)
+        call c_evolvepdf(x, q, f)
+    end subroutine
 
 end module
