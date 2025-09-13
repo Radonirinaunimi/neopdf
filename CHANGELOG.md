@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add an interface to the Wolfram Language to allow Rust APIs to be called in
+- Added proper LHAPDF drop-in compatibility layer for no-code migration.
+- Added an interface to the Wolfram Language to allow Rust APIs to be called in
   Mathematica.
 - Added the logic to determine the Euclidean distance of a point to the closest
   subgrid in order to allow extrapolation.
