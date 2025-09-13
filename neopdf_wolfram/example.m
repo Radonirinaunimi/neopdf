@@ -7,9 +7,9 @@
 libPath = "/Users/tanjona/Dropbox/Mac/Documents/Documents/WORK/miscs/neopdf/target/release/libneopdf_wolfram.dylib";
 
 loadPDF = LibraryFunctionLoad[libPath, "NeoPDF_Load", {"UTF8String", Integer}, Integer];
-xfxq2 = LibraryFunctionLoad[libPath,"NeoPDF_XFXQ2",{Integer,Integer,{Real,1}},Real];
-alphasQ2 = LibraryFunctionLoad[libPath,"NeoPDF_AlphasQ2",{Integer,Real},Real];
-clearPDFs = LibraryFunctionLoad[libPath,"NeoPDF_Clear",{},"Void"];
+xfxq2 = LibraryFunctionLoad[libPath, "NeoPDF_XFXQ2", {Integer, Integer, {Real, 1}}, Real];
+alphasQ2 = LibraryFunctionLoad[libPath, "NeoPDF_AlphasQ2", {Integer, Real}, Real];
+clearPDFs = LibraryFunctionLoad[libPath, "NeoPDF_Clear", {}, "Void"];
 
 (* Step 2: Load a PDF set *)
 pdfName = "NNPDF40_nnlo_as_01180";

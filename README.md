@@ -37,7 +37,7 @@
     <p align="justify">
       Beyond interpolations over the kinematic variables (<b>x</b>, <b>kT</b>, <b>Q2</b>), NeoPDF
       also supports interpolations along the nucleon numbers <b>A</b> (relevant for <b>nuclear</b> PDFs
-      and TMDs) and the strong coupling <b>αs</b>.
+      and TMDs) and the strong coupling <b>αs(MZ)</b>.
     </p>
     </li>
     <li>
@@ -45,6 +45,14 @@
       NeoPDF implements its own file format using binary serialization and <a href="https://lz4.org/">LZ4</a>
       compression, prioritizing speed and efficiency over human-readable formats. A command Line
       Interface (CLI) is provided to easily inspect and perform various operations on NeoPDF grids.
+    </p>
+    </li>
+    <li>
+    <p align="justify">
+      NeoPDF is esigned as much as possible with a “no-code migration” philosophy across the various API
+      interfaces (Fortran, C/C++, Python). It thus preserves naming conventions and method signatures in
+      close alignment with LHAPDF, ensuring that existing codes can switch to NeoPDF with minimal or no
+      modifications
     </p>
     </li>
   </ul>
