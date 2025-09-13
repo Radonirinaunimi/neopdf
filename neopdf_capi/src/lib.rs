@@ -1196,23 +1196,26 @@ pub unsafe extern "C" fn initpdf_(member: *const c_int) {
 #[no_mangle]
 pub unsafe extern "C" fn evolvepdf(x: c_double, q: c_double, f: *mut c_double) {
     unsafe {
-        if let Some(pdfs) = &LHAPDF_STATE.pdf_set {
-            if LHAPDF_STATE.member >= pdfs.len() {
+        let state_ptr = &raw const LHAPDF_STATE;
+        let pdf_set_ptr = &raw const (*state_ptr).pdf_set;
+
+        if let Some(pdfs) = &*pdf_set_ptr {
+            let member = (*state_ptr).member;
+            if member >= pdfs.len() {
                 return;
             }
-            let pdf = &pdfs[LHAPDF_STATE.member];
+            let pdf = &pdfs[member];
             let q2 = q * q;
 
             let (available_pids, _) = pdf.pids().clone().into_raw_vec_and_offset();
             let out_slice = slice::from_raw_parts_mut(f, 14);
 
-            for i in 0..14 {
-                let pid = DEFAULT_PIDS[i];
-                if available_pids.contains(&pid) {
-                    out_slice[i] = pdf.xfxq2(pid, &[x, q2]);
+            for (out, &pid) in out_slice.iter_mut().zip(DEFAULT_PIDS.iter()) {
+                *out = if available_pids.contains(&pid) {
+                    pdf.xfxq2(pid, &[x, q2])
                 } else {
-                    out_slice[i] = 0.0;
-                }
+                    0.0
+                };
             }
         }
     }
@@ -1229,23 +1232,25 @@ pub unsafe extern "C" fn evolvepdf(x: c_double, q: c_double, f: *mut c_double) {
 #[no_mangle]
 pub unsafe extern "C" fn evolvepdf_(x: *const c_double, q: *const c_double, f: *mut c_double) {
     unsafe {
-        if let Some(pdfs) = &LHAPDF_STATE.pdf_set {
-            if LHAPDF_STATE.member >= pdfs.len() {
+        let pdf_set_ptr = &raw const LHAPDF_STATE.pdf_set;
+
+        if let Some(pdfs) = &*pdf_set_ptr {
+            let member = (&raw const LHAPDF_STATE.member).read();
+            if member >= pdfs.len() {
                 return;
             }
-            let pdf = &pdfs[LHAPDF_STATE.member];
+            let pdf = &pdfs[member];
             let q2 = (*q) * (*q);
 
             let (available_pids, _) = pdf.pids().clone().into_raw_vec_and_offset();
             let out_slice = slice::from_raw_parts_mut(f, 14);
 
-            for i in 0..14 {
-                let pid = DEFAULT_PIDS[i];
-                if available_pids.contains(&pid) {
-                    out_slice[i] = pdf.xfxq2(pid, &[*x, q2]);
+            for (out, &pid) in out_slice.iter_mut().zip(DEFAULT_PIDS.iter()) {
+                *out = if available_pids.contains(&pid) {
+                    pdf.xfxq2(pid, &[*x, q2])
                 } else {
-                    out_slice[i] = 0.0;
-                }
+                    0.0
+                };
             }
         }
     }
