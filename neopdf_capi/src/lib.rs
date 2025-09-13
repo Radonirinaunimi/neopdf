@@ -1255,3 +1255,57 @@ pub unsafe extern "C" fn evolvepdf_(x: *const c_double, q: *const c_double, f: *
         }
     }
 }
+
+/// Evaluates the strong coupling `alpha_s` at scale `q` for the active member.
+///
+/// # Safety
+///
+/// - Requires that a PDF set has been initialized via `initpdfsetbyname` or its
+///   Fortran variant. If no set is loaded or the member index is out of range,
+///   the function returns 0.0.
+#[no_mangle]
+pub unsafe extern "C" fn alphaspdf(q: c_double) -> c_double {
+    unsafe {
+        let state_ptr = &raw const LHAPDF_STATE;
+        let pdf_set_ptr = &raw const (*state_ptr).pdf_set;
+
+        if let Some(pdfs) = &*pdf_set_ptr {
+            let member = (*state_ptr).member;
+            if member >= pdfs.len() {
+                return 0.0;
+            }
+            let pdf = &pdfs[member];
+            let q2 = q * q;
+            pdf.alphas_q2(q2)
+        } else {
+            0.0
+        }
+    }
+}
+
+/// Fortran name-mangled variant of `alphaspdf`.
+///
+/// # Safety
+///
+/// - `q` must be a valid pointer to a `c_double` value.
+/// - A PDF set must have been initialized and the member index must be valid or
+///   the function will return 0.0.
+#[no_mangle]
+pub unsafe extern "C" fn alphaspdf_(q: *const c_double) -> c_double {
+    unsafe {
+        let state_ptr = &raw const LHAPDF_STATE;
+        let pdf_set_ptr = &raw const (*state_ptr).pdf_set;
+
+        if let Some(pdfs) = &*pdf_set_ptr {
+            let member = (*state_ptr).member;
+            if member >= pdfs.len() {
+                return 0.0;
+            }
+            let pdf = &pdfs[member];
+            let q2 = (*q) * (*q);
+            pdf.alphas_q2(q2)
+        } else {
+            0.0
+        }
+    }
+}
