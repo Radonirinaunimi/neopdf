@@ -5,7 +5,7 @@
 #include <iostream>
 #include <string>
 
-using namespace LHAPDF;
+using namespace NEOLHAPDF;
 
 const double TOLERANCE = 1e-12;
 
@@ -75,5 +75,6 @@ void test_lhapdf_compatibility_c() {
 int main() {
     test_lhapdf_compatibility_oop();
     test_lhapdf_compatibility_c();
+
     return 0;
 }

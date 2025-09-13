@@ -10,7 +10,7 @@ PROGRAMS = check-capi check-oop check-writer check-writer-oop check-xapi check-x
 all: $(PROGRAMS)
 
 test-examples: $(PROGRAMS)
-	set -e && for i in $(PROGRAMS); do ./${i} > output; diff -u ${i}.output output; done; rm output
+	set -e && for i in $(PROGRAMS); do ./$${i} > output; diff -u $${i}.output output; done; rm output
 
 check-capi: check-capi.cpp
 	$(CXX) $(CXXFLAGS) $< $(LHAPDF_DEPS) $(NEOPDF_DEPS) -o $@
