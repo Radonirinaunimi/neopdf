@@ -1374,6 +1374,7 @@ dependencies = [
  "lz4_flex",
  "ndarray",
  "ninterp",
+ "once_cell",
  "rayon",
  "regex",
  "reqwest",
