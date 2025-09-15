@@ -21,11 +21,11 @@ to be a modern, high-performance alternative to both [LHAPDF](https://www.lhapdf
   </div>
   <div class="feature-card">
       <strong>🧩 Flexibility</strong>
-      <p>Easy support for different interpolation strategies: efficient implementation of custom interpolations.</p>
+      <p>Easy support for different interpolation strategies, enabling seamless/efficient implementation of new methods.</p>
   </div>
   <div class="feature-card">
       <strong>🌐 Multi-Language Support</strong>
-      <p>Native Rust 🦀 API, with bindings for various programming languages such as Python 🐍, Fortran, C, and C++.</p>
+      <p>Native Rust 🦀 API, with bindings for various programming languages such as Python, Fortran, C, C++, Mathematica.</p>
   </div>
   <div class="feature-card">
       <strong>📊 (Physics) Features & Extensibility</strong>

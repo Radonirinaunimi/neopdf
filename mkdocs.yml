@@ -17,6 +17,7 @@ theme:
 extra_css:
   - custom.css
   - assets/stylesheets/notebooks.css
+  - https://cdn.jsdelivr.net/gh/devicons/devicon@latest/devicon.min.css
 extra_javascript:
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 nav:
@@ -29,10 +30,11 @@ nav:
   - CLI Tutorials: cli-tutorials.md
   - TMDlib Interface: tmdlib.md
   - Examples:
-      - 'Python API': 'examples/neopdf-pyapi.ipynb'
-      - 'C++ OOP API': 'examples/c-oop.md'
-      - 'C/C++ API': 'examples/c.md'
-      - 'Fortran API': 'examples/fortran.md'
+      - '<i class="devicon-python-plain colored"></i> Python API': 'examples/neopdf-pyapi.ipynb'
+      - '<i class="devicon-cplusplus-plain colored"></i> C++ OOP API': 'examples/c-oop.md'
+      - '<i class="devicon-c-plain colored"></i> C/C++ API': 'examples/c.md'
+      - '<i class="devicon-fortran-original colored"></i> Fortran API': 'examples/fortran.md'
+      - '<img src="https://cdn.simpleicons.org/wolfram/c83737" alt="Wolfram" style="height: 1em; vertical-align: -0.125em; margin-right: 0.25em;"/> Mathematica': 'examples/mathematica.md'
 plugins:
   - search
   - mermaid2
