@@ -50,9 +50,9 @@
     <li>
     <p align="justify">
       NeoPDF is esigned as much as possible with a “no-code migration” philosophy across the various API
-      interfaces (Fortran, C/C++, Python). It thus preserves naming conventions and method signatures in
-      close alignment with LHAPDF, ensuring that existing codes can switch to NeoPDF with minimal or no
-      modifications
+      interfaces (Fortran, C/C++, Python, Mathematica). It thus preserves naming conventions and method
+      signatures in close alignment with LHAPDF, ensuring that existing codes can switch to NeoPDF with
+      minimal or no modifications.
     </p>
     </li>
   </ul>
