@@ -76,7 +76,7 @@ cd ..
 
 # ==== install TMDlib ====
 curl -L "https://tmdlib.hepforge.org/downloads/?f=tmdlib-${TMDLIB_V}.tar.gz" | tar xzf -
-cd "TMDLIB-${TMDLIB_V}"
+cd "tmdlib-${TMDLIB_V}"
 ./configure --prefix=/usr
 make -j V=1
 make install
