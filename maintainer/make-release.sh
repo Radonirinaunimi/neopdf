@@ -63,6 +63,12 @@ git add Cargo.toml
 
 echo ">>> Updating Cargo.lock ..."
 
+# update explicit version for `neopdf_tmdlib` in `neopdf_cli`
+sed -i \
+    -e "s:neopdf_tmdlib = { path = \"[^\"]*\", version = \"[^\"]*\", optional = true }:neopdf_tmdlib = { path = \"../neopdf_tmdlib\", version = \"${version}\", optional = true }:" \
+    neopdf_cli/Cargo.toml
+git add neopdf_cli/Cargo.toml
+
 for crate in "${crates[@]}"; do
     # convert packages in the lockfile that correspond to files in this
     # repository to PKGIDs - important because we may depend on crate with
