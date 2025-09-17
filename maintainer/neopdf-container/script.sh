@@ -20,6 +20,10 @@ pkgs=(
     cython3
     wget
     libgsl-dev
+    texlive-latex-base
+    texlive-latex-extra
+    texlive-pictures
+    texlive-fonts-recommended
 )
 
 pdf_sets=(
