@@ -19,6 +19,7 @@ pkgs=(
     libtool
     cython3
     wget
+    libgsl-dev
 )
 
 pdf_sets=(
