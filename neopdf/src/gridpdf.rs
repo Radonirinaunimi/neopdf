@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use super::alphas::AlphaS;
+use super::caching;
 use super::interpolator::{DynInterpolator, InterpolatorFactory};
 use super::metadata::{InterpolatorType, MetaData};
 use super::parser::SubgridData;
@@ -298,15 +299,22 @@ impl GridPDF {
                 | InterpolatorType::LogChebyshev
         );
 
-        self.interpolators[subgrid_idx][pid_idx]
-            .interpolate_point(
-                &points
-                    .iter()
-                    .map(|&p| if use_log { p.ln() } else { p })
-                    .collect::<Vec<_>>(),
-            )
-            .map_err(|e| Error::InterpolationError(e.to_string()))
-            .map(|result| self.apply_force_positive(result))
+        let key = (
+            format!("-{}-{}", self.info.set_index, flavor_id),
+            points.iter().map(|&p| p.to_bits()).collect(),
+        );
+
+        caching::with_cache(key, || {
+            self.interpolators[subgrid_idx][pid_idx]
+                .interpolate_point(
+                    &points
+                        .iter()
+                        .map(|&p| if use_log { p.ln() } else { p })
+                        .collect::<Vec<_>>(),
+                )
+                .map_err(|e| Error::InterpolationError(e.to_string()))
+                .map(|result| self.apply_force_positive(result))
+        })
     }
 
     /// Interpolates PDF values for multiple points in parallel.

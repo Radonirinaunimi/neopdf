@@ -46,6 +46,7 @@
 //! See module-level documentation for more details and advanced usage.
 
 pub mod alphas;
+pub mod caching;
 pub mod converter;
 pub mod gridpdf;
 pub mod interpolator;
