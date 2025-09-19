@@ -153,7 +153,7 @@ fn alphasq2_neopdf() {
 }
 
 #[test]
-#[ignore = "Need to find a way to cache TMDlib set."]
+#[cfg(feature = "tmdlib")]
 fn xfxq2_kt_tmdlib() {
     Command::cargo_bin("neopdf")
         .unwrap()
