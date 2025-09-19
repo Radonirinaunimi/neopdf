@@ -173,4 +173,23 @@ fn xfxq2_kt_tmdlib() {
         .assert()
         .success()
         .stdout("0.07892252798564643\n");
+
+    Command::cargo_bin("neopdf")
+        .unwrap()
+        .args([
+            "compute",
+            "xfx_q2",
+            "--pdf-name",
+            "MAP22_grids_FF_Km_N3LL.neopdf.lz4",
+            "--member",
+            "0",
+            "--pid",
+            "2",
+            "1.0",
+            "0.1",
+            "10.0",
+        ])
+        .assert()
+        .success()
+        .stdout("0.07899136744063368\n");
 }
