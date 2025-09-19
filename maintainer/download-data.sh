@@ -22,6 +22,10 @@ NEOPDF_SETS=(
   nNNPDF30_nlo_as_0118
 )
 
+TMDLIB_SETS=(
+  MAP22_grids_FF_Km_N3LL
+)
+
 # Store the data in the root of the repository
 cd ..
 test -d neopdf-data || mkdir neopdf-data
@@ -36,4 +40,9 @@ done
 # Download NeoPDF sets
 for neo in "${NEOPDF_SETS[@]}"; do
   wget --no-verbose --no-clobber -P neopdf-data "https://data.nnpdf.science/neopdf/data/${neo}.neopdf.lz4"
+done
+
+# Dowload TMDlib sets
+for tmd in "${TMDLIB_SETS[@]}"; do
+  wget --no-verbose --no-clobber -P neopdf-data "https://data.nnpdf.science/neopdf/data/${tmd}.neopdf.lz4"
 done

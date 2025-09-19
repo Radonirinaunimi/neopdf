@@ -222,6 +222,16 @@ module neopdf
             real (c_double) :: c_neopdf_pdf_xfxq2_nd
         end function
 
+        subroutine c_neopdf_pdf_xfxq2_cheby_batch(pdf, flavor_id, points, num_points, num_dims, results) bind(c, name="neopdf_pdf_xfxq2_cheby_batch")
+            use iso_c_binding
+            type(c_ptr), value :: pdf
+            integer(c_int), value :: flavor_id
+            real(c_double), intent(in) :: points(*)
+            integer(c_size_t), value :: num_points
+            integer(c_size_t), value :: num_dims
+            real(c_double), intent(out) :: results(*)
+        end subroutine
+
         subroutine c_neopdf_pdf_set_force_positive(pdf, option) bind(c, name="neopdf_pdf_set_force_positive")
             use iso_c_binding
             type (c_ptr), value :: pdf
@@ -532,6 +542,20 @@ contains
 
         res = c_neopdf_pdf_xfxq2_nd(pdf%ptr, id, params, int(size(params), c_size_t))
     end function
+
+    subroutine neopdf_pdf_xfxq2_cheby_batch(pdf, flavor_id, points, results)
+        implicit none
+        type(neopdf_pdf), intent(in) :: pdf
+        integer, intent(in) :: flavor_id
+        real(dp), intent(in) :: points(:,:)
+        real(dp), intent(out) :: results(:)
+        integer(c_size_t) :: num_dims, num_points
+
+        num_dims = size(points, 1)
+        num_points = size(points, 2)
+
+        call c_neopdf_pdf_xfxq2_cheby_batch(pdf%ptr, flavor_id, points, num_points, num_dims, results)
+    end subroutine
 
     subroutine neopdf_pdf_set_force_positive(pdf, option)
         implicit none
