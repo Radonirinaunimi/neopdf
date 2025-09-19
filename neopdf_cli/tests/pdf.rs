@@ -153,7 +153,7 @@ fn alphasq2_neopdf() {
 }
 
 #[test]
-#[cfg(feature = "tmdlib")]
+#[ignore = "Need to find a way to cache TMDlib set."]
 fn xfxq2_kt_tmdlib() {
     Command::cargo_bin("neopdf")
         .unwrap()
@@ -173,7 +173,11 @@ fn xfxq2_kt_tmdlib() {
         .assert()
         .success()
         .stdout("0.07892252798564643\n");
+}
 
+#[test]
+#[cfg(feature = "tmdlib")]
+fn xfxq2_kt_neopdf_tmdlib() {
     Command::cargo_bin("neopdf")
         .unwrap()
         .args([
