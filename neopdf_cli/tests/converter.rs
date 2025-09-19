@@ -12,6 +12,7 @@ Commands:
   convert         Convert a single LHAPDF set to `NeoPDF` format
   combine-npdfs   Combine multiple nuclear PDFs into a single `NeoPDF` with A dependence
   combine-alphas  Combine multiple PDFs with different `alpha_s` values into a single `NeoPDF`
+  convert-tmd     Convert a TMD set to `NeoPDF` format
   metadata        Update the metadata of the `NeoPDF` grid
   help            Print this message or the help of the given subcommand(s)
 

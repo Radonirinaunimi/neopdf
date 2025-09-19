@@ -10,6 +10,7 @@ Usage: neopdf compute <COMMAND>
 Commands:
   xfx_q2     Evaluate xf(x, Q2, pid, ...) for a given set, member, and input values
   alphas_q2  Evaluate `alphasQ2` for a given set, member, and Q2 value
+  xfx_q2_kt  Evaluate TMD PDF for a given set, member, and input values
   help       Print this message or the help of the given subcommand(s)
 
 Options:
@@ -171,5 +172,5 @@ fn xfxq2_kt_tmdlib() {
         ])
         .assert()
         .success()
-        .stdout("0.0655544\n");
+        .stdout("0.07892252798564643\n");
 }
