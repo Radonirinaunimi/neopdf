@@ -303,23 +303,31 @@ fn test_pdf_download() {
 }
 
 #[test]
-#[ignore]
 pub fn test_xfxq2_cheby_batch() {
-    // TODO: Use proper grid with Chebyshev interpolations
-    let pdf = PDF::load("MAP22_grids_FF_Km_N3LL.neopdf.lz4", 0);
+    let pdf = PDF::load("MAP22_nosubgrids.neopdf.lz4", 0);
 
-    let ids: Vec<i32> = (-3..=3).filter(|&x| x != 0).collect();
-    let kt = 0.1;
-    let xs = [1e-2, 5e-2, 1e-1, 1.0];
-    let q2s = [5.0, 10.0, 100.0];
+    let generate_points = |min: f64, max: f64| -> Vec<f64> {
+        (0..20)
+            .map(|i| min + i as f64 * (max - min) / 19.0)
+            .collect()
+    };
+    let kts: Vec<f64> = generate_points(1e-4, 5.0);
+    let xs: Vec<f64> = generate_points(1e-1, 1.0);
+    let q2s: Vec<f64> = generate_points(1.0, 1e4);
 
-    let flatten_points: Vec<Vec<f64>> = xs
-        .iter()
-        .flat_map(|&x| q2s.iter().map(move |&q2| vec![kt, x, q2]))
-        .collect();
+    let mut flatten_points: Vec<Vec<f64>> = Vec::new();
+    for &kt in &kts {
+        for &x in &xs {
+            for &q2 in &q2s {
+                flatten_points.push(vec![kt, x, q2]);
+            }
+        }
+    }
+
     let points_interp: Vec<&[f64]> = flatten_points.iter().map(Vec::as_slice).collect();
     let slice_points: &[&[f64]] = &points_interp;
 
+    let ids: Vec<i32> = (-3..=3).filter(|&x| x != 0).collect();
     for &pid in &ids {
         let results_batch = pdf.xfxq2_cheby_batch(pid, slice_points);
         let results_single: Vec<f64> = slice_points.iter().map(|p| pdf.xfxq2(pid, p)).collect();
