@@ -6,6 +6,7 @@
 //! - [`GridArray`]: Stores the full set of subgrids and flavor IDs.
 
 use core::panic;
+use std::collections::HashMap;
 
 use ndarray::{Array1, Array2};
 use rayon::prelude::*;
@@ -354,11 +355,6 @@ impl GridPDF {
             return Ok(Vec::new());
         }
 
-        let subgrid_idx = self.knot_array.find_subgrid(points[0]).ok_or_else(|| {
-            let (x, q2) = self.get_x_q2(points[0]);
-            Error::SubgridNotFound { x, q2 }
-        })?;
-
         let pid_idx = self.knot_array.pid_index(flavor_id).ok_or_else(|| {
             Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
         })?;
@@ -369,23 +365,52 @@ impl GridPDF {
             ));
         }
 
-        let subgrid = &self.knot_array.subgrids[subgrid_idx];
-        let log_points: Vec<Vec<f64>> = points
-            .iter()
-            .map(|p| p.iter().map(|&v| v.ln()).collect())
+        let mut subgrid_groups: HashMap<usize, Vec<(usize, &[f64])>> = HashMap::new();
+        for (i, point) in points.iter().enumerate() {
+            let subgrid_idx = self.knot_array.find_subgrid(point).ok_or_else(|| {
+                let (x, q2) = self.get_x_q2(point);
+                Error::SubgridNotFound { x, q2 }
+            })?;
+
+            subgrid_groups
+                .entry(subgrid_idx)
+                .or_default()
+                .push((i, *point));
+        }
+
+        let mut all_results: Vec<(usize, f64)> = Vec::new();
+
+        for (subgrid_idx, group) in subgrid_groups {
+            let subgrid = &self.knot_array.subgrids[subgrid_idx];
+
+            let (indices, group_points): (Vec<_>, Vec<_>) = group.into_iter().unzip();
+
+            let log_points: Vec<Vec<f64>> = group_points
+                .iter()
+                .map(|p| p.iter().map(|&v| v.ln()).collect::<Vec<f64>>())
+                .collect();
+
+            let batch_interpolator =
+                InterpolatorFactory::create_batch_interpolator(subgrid, pid_idx)
+                    .map_err(Error::InterpolationError)?;
+
+            let results = batch_interpolator
+                .interpolate(log_points)
+                .map_err(|e| Error::InterpolationError(e.to_string()))?;
+
+            for (original_index, result) in indices.into_iter().zip(results) {
+                all_results.push((original_index, result));
+            }
+        }
+
+        // sort the results according to the original index
+        all_results.sort_by_key(|&(i, _)| i);
+        let final_results = all_results
+            .into_iter()
+            .map(|(_, r)| self.apply_force_positive(r))
             .collect();
 
-        let batch_interpolator = InterpolatorFactory::create_batch_interpolator(subgrid, pid_idx)
-            .map_err(Error::InterpolationError)?;
-
-        let results = batch_interpolator
-            .interpolate(log_points)
-            .map_err(|e| Error::InterpolationError(e.to_string()))?;
-
-        Ok(results
-            .into_iter()
-            .map(|r| self.apply_force_positive(r))
-            .collect())
+        Ok(final_results)
     }
 
     /// Get the values of the momentum fraction `x` and momentum scale `Q2`.

@@ -304,11 +304,12 @@ fn test_pdf_download() {
 
 #[test]
 pub fn test_xfxq2_cheby_batch() {
-    let pdf = PDF::load("MAP22_nosubgrids.neopdf.lz4", 0);
+    let pdf = PDF::load("MAP22_grids_FF_Km_N3LL.neopdf.lz4", 0);
 
+    let nb_points: usize = 20;
     let generate_points = |min: f64, max: f64| -> Vec<f64> {
-        (0..20)
-            .map(|i| min + i as f64 * (max - min) / 19.0)
+        (0..nb_points)
+            .map(|i| min + i as f64 * (max - min) / (nb_points as f64 - 1.0))
             .collect()
     };
     let kts: Vec<f64> = generate_points(1e-4, 5.0);
@@ -330,10 +331,15 @@ pub fn test_xfxq2_cheby_batch() {
     let ids: Vec<i32> = (-3..=3).filter(|&x| x != 0).collect();
     for &pid in &ids {
         let results_batch = pdf.xfxq2_cheby_batch(pid, slice_points);
-        let results_single: Vec<f64> = slice_points.iter().map(|p| pdf.xfxq2(pid, p)).collect();
+        let results_seq: Vec<f64> = slice_points.iter().map(|p| pdf.xfxq2(pid, p)).collect();
 
-        for (res_b, res_s) in results_batch.iter().zip(results_single.iter()) {
-            assert!((res_b - res_s).abs() < LOW_PRECISION, "{res_b} vs. {res_s}");
+        for (res_b, res_s) in results_batch.iter().zip(results_seq.iter()) {
+            assert!(
+                (res_b - res_s).abs() < LOW_PRECISION,
+                "PID={pid}: sequential={res_s}, batch={res_b} \n Sequential={:?} \n Batch={:?}",
+                results_seq,
+                results_batch
+            );
         }
     }
 }
