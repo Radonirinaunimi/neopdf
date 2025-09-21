@@ -178,6 +178,7 @@ jobs:
         run: |
           rustup default stable
           cargo publish -p neopdf
+          cargo publish -p neopdf_tmdlib
           cargo publish -p neopdf_capi
           cargo publish -p neopdf_cli
           cargo publish -p neopdf_pyapi

@@ -6,11 +6,9 @@
 //! - [`GridArray`]: Stores the full set of subgrids and flavor IDs.
 
 use core::panic;
-use std::collections::HashMap;
-
 use ndarray::{Array1, Array2};
-use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use thiserror::Error;
 
 use super::alphas::AlphaS;
@@ -329,7 +327,6 @@ impl GridPDF {
         let flatten_len = grid_shape.iter().product();
 
         let data: Vec<f64> = (0..flatten_len)
-            .into_par_iter()
             .map(|idx| {
                 let num_cols = slice_points.len();
                 let (fl_idx, s_idx) = (idx / num_cols, idx % num_cols);

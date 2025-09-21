@@ -10,6 +10,8 @@ use neopdf::parser::SubgridData;
 use neopdf::pdf::PDF;
 use neopdf::writer::GridArrayCollection;
 
+const DEFAULT_PIDS: [i32; 14] = [21, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 22];
+
 /// Result codes for `NeoPDF` operations
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1111,5 +1113,239 @@ pub unsafe extern "C" fn neopdf_grid_compress(
     match GridArrayCollection::compress(&grid_refs, &meta, out_path) {
         Ok(()) => NeopdfResult::Success,
         Err(_) => NeopdfResult::ErrorMemoryError,
+    }
+}
+
+// LHAPDF C-API drop-in compatibility layer.
+///
+/// This global state stores the loaded PDF set and the currently selected
+/// member index. It is not thread-safe and mirrors the behavior of legacy
+/// LHAPDF interfaces.
+struct LhapdfState {
+    pdf_set: Option<Vec<PDF>>,
+    member: usize,
+}
+
+static mut LHAPDF_STATE: LhapdfState = LhapdfState {
+    pdf_set: None,
+    member: 0,
+};
+
+/// Sets LHAPDF runtime parameters from a string (no-op).
+///
+/// This function is provided for compatibility with the LHAPDF C API and does
+/// nothing in this implementation.
+///
+/// # Safety
+///
+/// The pointer `line` must be a valid, null-terminated C string if non-null.
+#[no_mangle]
+pub const unsafe extern "C" fn setlhaparm(_line: *const c_char) {}
+
+/// Fortran name-mangled variant of `setlhaparm` (no-op).
+///
+/// This function is provided for compatibility with the LHAPDF Fortran API and
+/// does nothing in this implementation.
+///
+/// # Safety
+///
+/// The pointer `line` must be valid for reads of `len` bytes if non-null.
+#[no_mangle]
+pub const unsafe extern "C" fn setlhaparm_(_line: *const c_char, _len: isize) {}
+
+/// Initializes a PDF set by its name/path and loads all members.
+///
+/// The loaded set is stored in a global state used by the other LHAPDF-compatible
+/// functions, with the current member index reset to 0.
+///
+/// # Panics
+///
+/// Panics if `name` is not valid UTF-8 or is not a valid, null-terminated C string.
+///
+/// # Safety
+///
+/// `name` must be a valid, null-terminated C string pointing to a UTF-8 path or set name.
+#[no_mangle]
+pub unsafe extern "C" fn initpdfsetbyname(name: *const c_char) {
+    unsafe {
+        let c_str = CStr::from_ptr(name);
+        let pdf_name = c_str.to_str().expect("Invalid UTF-8 string");
+        let pdfs = PDF::load_pdfs(pdf_name);
+        LHAPDF_STATE.pdf_set = Some(pdfs);
+        LHAPDF_STATE.member = 0;
+    }
+}
+
+/// Fortran name-mangled variant of `initpdfsetbyname`.
+///
+/// Reads a fixed-length Fortran character buffer, trims trailing spaces, and loads
+/// the corresponding PDF set into the global state. The current member index is
+/// reset to 0.
+///
+/// # Panics
+///
+/// TODO
+///
+/// # Safety
+///
+/// `name` must be valid for reads of `len` bytes. The buffer may not be
+/// null-terminated; trailing spaces are trimmed.
+#[no_mangle]
+#[allow(clippy::cast_sign_loss)]
+pub unsafe extern "C" fn initpdfsetbyname_(name: *const c_char, len: c_int) {
+    unsafe {
+        let name_slice = slice::from_raw_parts(name.cast::<u8>(), len as usize);
+        let pdf_name = std::str::from_utf8(name_slice).unwrap().trim_end();
+        let pdfs = PDF::load_pdfs(pdf_name);
+        LHAPDF_STATE.pdf_set = Some(pdfs);
+        LHAPDF_STATE.member = 0;
+    }
+}
+
+/// Selects the active member of the currently loaded PDF set.
+///
+/// # Safety
+///
+/// This function does not perform bounds checking here; subsequent calls that
+/// use the member will return early if the index is out of range.
+#[no_mangle]
+#[allow(clippy::cast_sign_loss)]
+pub unsafe extern "C" fn initpdf(member: c_int) {
+    unsafe { LHAPDF_STATE.member = member as usize };
+}
+
+/// Fortran name-mangled variant of `initpdf`.
+///
+/// # Safety
+///
+/// `member` must be a valid pointer to an integer.
+#[no_mangle]
+#[allow(clippy::cast_sign_loss)]
+pub unsafe extern "C" fn initpdf_(member: *const c_int) {
+    unsafe { LHAPDF_STATE.member = *member as usize };
+}
+
+/// Evaluates parton distribution functions at given `(x, q)` for the active member.
+///
+/// # Safety
+///
+/// - `f` must point to writable memory for at least 13 `c_double` values.
+/// - Requires that a PDF set has been initialized via `initpdfsetbyname` or its
+///   Fortran variant. If no set is loaded or the member index is out of range,
+///   the function returns without writing.
+#[no_mangle]
+pub unsafe extern "C" fn evolvepdf(x: c_double, q: c_double, f: *mut c_double) {
+    unsafe {
+        let state_ptr = &raw const LHAPDF_STATE;
+        let pdf_set_ptr = &raw const (*state_ptr).pdf_set;
+
+        if let Some(pdfs) = &*pdf_set_ptr {
+            let member = (*state_ptr).member;
+            if member >= pdfs.len() {
+                return;
+            }
+            let pdf = &pdfs[member];
+            let q2 = q * q;
+
+            let (available_pids, _) = pdf.pids().clone().into_raw_vec_and_offset();
+            let out_slice = slice::from_raw_parts_mut(f, 14);
+
+            for (out, &pid) in out_slice.iter_mut().zip(DEFAULT_PIDS.iter()) {
+                *out = if available_pids.contains(&pid) {
+                    pdf.xfxq2(pid, &[x, q2])
+                } else {
+                    0.0
+                };
+            }
+        }
+    }
+}
+
+/// Fortran name-mangled variant of `evolvepdf`.
+///
+/// # Safety
+///
+/// - `x`, `q` must be valid pointers to `c_double` values.
+/// - `f` must point to writable memory for at least 13 `c_double` values.
+/// - A PDF set must have been initialized and the member index must be valid or
+///   the function will return without writing.
+#[no_mangle]
+pub unsafe extern "C" fn evolvepdf_(x: *const c_double, q: *const c_double, f: *mut c_double) {
+    unsafe {
+        let pdf_set_ptr = &raw const LHAPDF_STATE.pdf_set;
+
+        if let Some(pdfs) = &*pdf_set_ptr {
+            let member = (&raw const LHAPDF_STATE.member).read();
+            if member >= pdfs.len() {
+                return;
+            }
+            let pdf = &pdfs[member];
+            let q2 = (*q) * (*q);
+
+            let (available_pids, _) = pdf.pids().clone().into_raw_vec_and_offset();
+            let out_slice = slice::from_raw_parts_mut(f, 14);
+
+            for (out, &pid) in out_slice.iter_mut().zip(DEFAULT_PIDS.iter()) {
+                *out = if available_pids.contains(&pid) {
+                    pdf.xfxq2(pid, &[*x, q2])
+                } else {
+                    0.0
+                };
+            }
+        }
+    }
+}
+
+/// Evaluates the strong coupling `alpha_s` at scale `q` for the active member.
+///
+/// # Safety
+///
+/// - Requires that a PDF set has been initialized via `initpdfsetbyname` or its
+///   Fortran variant. If no set is loaded or the member index is out of range,
+///   the function returns 0.0.
+#[no_mangle]
+pub unsafe extern "C" fn alphaspdf(q: c_double) -> c_double {
+    unsafe {
+        let state_ptr = &raw const LHAPDF_STATE;
+        let pdf_set_ptr = &raw const (*state_ptr).pdf_set;
+
+        if let Some(pdfs) = &*pdf_set_ptr {
+            let member = (*state_ptr).member;
+            if member >= pdfs.len() {
+                return 0.0;
+            }
+            let pdf = &pdfs[member];
+            let q2 = q * q;
+            pdf.alphas_q2(q2)
+        } else {
+            0.0
+        }
+    }
+}
+
+/// Fortran name-mangled variant of `alphaspdf`.
+///
+/// # Safety
+///
+/// - `q` must be a valid pointer to a `c_double` value.
+/// - A PDF set must have been initialized and the member index must be valid or
+///   the function will return 0.0.
+#[no_mangle]
+pub unsafe extern "C" fn alphaspdf_(q: *const c_double) -> c_double {
+    unsafe {
+        let state_ptr = &raw const LHAPDF_STATE;
+        let pdf_set_ptr = &raw const (*state_ptr).pdf_set;
+
+        if let Some(pdfs) = &*pdf_set_ptr {
+            let member = (*state_ptr).member;
+            if member >= pdfs.len() {
+                return 0.0;
+            }
+            let pdf = &pdfs[member];
+            let q2 = (*q) * (*q);
+            pdf.alphas_q2(q2)
+        } else {
+            0.0
+        }
     }
 }
