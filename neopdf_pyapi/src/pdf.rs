@@ -403,6 +403,33 @@ impl PyPDF {
         self.pdf.xfxq2(id, &params)
     }
 
+    /// Interpolates the PDF value (xf) for a list containg a set of parameters.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : int
+    ///     The flavor ID (e.g., 21 for gluon, 1 for d-quark).
+    /// params: list[list[float]]
+    ///     A list containing the list of points. Each element in the list
+    ///     is in turn a list containing the parameters that the grids depends
+    ///     on. If the PDF grid only contains `x` and `Q2` dependence then its
+    ///     value is `[x, q2]`; if it contains either the `A` and `alpha_s`
+    ///     dependence, then its value is `[A, x, q2]` or `[alpha_s, x, q2]`
+    ///     respectively; if it contains both, then `[A, alpha_s, x, q2]`.
+    ///
+    /// Returns
+    /// -------
+    /// float
+    ///     The interpolated PDF value. Returns 0.0 if extrapolation is
+    ///     attempted and not allowed.
+    #[must_use]
+    #[pyo3(name = "xfxQ2_Chebyshev_batch")]
+    #[allow(clippy::needless_pass_by_value)]
+    pub fn xfxq2_cheby_batch(&self, id: i32, params: Vec<Vec<f64>>) -> Vec<f64> {
+        let slices: Vec<&[f64]> = params.iter().map(Vec::as_slice).collect();
+        self.pdf.xfxq2_cheby_batch(id, &slices)
+    }
+
     /// Interpolates the PDF value (xf) for lists of flavors, x-values,
     /// and Q2-values.
     ///

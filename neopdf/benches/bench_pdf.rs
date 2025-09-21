@@ -10,6 +10,32 @@ fn xfxq2(c: &mut Criterion) {
     });
 }
 
+fn xfxq2_cheby(c: &mut Criterion) {
+    let pdf = PDF::load("MAP22_grids_FF_Km_N3LL.neopdf.lz4", 0);
+
+    c.bench_function("xfxq2_cheby", |b| {
+        b.iter(|| {
+            pdf.xfxq2(
+                std::hint::black_box(2),
+                std::hint::black_box(&[1e-2, 5e-1, 10.0]),
+            )
+        })
+    });
+}
+
+fn xfxq2_cheby_batch(c: &mut Criterion) {
+    let pdf = PDF::load("MAP22_grids_FF_Km_N3LL.neopdf.lz4", 0);
+
+    c.bench_function("xfxq2_cheby_batch", |b| {
+        b.iter(|| {
+            pdf.xfxq2_cheby_batch(
+                std::hint::black_box(2),
+                std::hint::black_box(&[&[1e-2, 5e-1, 10.0]]),
+            )
+        })
+    });
+}
+
 fn xfxq2s(c: &mut Criterion) {
     let pdf = PDF::load("NNPDF40_nnlo_as_01180", 0);
 
@@ -45,5 +71,12 @@ fn xfxq2_members(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, xfxq2, xfxq2s, xfxq2_members);
+criterion_group!(
+    benches,
+    xfxq2,
+    xfxq2s,
+    xfxq2_members,
+    xfxq2_cheby,
+    xfxq2_cheby_batch
+);
 criterion_main!(benches);

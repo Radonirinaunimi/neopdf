@@ -8,6 +8,7 @@
 use core::panic;
 use ndarray::{Array1, Array2};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use thiserror::Error;
 
 use super::alphas::AlphaS;
@@ -244,7 +245,7 @@ impl GridPDF {
             Some(ForcePositive::ClipNegative) => value.max(0.0),
             Some(ForcePositive::ClipSmall) => value.max(1e-10),
             Some(ForcePositive::NoClipping) => value,
-            None => value,
+            _ => value,
         }
     }
 
@@ -286,9 +287,10 @@ impl GridPDF {
             Error::SubgridNotFound { x, q2 }
         })?;
 
-        let pid_idx = self.knot_array.pid_index(flavor_id).ok_or_else(|| {
-            Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
-        })?;
+        let pid_idx = self
+            .knot_array
+            .pid_index(flavor_id)
+            .ok_or_else(|| Error::InterpolationError(format!("Invalid flavor ID: {flavor_id}")))?;
 
         let use_log = matches!(
             self.info.interpolator_type,
@@ -333,6 +335,81 @@ impl GridPDF {
             .collect();
 
         Array2::from_shape_vec(grid_shape, data).unwrap()
+    }
+
+    /// Interpolates PDF values for multiple points in parallel using Chebyshev batch interpolation.
+    ///
+    /// # Arguments
+    ///
+    /// * `flavor_id` - The flavor ID.
+    /// * `points` - A slice containing the collection of knots to interpolate on.
+    ///   A knot is a collection of points containing `(nucleon, alphas, x, Q2)`.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<f64>` of interpolated PDF values.
+    pub fn xfxq2_cheby_batch(&self, flavor_id: i32, points: &[&[f64]]) -> Result<Vec<f64>, Error> {
+        if points.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        let pid_idx = self
+            .knot_array
+            .pid_index(flavor_id)
+            .ok_or_else(|| Error::InterpolationError(format!("Invalid flavor ID: {flavor_id}")))?;
+
+        if !matches!(self.info.interpolator_type, InterpolatorType::LogChebyshev) {
+            return Err(Error::InterpolationError(
+                "xfxq2_cheby_batch only supports LogChebyshev interpolator".to_string(),
+            ));
+        }
+
+        let mut subgrid_groups: HashMap<usize, Vec<(usize, &[f64])>> = HashMap::new();
+        for (i, point) in points.iter().enumerate() {
+            let subgrid_idx = self.knot_array.find_subgrid(point).ok_or_else(|| {
+                let (x, q2) = self.get_x_q2(point);
+                Error::SubgridNotFound { x, q2 }
+            })?;
+
+            subgrid_groups
+                .entry(subgrid_idx)
+                .or_default()
+                .push((i, *point));
+        }
+
+        let mut all_results: Vec<(usize, f64)> = Vec::new();
+
+        for (subgrid_idx, group) in subgrid_groups {
+            let subgrid = &self.knot_array.subgrids[subgrid_idx];
+
+            let (indices, group_points): (Vec<_>, Vec<_>) = group.into_iter().unzip();
+
+            let log_points: Vec<Vec<f64>> = group_points
+                .iter()
+                .map(|p| p.iter().map(|&v| v.ln()).collect::<Vec<f64>>())
+                .collect();
+
+            let batch_interpolator =
+                InterpolatorFactory::create_batch_interpolator(subgrid, pid_idx)
+                    .map_err(Error::InterpolationError)?;
+
+            let results = batch_interpolator
+                .interpolate(log_points)
+                .map_err(|e| Error::InterpolationError(e.to_string()))?;
+
+            for (original_index, result) in indices.into_iter().zip(results) {
+                all_results.push((original_index, result));
+            }
+        }
+
+        // sort the results according to the original index
+        all_results.sort_by_key(|&(i, _)| i);
+        let final_results = all_results
+            .into_iter()
+            .map(|(_, r)| self.apply_force_positive(r))
+            .collect();
+
+        Ok(final_results)
     }
 
     /// Get the values of the momentum fraction `x` and momentum scale `Q2`.

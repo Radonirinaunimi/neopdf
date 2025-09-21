@@ -317,6 +317,46 @@ pub unsafe extern "C" fn neopdf_pdf_xfxq2_nd(
     pdf_obj.xfxq2(id, params)
 }
 
+/// Interpolates PDF values for multiple points in parallel using Chebyshev batch interpolation.
+///
+/// # Safety
+///
+/// The `pdf` pointer must be a valid pointer to a `NeoPDF` object.
+/// The `points` pointer must be a valid pointer to an array of pointers to `c_double`.
+/// The `lengths` pointer must be a valid pointer to an array of `usize`.
+/// `num_points` must be the correct number of points.
+/// The `results` pointer must be valid for writing `num_points` elements.
+///
+/// # Panics
+///
+/// TODO
+#[no_mangle]
+pub unsafe extern "C" fn neopdf_pdf_xfxq2_cheby_batch(
+    pdf: *mut NeoPDFWrapper,
+    pid: i32,
+    points: *const *const c_double,
+    lengths: *const usize,
+    num_points: usize,
+    results: *mut c_double,
+) {
+    assert!(!pdf.is_null());
+    let pdf_obj = unsafe { &(*pdf).0 };
+
+    let points_slices: &[*const c_double] = unsafe { slice::from_raw_parts(points, num_points) };
+    let lengths_slice: &[usize] = unsafe { slice::from_raw_parts(lengths, num_points) };
+
+    let rust_points: Vec<&[f64]> = points_slices
+        .iter()
+        .zip(lengths_slice)
+        .map(|(&p, &l)| unsafe { slice::from_raw_parts(p, l) })
+        .collect();
+
+    let res_vec = pdf_obj.xfxq2_cheby_batch(pid, &rust_points);
+
+    let results_slice = unsafe { slice::from_raw_parts_mut(results, res_vec.len()) };
+    results_slice.copy_from_slice(&res_vec);
+}
+
 /// Clip the interpolated values if they turned out negatives.
 ///
 /// # Panics

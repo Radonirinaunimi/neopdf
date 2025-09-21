@@ -287,6 +287,23 @@ impl PDF {
         self.grid_pdf.xfxq2s(pids, slice_points)
     }
 
+    /// Interpolates the PDF value (xf) for multiple points using Chebyshev batch interpolation.
+    ///
+    /// Abstraction to the `GridPDF::xfxq2_cheby_batch` method.
+    ///
+    /// # Arguments
+    ///
+    /// * `pid` - The flavor ID.
+    /// * `points` - A slice containing the collection of knots to interpolate on.
+    ///   A knot is a collection of points containing `(nucleon, alphas, x, Q2)`.
+    ///
+    /// # Returns
+    ///
+    /// A `Vec<f64>` of interpolated PDF values.
+    pub fn xfxq2_cheby_batch(&self, pid: i32, points: &[&[f64]]) -> Vec<f64> {
+        self.grid_pdf.xfxq2_cheby_batch(pid, points).unwrap()
+    }
+
     /// Interpolates the strong coupling constant `alpha_s` for a given Q2.
     ///
     /// Abstraction to the `GridPDF::alphas_q2` method.

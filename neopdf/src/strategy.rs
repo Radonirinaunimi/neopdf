@@ -14,7 +14,7 @@
 //! All interpolation strategies are designed to work with `ninterp`'s data structures and traits,
 //! ensuring compatibility and extensibility.
 
-use ndarray::{Data, RawDataClone};
+use ndarray::{Array2, Axis, Data, RawDataClone};
 use ninterp::data::{InterpData1D, InterpData2D, InterpData3D};
 use ninterp::error::{InterpolateError, ValidateError};
 use ninterp::strategy::traits::{Strategy1D, Strategy2D, Strategy3D};
@@ -1031,13 +1031,6 @@ where
         let x_min = *x_coords.first().unwrap();
         let x_max = *x_coords.last().unwrap();
 
-        if x < x_min || x > x_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point {} is outside the grid range [{}, {}]",
-                x, x_min, x_max
-            )));
-        }
-
         if (x_max - x_min).abs() < 1e-15 {
             return Ok(f_values[0]);
         }
@@ -1089,21 +1082,8 @@ where
 
         let x_min = *x_coords.first().unwrap();
         let x_max = *x_coords.last().unwrap();
-        if x < x_min || x > x_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point x={} is outside the grid range [{}, {}]",
-                x, x_min, x_max
-            )));
-        }
-
         let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
-        if y < y_min || y > y_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point y={} is outside the grid range [{}, {}]",
-                y, y_min, y_max
-            )));
-        }
 
         let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
         let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
@@ -1160,30 +1140,10 @@ where
 
         let x_min = *x_coords.first().unwrap();
         let x_max = *x_coords.last().unwrap();
-        if x < x_min || x > x_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point x={} is outside the grid range [{}, {}]",
-                x, x_min, x_max
-            )));
-        }
-
         let y_min = *y_coords.first().unwrap();
         let y_max = *y_coords.last().unwrap();
-        if y < y_min || y > y_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point y={} is outside the grid range [{}, {}]",
-                y, y_min, y_max
-            )));
-        }
-
         let z_min = *z_coords.first().unwrap();
         let z_max = *z_coords.last().unwrap();
-        if z < z_min || z > z_max {
-            return Err(InterpolateError::Other(format!(
-                "Input point z={} is outside the grid range [{}, {}]",
-                z, z_min, z_max
-            )));
-        }
 
         let t_x = 2.0 * (x - x_min) / (x_max - x_min) - 1.0;
         let t_y = 2.0 * (y - y_min) / (y_max - y_min) - 1.0;
@@ -1207,6 +1167,306 @@ where
 
     fn allow_extrapolate(&self) -> bool {
         true
+    }
+}
+
+/// Implements a global N-dimensional batch interpolation using Chebyshev polynomials
+/// with logarithmic coordinate scaling.
+///
+/// This strategy is optimized for interpolating multiple points at once by leveraging
+/// matrix operations with `ndarray`.
+///
+/// TODO: Potentially merge this with `LogChebyshevInterpolation`.
+#[derive(Debug, Clone)]
+pub struct LogChebyshevBatchInterpolation<const DIM: usize> {
+    // Pre-computed weights for the barycentric formula for each dimension.
+    weights: [Vec<f64>; DIM],
+    // Grid points in the t-domain [-1, 1] for each dimension.
+    t_coords: [Vec<f64>; DIM],
+}
+
+impl<const DIM: usize> Default for LogChebyshevBatchInterpolation<DIM> {
+    fn default() -> Self {
+        Self {
+            weights: std::array::from_fn(|_| Vec::new()),
+            t_coords: std::array::from_fn(|_| Vec::new()),
+        }
+    }
+}
+
+impl<const DIM: usize> Serialize for LogChebyshevBatchInterpolation<DIM> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeStruct;
+        let mut state = serializer.serialize_struct("LogChebyshevBatchInterpolation", 2)?;
+        state.serialize_field("weights", &self.weights.as_slice())?;
+        state.serialize_field("t_coords", &self.t_coords.as_slice())?;
+        state.end()
+    }
+}
+
+impl<'de, const DIM: usize> Deserialize<'de> for LogChebyshevBatchInterpolation<DIM> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Helper {
+            weights: Vec<Vec<f64>>,
+            t_coords: Vec<Vec<f64>>,
+        }
+
+        let helper = Helper::deserialize(deserializer)?;
+        let weights = helper.weights.try_into().map_err(|v: Vec<Vec<f64>>| {
+            serde::de::Error::invalid_length(v.len(), &"an array of the correct length")
+        })?;
+        let t_coords = helper.t_coords.try_into().map_err(|v: Vec<Vec<f64>>| {
+            serde::de::Error::invalid_length(v.len(), &"an array of the correct length")
+        })?;
+
+        Ok(Self { weights, t_coords })
+    }
+}
+
+impl<const DIM: usize> LogChebyshevBatchInterpolation<DIM> {
+    /// Computes the barycentric weights for a given set of Chebyshev points.
+    /// The formula for the weights is `w_j = (-1)^j * delta_j`, where `delta_j`
+    /// is 1/2 for the first and last points, and 1 otherwise.
+    fn compute_barycentric_weights(n: usize) -> Vec<f64> {
+        let mut weights = vec![1.0; n];
+        (0..n).for_each(|j| {
+            if j % 2 == 1 {
+                weights[j] = -1.0;
+            }
+        });
+        weights[0] *= 0.5;
+
+        if n > 1 {
+            weights[n - 1] *= 0.5;
+        }
+
+        weights
+    }
+
+    /// Compute barycentric coefficients for multiple points in batch
+    fn barycentric_coefficients(
+        t_values: &[f64],
+        t_coords: &[f64],
+        weights: &[f64],
+    ) -> Array2<f64> {
+        let num_points = t_values.len();
+        let num_coords = t_coords.len();
+        let mut coeffs = Array2::<f64>::zeros((num_points, num_coords));
+
+        for (p, &t) in t_values.iter().enumerate() {
+            let mut found_exact = false;
+            for (j, &t_j) in t_coords.iter().enumerate() {
+                if (t - t_j).abs() < 1e-15 {
+                    coeffs[[p, j]] = 1.0;
+                    found_exact = true;
+                    break;
+                }
+            }
+
+            if !found_exact {
+                let mut terms = Vec::with_capacity(num_coords);
+                for (j, &t_j) in t_coords.iter().enumerate() {
+                    terms.push(weights[j] / (t - t_j));
+                }
+
+                let sum: f64 = terms.iter().sum();
+
+                for (j, &term) in terms.iter().enumerate() {
+                    coeffs[[p, j]] = term / sum;
+                }
+            }
+        }
+
+        coeffs
+    }
+}
+
+impl LogChebyshevBatchInterpolation<1> {
+    pub fn init<D>(&mut self, data: &InterpData1D<D>) -> Result<(), ValidateError>
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let n = x_coords.len();
+        if n < 2 {
+            return Err(ValidateError::Other(
+                "LogChebyshevBatchInterpolation requires at least 2 grid points.".to_string(),
+            ));
+        }
+
+        self.t_coords[0] = (0..n)
+            .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+            .collect();
+
+        self.weights[0] = Self::compute_barycentric_weights(n);
+
+        Ok(())
+    }
+
+    pub fn interpolate<D>(
+        &self,
+        data: &InterpData1D<D>,
+        points: &[[f64; 1]],
+    ) -> Result<Vec<f64>, InterpolateError>
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let f_values = data.values.to_owned();
+
+        let x_min = *x_coords.first().unwrap();
+        let x_max = *x_coords.last().unwrap();
+
+        let mut t_x_vals = Vec::with_capacity(points.len());
+        for &[x] in points {
+            t_x_vals.push(2.0 * (x - x_min) / (x_max - x_min) - 1.0);
+        }
+
+        let c_x = Self::barycentric_coefficients(&t_x_vals, &self.t_coords[0], &self.weights[0]);
+        let results = c_x.dot(&f_values);
+
+        Ok(results.to_vec())
+    }
+}
+
+impl LogChebyshevBatchInterpolation<2> {
+    pub fn init<D>(&mut self, data: &InterpData2D<D>) -> Result<(), ValidateError>
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        for dim in 0..2 {
+            let x_coords = data.grid[dim].as_slice().unwrap();
+            let n = x_coords.len();
+            if n < 2 {
+                return Err(ValidateError::Other(
+                    "LogChebyshevBatchInterpolation requires at least 2 grid points per dimension."
+                        .to_string(),
+                ));
+            }
+            self.t_coords[dim] = (0..n)
+                .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+                .collect();
+            self.weights[dim] = Self::compute_barycentric_weights(n);
+        }
+
+        Ok(())
+    }
+
+    pub fn interpolate<D>(
+        &self,
+        data: &InterpData2D<D>,
+        points: &[[f64; 2]],
+    ) -> Result<Vec<f64>, InterpolateError>
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+
+        let x_min = *x_coords.first().unwrap();
+        let x_max = *x_coords.last().unwrap();
+        let y_min = *y_coords.first().unwrap();
+        let y_max = *y_coords.last().unwrap();
+
+        let mut t_x_vals = Vec::with_capacity(points.len());
+        let mut t_y_vals = Vec::with_capacity(points.len());
+        for &[x, y] in points {
+            t_x_vals.push(2.0 * (x - x_min) / (x_max - x_min) - 1.0);
+            t_y_vals.push(2.0 * (y - y_min) / (y_max - y_min) - 1.0);
+        }
+
+        let c_x = Self::barycentric_coefficients(&t_x_vals, &self.t_coords[0], &self.weights[0]);
+        let c_y = Self::barycentric_coefficients(&t_y_vals, &self.t_coords[1], &self.weights[1]);
+        let v = data.values.to_owned();
+        let results = (&c_x.dot(&v) * &c_y).sum_axis(Axis(1));
+
+        Ok(results.to_vec())
+    }
+}
+
+impl LogChebyshevBatchInterpolation<3> {
+    pub fn init<D>(&mut self, data: &InterpData3D<D>) -> Result<(), ValidateError>
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        for dim in 0..3 {
+            let x_coords = data.grid[dim].as_slice().unwrap();
+            let n = x_coords.len();
+            if n < 2 {
+                return Err(ValidateError::Other(
+                    "LogChebyshevBatchInterpolation requires at least 2 grid points per dimension."
+                        .to_string(),
+                ));
+            }
+            self.t_coords[dim] = (0..n)
+                .map(|j| (PI * (n - 1 - j) as f64 / (n - 1) as f64).cos())
+                .collect();
+            self.weights[dim] = Self::compute_barycentric_weights(n);
+        }
+        Ok(())
+    }
+
+    pub fn interpolate<D>(
+        &self,
+        data: &InterpData3D<D>,
+        points: &[[f64; 3]],
+    ) -> Result<Vec<f64>, InterpolateError>
+    where
+        D: Data<Elem = f64> + RawDataClone + Clone,
+    {
+        let x_coords = data.grid[0].as_slice().unwrap();
+        let y_coords = data.grid[1].as_slice().unwrap();
+        let z_coords = data.grid[2].as_slice().unwrap();
+
+        let x_min = *x_coords.first().unwrap();
+        let x_max = *x_coords.last().unwrap();
+        let y_min = *y_coords.first().unwrap();
+        let y_max = *y_coords.last().unwrap();
+        let z_min = *z_coords.first().unwrap();
+        let z_max = *z_coords.last().unwrap();
+
+        let mut t_x_vals = Vec::with_capacity(points.len());
+        let mut t_y_vals = Vec::with_capacity(points.len());
+        let mut t_z_vals = Vec::with_capacity(points.len());
+
+        for &[x, y, z] in points {
+            t_x_vals.push(2.0 * (x - x_min) / (x_max - x_min) - 1.0);
+            t_y_vals.push(2.0 * (y - y_min) / (y_max - y_min) - 1.0);
+            t_z_vals.push(2.0 * (z - z_min) / (z_max - z_min) - 1.0);
+        }
+
+        let c_x = Self::barycentric_coefficients(&t_x_vals, &self.t_coords[0], &self.weights[0]);
+        let c_y = Self::barycentric_coefficients(&t_y_vals, &self.t_coords[1], &self.weights[1]);
+        let c_z = Self::barycentric_coefficients(&t_z_vals, &self.t_coords[2], &self.weights[2]);
+
+        let v = &data.values;
+
+        let num_points = points.len();
+        let (nx, ny, nz) = (x_coords.len(), y_coords.len(), z_coords.len());
+
+        let v_flat = v.to_owned().into_shape_with_order((nx, ny * nz)).unwrap();
+        let temp1 = c_x.dot(&v_flat);
+        let temp1_3d = temp1.into_shape_with_order((num_points, ny, nz)).unwrap();
+
+        let mut results = Vec::with_capacity(num_points);
+        for p in 0..num_points {
+            let temp_slice = temp1_3d.index_axis(Axis(0), p);
+            let cy_slice = c_y.row(p);
+            let cz_slice = c_z.row(p);
+
+            let temp2 = cy_slice.dot(&temp_slice);
+            let result = cz_slice.dot(&temp2);
+            results.push(result);
+        }
+
+        Ok(results)
     }
 }
 
@@ -1417,19 +1677,19 @@ mod tests {
         let alphas_cubic = AlphaSCubicInterpolation;
 
         // Test within interpolation range
-        let result = alphas_cubic.interpolate(&data, &[2.25f64.ln()]).unwrap(); // Q=1.5
+        let result = alphas_cubic.interpolate(&data, &[2.25f64.ln()]).unwrap();
         assert!(result > 0.1 && result < 0.14);
 
         // Test at grid point
-        let result = alphas_cubic.interpolate(&data, &[4.0f64.ln()]).unwrap(); // Q=2.0
+        let result = alphas_cubic.interpolate(&data, &[4.0f64.ln()]).unwrap();
         assert_close(result, 0.11, EPSILON);
 
         // Test extrapolation below range
-        let result = alphas_cubic.interpolate(&data, &[0.5f64.ln()]).unwrap(); // Q=sqrt(0.5)
+        let result = alphas_cubic.interpolate(&data, &[0.5f64.ln()]).unwrap();
         assert!(result < 0.1);
 
         // Test extrapolation above range
-        let result = alphas_cubic.interpolate(&data, &[30.0f64.ln()]).unwrap(); // Q=sqrt(30)
+        let result = alphas_cubic.interpolate(&data, &[30.0f64.ln()]).unwrap();
         assert_close(result, 0.14, EPSILON);
     }
 
@@ -1678,5 +1938,94 @@ mod tests {
             .unwrap();
 
         assert_close(result, expected, EPSILON);
+    }
+
+    #[test]
+    fn test_log_chebyshev_batch_interpolation_1d() {
+        let n = 21;
+        let x_min: f64 = 0.1;
+        let x_max: f64 = 10.0;
+        let x_coords = create_cheby_grid(n, x_min, x_max);
+
+        let f_values: Vec<f64> = x_coords.iter().map(|&x| x.ln()).collect();
+        let data = create_test_data_1d(x_coords.iter().map(|v| v.ln()).collect(), f_values);
+        let mut cheby = LogChebyshevBatchInterpolation::<1>::default();
+        cheby.init(&data).unwrap();
+
+        let test_points = [[2.5f64.ln()], [5.0f64.ln()], [7.5f64.ln()]];
+        let expected: Vec<f64> = test_points.iter().map(|p| p[0]).collect();
+        let results = cheby.interpolate(&data, &test_points).unwrap();
+
+        for (res, exp) in results.iter().zip(expected.iter()) {
+            assert_close(*res, *exp, EPSILON);
+        }
+    }
+
+    #[test]
+    fn test_log_chebyshev_batch_interpolation_2d() {
+        let n = 11;
+        let x_coords = create_cheby_grid(n, 0.1, 10.0);
+        let y_coords = create_cheby_grid(n, 0.1, 10.0);
+
+        let f_values: Vec<f64> = x_coords
+            .iter()
+            .flat_map(|&x| y_coords.iter().map(move |&y| x.ln() + y.ln()))
+            .collect();
+
+        let data = create_test_data_2d(
+            x_coords.iter().map(|v| v.ln()).collect(),
+            y_coords.iter().map(|v| v.ln()).collect(),
+            f_values,
+        );
+        let mut cheby = LogChebyshevBatchInterpolation::<2>::default();
+        cheby.init(&data).unwrap();
+
+        let test_points = [
+            [2.5f64.ln(), 3.5f64.ln()],
+            [5.0f64.ln(), 6.0f64.ln()],
+            [7.5f64.ln(), 8.5f64.ln()],
+        ];
+        let expected: Vec<f64> = test_points.iter().map(|p| p[0] + p[1]).collect();
+        let results = cheby.interpolate(&data, &test_points).unwrap();
+
+        for (res, exp) in results.iter().zip(expected.iter()) {
+            assert_close(*res, *exp, EPSILON);
+        }
+    }
+
+    #[test]
+    fn test_log_chebyshev_batch_interpolation_3d() {
+        let n = 7;
+        let x_coords = create_cheby_grid(n, 0.1, 10.0);
+        let y_coords = create_cheby_grid(n, 0.1, 10.0);
+        let z_coords = create_cheby_grid(n, 0.1, 10.0);
+
+        let f_values: Vec<f64> = x_coords
+            .iter()
+            .cartesian_product(y_coords.iter())
+            .cartesian_product(z_coords.iter())
+            .map(|((&x, &y), &z)| x.ln() + y.ln() + z.ln())
+            .collect();
+
+        let data = create_test_data_3d(
+            x_coords.iter().map(|v| v.ln()).collect(),
+            y_coords.iter().map(|v| v.ln()).collect(),
+            z_coords.iter().map(|v| v.ln()).collect(),
+            f_values,
+        );
+        let mut cheby = LogChebyshevBatchInterpolation::<3>::default();
+        cheby.init(&data).unwrap();
+
+        let test_points = [
+            [2.5f64.ln(), 3.5f64.ln(), 4.5f64.ln()],
+            [5.0f64.ln(), 6.0f64.ln(), 7.0f64.ln()],
+            [7.5f64.ln(), 8.5f64.ln(), 9.5f64.ln()],
+        ];
+        let expected: Vec<f64> = test_points.iter().map(|p| p[0] + p[1] + p[2]).collect();
+        let results = cheby.interpolate(&data, &test_points).unwrap();
+
+        for (res, exp) in results.iter().zip(expected.iter()) {
+            assert_close(*res, *exp, EPSILON);
+        }
     }
 }

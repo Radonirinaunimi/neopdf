@@ -73,7 +73,37 @@ pub enum Commands {
         #[arg(short, long)]
         output: String,
     },
-    /// Update the metadata of the `NeoPDF` grid.
+    /// Update the metadata of the `NeoPDF` grid
+    ///
+    /// Here are the metadata keys that can be updated:
+    ///
+    ///  - `SetDesc`: description of the set
+    ///  - `SetIndex`: set index
+    ///  - `NumMembers`: number of members
+    ///  - `XMin`: minimum value of x
+    ///  - `XMax`: maximum value of x
+    ///  - `QMin`: minimum value of Q2
+    ///  - `QMax`: maximum value of Q2
+    ///  - `Format`: format of the set (can be any string)
+    ///  - `Polarized`: polarization, takes a boolean
+    ///  - `InterpolatorType`: interpolation method (bilinear, logbilinear, logbicubic, logtricubic, chebyshev, interpndlinear)
+    ///  - `ErrorType`: set error (replica, hessian, etc.)
+    ///  - `Particle`: Hadron PID
+    ///  - `FlavorScheme`: flavour scheme (fixed, variable, etc.)
+    ///  - `OrderQCD`: perturbative order
+    ///  - `AlphaS_OrderQCD`: perturbative order of the strong coupling
+    ///  - `MW`: W boson mass
+    ///  - `MZ`: Z boson mass
+    ///  - `MUp`: mass of the up quark
+    ///  - `MDown`: mass of the down quark
+    ///  - `MStrange`: mass of the strange quark
+    ///  - `MCharm`: mass of the charm quark
+    ///  - `MBottom`: mass of the bottom quark
+    ///  - `MTop`: mass of the top quark
+    ///  - `AlphaS_Type`: type of the `AlphaS` interpolation (ipol, etc.)
+    ///  - `NumFlavors`: number of active quark flavours
+    ///  - `SetType`: type of the set (spacelike, timelike)
+    #[command(verbatim_doc_comment)]
     Metadata {
         /// Path to the `NeoPDF` file.
         #[arg(short, long)]
