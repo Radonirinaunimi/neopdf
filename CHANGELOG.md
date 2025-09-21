@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added a logic to compute Chebyshev interpolations in batches (https://github.com/Radonirinaunimi/neopdf/pull/64)
 - Added the logic to determine the Euclidean distance of a point to the closest
   subgrid in order to allow extrapolation.
 - Added version-aware serialization of the `MetaData` struct to ensure backward
