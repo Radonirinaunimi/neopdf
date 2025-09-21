@@ -247,7 +247,7 @@ impl GridPDF {
             Some(ForcePositive::ClipNegative) => value.max(0.0),
             Some(ForcePositive::ClipSmall) => value.max(1e-10),
             Some(ForcePositive::NoClipping) => value,
-            None => value,
+            _ => value,
         }
     }
 
@@ -289,9 +289,10 @@ impl GridPDF {
             Error::SubgridNotFound { x, q2 }
         })?;
 
-        let pid_idx = self.knot_array.pid_index(flavor_id).ok_or_else(|| {
-            Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
-        })?;
+        let pid_idx = self
+            .knot_array
+            .pid_index(flavor_id)
+            .ok_or_else(|| Error::InterpolationError(format!("Invalid flavor ID: {flavor_id}")))?;
 
         let use_log = matches!(
             self.info.interpolator_type,
@@ -355,9 +356,10 @@ impl GridPDF {
             return Ok(Vec::new());
         }
 
-        let pid_idx = self.knot_array.pid_index(flavor_id).ok_or_else(|| {
-            Error::InterpolationError(format!("Invalid flavor ID: {}", flavor_id))
-        })?;
+        let pid_idx = self
+            .knot_array
+            .pid_index(flavor_id)
+            .ok_or_else(|| Error::InterpolationError(format!("Invalid flavor ID: {flavor_id}")))?;
 
         if !matches!(self.info.interpolator_type, InterpolatorType::LogChebyshev) {
             return Err(Error::InterpolationError(

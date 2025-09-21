@@ -334,12 +334,7 @@ pub fn test_xfxq2_cheby_batch() {
         let results_seq: Vec<f64> = slice_points.iter().map(|p| pdf.xfxq2(pid, p)).collect();
 
         for (res_b, res_s) in results_batch.iter().zip(results_seq.iter()) {
-            assert!(
-                (res_b - res_s).abs() < LOW_PRECISION,
-                "PID={pid}: sequential={res_s}, batch={res_b} \n Sequential={:?} \n Batch={:?}",
-                results_seq,
-                results_batch
-            );
+            assert!((res_b - res_s).abs() < LOW_PRECISION);
         }
     }
 }
