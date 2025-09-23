@@ -1,4 +1,6 @@
-<h1 align="center">NeoPDF</h1>
+<p align="center">
+  <img src="https://github.com/Radonirinaunimi/neopdf/blob/master/logo/neopdf.svg" alt="NeoPDF Logo" width="300">
+</p>
 <div align="center">
     <a href="https://app.codecov.io/gh/Radonirinaunimi/neopdf/tree/master"><img
         alt="Codecov"
