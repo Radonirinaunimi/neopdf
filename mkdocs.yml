@@ -2,6 +2,8 @@ site_name: NeoPDF
 theme:
   name: material
   custom_dir: docs/overrides
+  logo: assets/neopdf.svg
+  favicon: assets/neopdf.svg
   palette:
     scheme: slate
     primary: custom
