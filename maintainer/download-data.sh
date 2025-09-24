@@ -14,7 +14,9 @@ LHAPDF_SETS=(
   NNPDF40_nnlo_as_01175
   NNPDF40_nnlo_as_01185
   NNPDF40_nnlo_as_01190
+  ABMP16_5_nnlo
   ABMP16als118_5_nnlo
+  MSHT20nlo_as_smallrange_nf4
 )
 
 NEOPDF_SETS=(
