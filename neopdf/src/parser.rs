@@ -139,7 +139,6 @@ impl LhapdfSet {
         let mut alphas_q_values: Option<Vec<f64>> = None;
         let mut alphas_vals: Option<Vec<f64>> = None;
 
-        // Split the content by "---" to separate subgrids
         let blocks: Vec<&str> = content.split("---").map(|s| s.trim()).collect();
 
         if !blocks.is_empty() {
@@ -163,21 +162,18 @@ impl LhapdfSet {
         }
 
         for block in blocks.iter().skip(1) {
-            // Skip empty blocks
             if block.is_empty() {
                 continue;
             }
 
             let mut lines = block.lines();
 
-            // Read the x knots
             let x_knots_line = lines.next().unwrap();
             let xs: Vec<f64> = x_knots_line
                 .split_whitespace()
                 .filter_map(|s| s.parse().ok())
                 .collect();
 
-            // Read the Q2 knots
             let q2_knots_line = lines.next().unwrap();
             let q2s: Vec<f64> = q2_knots_line
                 .split_whitespace()
@@ -197,7 +193,6 @@ impl LhapdfSet {
                 lines.next();
             }
 
-            // Read the grid values
             let mut grid_data = Vec::new();
             for line in lines {
                 let values: Vec<f64> = line
