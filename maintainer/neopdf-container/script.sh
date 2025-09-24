@@ -35,6 +35,10 @@ pdf_sets=(
     EPPS21nlo_CT18Anlo_Fe56
     MAPFF10NLOPIsum
     NNPDFpol20_nnlo_as_01180
+    nNNPDF30_nlo_as_0118_A56_Z26
+    ABMP16_5_nnlo
+    ABMP16als118_5_nnlo
+    MSHT20nlo_as_smallrange_nf4
 )
 
 neopdf_sets=(
