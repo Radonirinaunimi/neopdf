@@ -1,4 +1,16 @@
-# NeoPDF
+---
+title: ""
+hide:
+  - title
+---
+
+<style>
+.md-content__inner h1:first-of-type { display: none; }
+</style>
+
+<div style="display: flex; justify-content: center;">
+  <img src="./assets/neopdf.svg" width="600" />
+</div>
 
 ![Codecov](https://img.shields.io/codecov/c/github/Radonirinaunimi/neopdf?style=flat-square&logo=codecov&logoColor=red&color=blue)
 ![MSRV](https://img.shields.io/crates/msrv/neopdf?style=flat-square&logo=rust&color=red)
