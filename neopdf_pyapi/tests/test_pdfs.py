@@ -68,6 +68,8 @@ class TestPDFInterpolations:
         ref = [lhapdf.xfxQ2(pid, x, q2) for x, q2 in product(xs, q2s)]
         np.testing.assert_equal(res, [ref])
 
+
+class TestAlphaSInterpolations:
     @pytest.mark.parametrize("pdfname", ["NNPDF40_nnlo_as_01180", "MSHT20qed_an3lo"])
     def test_alphasQ2(self, neo_pdf, lha_pdf, pdfname):
         neopdf = neo_pdf(pdfname)
@@ -79,6 +81,23 @@ class TestPDFInterpolations:
             ref = lhapdf.alphasQ2(q2_point)
             res = neopdf.alphasQ2(q2_point)
             np.testing.assert_equal(res, ref)
+
+    @pytest.mark.parametrize(
+        "pdfname",
+        ["ABMP16_5_nnlo", "ABMP16als118_5_nnlo", "MSHT20nlo_as_smallrange_nf4"],
+    )
+    def test_alphasQ2_member(self, neo_pdfs, lha_pdfs, pdfname):
+        neopdf = neo_pdfs(pdfname)
+        lhapdf = lha_pdfs(pdfname)
+
+        for idx in range(len(neopdf)):
+            qs = neopdf[idx].metadata().alphas_q()
+            q2_points = [q * q for q in np.linspace(qs[0], qs[-1], num=100)]
+
+            for q2_point in q2_points:
+                ref = lhapdf[idx].alphasQ2(q2_point)
+                res = neopdf[idx].alphasQ2(q2_point)
+                np.testing.assert_equal(res, ref)
 
 
 class TestLazyLoader:

@@ -27,6 +27,8 @@ pub struct SubgridData {
 pub struct PdfData {
     pub subgrid_data: Vec<SubgridData>,
     pub pids: Vec<i32>,
+    pub alphas_q_values: Option<Vec<f64>>,
+    pub alphas_vals: Option<Vec<f64>>,
 }
 
 /// Manages the loading and parsing of LHAPDF data sets.
@@ -78,7 +80,17 @@ impl LhapdfSet {
 
         let pdf_data = Self::read_data(&data_path);
         let knot_array = GridArray::new(pdf_data.subgrid_data, pdf_data.pids);
-        (self.info.clone(), knot_array)
+
+        let mut info = self.info.clone();
+        if info.alphas_vals.is_empty() {
+            if let (Some(vals), Some(q_values)) = (pdf_data.alphas_vals, pdf_data.alphas_q_values) {
+                if !vals.is_empty() && !q_values.is_empty() {
+                    info.alphas_vals = vals;
+                    info.alphas_q_values = q_values;
+                }
+            }
+        }
+        (info, knot_array)
     }
 
     /// Reads the metadata and data for all members of the PDF set.
@@ -124,26 +136,45 @@ impl LhapdfSet {
         let content = fs::read_to_string(path).unwrap();
         let mut subgrid_data = Vec::new();
         let mut flavors = Vec::new();
+        let mut alphas_q_values: Option<Vec<f64>> = None;
+        let mut alphas_vals: Option<Vec<f64>> = None;
 
-        // Split the content by "---" to separate subgrids
         let blocks: Vec<&str> = content.split("---").map(|s| s.trim()).collect();
 
+        // NOTE: support cases in which `AlphaS` grid info are in `.dat` files.
+        if !blocks.is_empty() {
+            #[derive(serde::Deserialize)]
+            struct DatMeta {
+                #[serde(rename = "AlphaS_Qs", default)]
+                alphas_q_values: Vec<f64>,
+                #[serde(rename = "AlphaS_Vals", default)]
+                alphas_vals: Vec<f64>,
+            }
+
+            let metadata_block = blocks[0];
+            if let Ok(dat_meta) = serde_yaml::from_str::<DatMeta>(metadata_block) {
+                if !dat_meta.alphas_q_values.is_empty() {
+                    alphas_q_values = Some(dat_meta.alphas_q_values);
+                }
+                if !dat_meta.alphas_vals.is_empty() {
+                    alphas_vals = Some(dat_meta.alphas_vals);
+                }
+            }
+        }
+
         for block in blocks.iter().skip(1) {
-            // Skip empty blocks
             if block.is_empty() {
                 continue;
             }
 
             let mut lines = block.lines();
 
-            // Read the x knots
             let x_knots_line = lines.next().unwrap();
             let xs: Vec<f64> = x_knots_line
                 .split_whitespace()
                 .filter_map(|s| s.parse().ok())
                 .collect();
 
-            // Read the Q2 knots
             let q2_knots_line = lines.next().unwrap();
             let q2s: Vec<f64> = q2_knots_line
                 .split_whitespace()
@@ -163,7 +194,6 @@ impl LhapdfSet {
                 lines.next();
             }
 
-            // Read the grid values
             let mut grid_data = Vec::new();
             for line in lines {
                 let values: Vec<f64> = line
@@ -192,6 +222,8 @@ impl LhapdfSet {
         PdfData {
             subgrid_data,
             pids: flavors,
+            alphas_q_values,
+            alphas_vals,
         }
     }
 }
