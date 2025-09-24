@@ -4,7 +4,7 @@ import numpy as np
 
 from neopdf.pdf import PDF as NeoPDF
 from neopdf.pdf import LazyPDFs
-from typing import List, Dict, Generator
+from typing import List, Dict, Iterator
 
 
 @pytest.fixture(scope="session")
@@ -35,7 +35,7 @@ def neo_pdfs():
 def neo_pdfs_lazy():
     cached_pdf = {}
 
-    def _init_pdf(pdfname: str) -> Dict[str, Generator[LazyPDFs]]:
+    def _init_pdf(pdfname: str) -> Dict[str, Iterator[LazyPDFs]]:
         if pdfname not in cached_pdf:
             cached_pdf[pdfname] = NeoPDF.mkPDFs_lazy(pdfname)
         return cached_pdf[pdfname]

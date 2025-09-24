@@ -141,6 +141,7 @@ impl LhapdfSet {
 
         let blocks: Vec<&str> = content.split("---").map(|s| s.trim()).collect();
 
+        // NOTE: support cases in which `AlphaS` grid info are in `.dat` files.
         if !blocks.is_empty() {
             #[derive(serde::Deserialize)]
             struct DatMeta {
