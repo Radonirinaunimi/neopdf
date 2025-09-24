@@ -356,6 +356,17 @@ impl PyPDF {
         self.pdf.param_ranges().q2.max
     }
 
+    /// Retrieves the flavour PIDs for the PDF set.
+    ///
+    /// Returns
+    /// -------
+    /// list(int)
+    ///     The flavour PID values.
+    #[must_use]
+    pub fn flavour_pids(&self) -> Vec<i32> {
+        self.pdf.metadata().flavors.clone()
+    }
+
     /// Interpolates the PDF value (xf) for a given flavor, x, and Q2.
     ///
     /// Parameters
