@@ -6,7 +6,7 @@ jobs:
   pyapi:
     # `ubuntu-24.04` doesn't support Python 3.7 anymore
     runs-on: ubuntu-22.04
-    container: ghcr.io/radonirinaunimi/neopdf-container:latest
+    container: ghcr.io/qcdlab/neopdf-container:latest
 
     steps:
       - uses: actions/checkout@v4

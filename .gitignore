@@ -4,3 +4,4 @@
 /neopdf_capi/docs/html/
 /neopdf_capi/docs/latex/
 /neopdf_capi/tests/*.txt
+*.lz4
