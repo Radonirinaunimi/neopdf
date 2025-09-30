@@ -68,7 +68,3 @@
 - [NeoPDF Design](https://radonirinaunimi.github.io/neopdf/design/)
 - [CLI tutorials](https://radonirinaunimi.github.io/neopdf/cli-tutorials/)
 - [Tutorials and examples](https://radonirinaunimi.github.io/neopdf/examples/python/)
-
-> [!IMPORTANT]  
-> NeoPDF is still under rapid development and while the core functions are fully working, the interface might
-> change and some minor features are still missing.
