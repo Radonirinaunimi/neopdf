@@ -17,8 +17,6 @@ use super::metadata::{InterpolatorType, MetaData};
 use super::parser::SubgridData;
 use super::subgrid::{ParamRange, RangeParameters, SubGrid};
 
-const DEFAULT_PIDS: [i32; 14] = [21, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 22];
-
 /// Errors that can occur during PDF grid operations.
 #[derive(Debug, Error)]
 pub enum Error {
@@ -291,12 +289,7 @@ impl GridPDF {
 
         let pid_idx = match self.knot_array.pid_index(flavor_id) {
             Some(idx) => idx,
-            None if DEFAULT_PIDS.contains(&flavor_id) => return Ok(0.0),
-            None => {
-                return Err(Error::InterpolationError(format!(
-                    "Invalid flavor ID: {flavor_id}"
-                )))
-            }
+            None => return Ok(0.0),
         };
 
         let use_log = matches!(
@@ -362,12 +355,7 @@ impl GridPDF {
 
         let pid_idx = match self.knot_array.pid_index(flavor_id) {
             Some(idx) => idx,
-            None if DEFAULT_PIDS.contains(&flavor_id) => return Ok(vec![0.0; points.len()]),
-            None => {
-                return Err(Error::InterpolationError(format!(
-                    "Invalid flavor ID: {flavor_id}"
-                )))
-            }
+            None => return Ok(vec![0.0; points.len()]),
         };
 
         if !matches!(self.info.interpolator_type, InterpolatorType::LogChebyshev) {
